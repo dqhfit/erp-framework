@@ -95,7 +95,7 @@ function FilterItem({ item }: { item: FItemCfg }) {
           onChange={(v) => pageState.set(stateKey, v)}
           options={labelOptions}
           placeholder={label || "Chọn…"}
-          emptyOption={item.emptyLabel ?? (label ? `${label}: tất cả` : "— tất cả —")}
+          emptyOption={item.emptyLabel ?? (label ? `${label}: tất cả` : "tất cả")}
           wrapOptions
         />
       </div>
@@ -299,7 +299,8 @@ function LegacyCascadeFilter({ cfg }: { cfg: Record<string, unknown> }) {
               ref={panelRef}
               style={{
                 position: "fixed",
-                top: dropPos.top,
+                top: dropPos.top !== undefined ? dropPos.top : "auto",
+                bottom: dropPos.bottom !== undefined ? dropPos.bottom : "auto",
                 left: dropPos.left,
                 minWidth: Math.max(dropPos.width, 280),
               }}

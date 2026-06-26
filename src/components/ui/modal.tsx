@@ -47,7 +47,6 @@ export function Modal({
             align === "top" ? "max-h-[calc(100vh-4.5rem)]" : "max-h-[calc(100vh-2rem)]",
           )}
           style={{ maxWidth: width }}
-          onMouseDown={(e) => e.stopPropagation()}
         >
           <div className="flex items-center justify-between p-4 border-b border-border shrink-0">
             <div id={titleId} className="font-semibold text-lg">

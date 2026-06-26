@@ -5,12 +5,14 @@
    qua saveOutputTo của từng bước.
    ========================================================== */
 import { createApiDataSource } from "@erp-framework/client";
-import { type ReactNode, useEffect, useState } from "react";
+import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { I } from "@/components/Icons";
 import { fileDisplayName } from "@/components/renderer/FilePreviewModal";
 import { LookupPicker } from "@/components/renderer/LookupPicker";
 import { computeProduct, sumField } from "@/components/renderer/MasterDetailCreateModal";
 import { Button, Input, Modal, SearchableSelect } from "@/components/ui";
+import { useDropdownPosition } from "@/hooks/useDropdownPosition";
 import type { EntityField } from "@/lib/object-types";
 import type { PageStateLike } from "@/lib/run-action";
 import { toast } from "@/lib/toast";
@@ -61,6 +63,137 @@ function buildRowData(
   return out;
 }
 
+function MultiselectDropdown({
+  value,
+  onChange,
+  options,
+  placeholder = "Chọn…",
+  className,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  options: string[];
+  placeholder?: string;
+  className?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const pos = useDropdownPosition(triggerRef, open);
+
+  const [tempSelected, setTempSelected] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (open) {
+      const arr = value
+        .split("/")
+        .map((s) => s.trim())
+        .filter(Boolean);
+      setTempSelected(arr);
+    }
+  }, [open, value]);
+
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: MouseEvent) => {
+      const tgt = e.target as Node;
+      if (
+        triggerRef.current &&
+        !triggerRef.current.contains(tgt) &&
+        !panelRef.current?.contains(tgt)
+      ) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, [open]);
+
+  const handleOK = () => {
+    onChange(tempSelected.join("/ "));
+    setOpen(false);
+  };
+
+  const handleCancel = () => {
+    setOpen(false);
+  };
+
+  const toggle = (opt: string) => {
+    setTempSelected((prev) =>
+      prev.includes(opt) ? prev.filter((x) => x !== opt) : [...prev, opt],
+    );
+  };
+
+  const displayVal = value || placeholder;
+
+  return (
+    <div className={cn("relative inline-block w-full", className)}>
+      <button
+        ref={triggerRef}
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="input flex w-full items-center justify-between gap-2 text-left"
+      >
+        <span className={cn("min-w-0 truncate", !value && "text-muted")}>{displayVal}</span>
+        <I.ChevronDown size={14} className="shrink-0 text-muted" />
+      </button>
+
+      {open &&
+        pos &&
+        createPortal(
+          <div
+            ref={panelRef}
+            style={{
+              position: "fixed",
+              top: pos.top !== undefined ? pos.top : "auto",
+              bottom: pos.bottom !== undefined ? pos.bottom : "auto",
+              left: pos.left,
+              width: Math.max(pos.width, 240),
+            }}
+            className="z-[1000] rounded-md border border-border bg-panel shadow-lg flex flex-col overflow-hidden"
+          >
+            <div className="max-h-60 overflow-y-auto p-2 flex flex-col gap-1.5 bg-panel">
+              {options.map((opt) => {
+                const checked = tempSelected.includes(opt);
+                return (
+                  <label
+                    key={opt}
+                    className="flex items-center gap-2.5 px-3 py-1.5 text-sm cursor-pointer hover:bg-hover/40 rounded transition-colors"
+                  >
+                    <input
+                      type="checkbox"
+                      className="accent-accent shrink-0 rounded border-border"
+                      checked={checked}
+                      onChange={() => toggle(opt)}
+                    />
+                    <span className="text-text select-none">{opt}</span>
+                  </label>
+                );
+              })}
+            </div>
+            <div className="border-t border-border flex justify-end gap-2 p-2 bg-panel-2/30">
+              <button
+                type="button"
+                onClick={handleOK}
+                className="px-3 py-1 rounded bg-accent text-white hover:bg-accent-2/90 text-xs font-semibold shadow-sm transition-all active:scale-95 min-w-[50px]"
+              >
+                OK
+              </button>
+              <button
+                type="button"
+                onClick={handleCancel}
+                className="px-3 py-1 rounded border border-border text-muted hover:bg-hover hover:text-text text-xs font-medium transition-all min-w-[50px]"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>,
+          document.body,
+        )}
+    </div>
+  );
+}
+
 /** Áp fieldOverrides của page lên field entity: merge type/label/options/required
  *  (override thắng). Cho phép cấu hình form sống trong page → đi theo page sync,
  *  KHÔNG cần sửa entity trên DB. Field không có override giữ nguyên. */
@@ -91,8 +224,12 @@ interface Props {
   recordId?: unknown;
   onDone: (data: Record<string, unknown>) => void;
   onCancel: () => void;
-  /** Render một ActionConfig thành nút hành động. Được cung cấp bởi ActionWidget để tránh circular import. */
-  renderAction?: (action: ActionConfig, key: string, onComplete?: () => void) => ReactNode;
+  renderAction?: (
+    action: ActionConfig,
+    key: string,
+    onComplete?: (output?: any) => void,
+    customPageState?: PageStateLike,
+  ) => ReactNode;
 }
 
 /** Khoá form dùng chung cho mọi bước ở chế độ 1-entity (tránh field cùng tên
@@ -164,19 +301,34 @@ const SINGLE_FORM_KEY = "__wizard_single__";
 export function WizardModal({ step, pageState, recordId, onDone, onCancel, renderAction }: Props) {
   const entities = useUserObjects((s) => s.entities);
   const wizardSteps = step.steps ?? [];
+  // Chế độ 1-entity: mọi bước thao tác cùng step.entity (gom field theo bước).
+  const wizardEntityId = step.entity;
+
   // Gom fieldOverrides của mọi bước — cấu hình field nhúng trong page (đổi kiểu/
   // nhãn/options) để form đi theo page sync mà khỏi chạm entity trên DB.
   const fieldOv = Object.assign({}, ...wizardSteps.map((s) => s.fieldOverrides ?? {})) as Record<
     string,
     { type?: string; label?: string; options?: string[]; required?: boolean }
   >;
+  const hasImageInAnyStep = useMemo(() => {
+    return wizardSteps.some((s) => {
+      const stepEntId = wizardEntityId ?? s.entity;
+      const stepEnt = stepEntId ? entities.find((e) => e.id === stepEntId) : undefined;
+      const fieldsInStep = s.fields ?? [];
+      const hasImg = fieldsInStep.some((fName) => {
+        const f = stepEnt?.fields.find((field) => field.name === fName);
+        return f?.type === "image" || fName === "hinhanh";
+      });
+      return hasImg || !!s.relatedImage;
+    });
+  }, [wizardSteps, wizardEntityId, entities]);
 
-  // Chế độ 1-entity: mọi bước thao tác cùng step.entity (gom field theo bước).
-  const wizardEntityId = step.entity;
   const editId = recordId == null || recordId === "" ? null : String(recordId);
   const readOnly = step.readOnly === true;
 
   const [activeIdx, setActiveIdx] = useState(0);
+  const current = wizardSteps[Math.min(activeIdx, wizardSteps.length - 1)];
+
   // Tạo mới (không recordId) + có defaults → điền sẵn giá trị mặc định.
   const [forms, setForms] = useState<Record<string, Record<string, string>>>(() => {
     const init: Record<string, Record<string, string>> = {};
@@ -192,6 +344,20 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
     setFieldErrors({});
   }, [activeIdx]);
   const [collected, setCollected] = useState<Record<string, unknown>>({});
+
+  const formKey = wizardEntityId ? SINGLE_FORM_KEY : (current?.id ?? "");
+  const setField = useCallback(
+    (k: string, v: string) => {
+      setForms((prev) => ({ ...prev, [formKey]: { ...(prev[formKey] ?? {}), [k]: v } }));
+      setFieldErrors((prev) => {
+        if (!prev[k]) return prev;
+        const next = { ...prev };
+        delete next[k];
+        return next;
+      });
+    },
+    [formKey],
+  );
   // Dòng nhập của các bước lưới chi tiết (theo step.id).
   const [detailRows, setDetailRows] = useState<Record<string, Record<string, string>[]>>({});
   // Record nguồn cho field-lookup trong lưới chi tiết (theo entityId).
@@ -206,6 +372,112 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
   const [fileDisplayNames, setFileDisplayNames] = useState<Record<string, string>>({});
   // Escape giả từ native file dialog được nuốt ở useFocusTrap (theo vòng đời dialog).
   const _onCancel = onCancel;
+
+  const activeEntity = wizardEntityId ? entities.find((e) => e.id === wizardEntityId) : undefined;
+  const isProductEntity =
+    wizardEntityId === "b71515cf-4a57-4eed-a1f5-9275d7781c72" ||
+    activeEntity?.techName === "tr_sanpham" ||
+    activeEntity?.name === "tr_sanpham";
+  const isColorEntity = activeEntity?.techName === "tr_color" || activeEntity?.name === "tr_color";
+
+  // Lấy các giá trị hiện tại để tính masp và mahtr (cho entity tr_sanpham)
+  const formValues = wizardEntityId
+    ? (forms[SINGLE_FORM_KEY] ?? {})
+    : Object.assign({}, ...Object.values(forms));
+
+  const wrappedPageState = useMemo(() => {
+    return {
+      get: (key: string) => {
+        if (key.startsWith("form.")) {
+          const fieldPath = key.slice(5);
+          if (fieldPath.endsWith("_id")) {
+            const baseKey = fieldPath.slice(0, -3);
+            const val = formValues[baseKey];
+            if (val) {
+              const lk = current?.fieldLookups?.[baseKey];
+              if (lk) {
+                const src = detailLookupData[lk.entity] ?? [];
+                const rec = src.find((r) => String(r[lk.valueField] ?? "") === val);
+                if (rec) return rec.id;
+              }
+            }
+          }
+          return formValues[fieldPath] ?? "";
+        }
+        return pageState.get(key);
+      },
+      set: (key: string, value: unknown) => {
+        if (key.startsWith("form.")) {
+          setField(key.slice(5), String(value));
+        } else {
+          pageState.set(key, value);
+        }
+      },
+      values: {
+        ...pageState.values,
+        ...Object.fromEntries(Object.entries(formValues).map(([k, v]) => [`form.${k}`, v])),
+      },
+    };
+  }, [pageState, formValues, current?.fieldLookups, detailLookupData, setField]);
+
+  const masp_nhamay = String(formValues.masp_nhamay ?? "").trim();
+  const mausac = String(formValues.mausac ?? "").trim();
+  const customer = String(formValues.customer ?? "").trim();
+  const bemat_sanpham = String(formValues.bemat_sanpham ?? "").trim();
+
+  // Find customer_id from lookup records metadata if available
+  const customerLookupEntityId =
+    wizardSteps
+      .flatMap((s) => (s.fieldLookups ? Object.entries(s.fieldLookups) : []))
+      .find(([field]) => field === "customer")?.[1]?.entity ||
+    "5c138697-6875-40e5-b9fd-3451e241de0d";
+  const customerRecords = detailLookupData[customerLookupEntityId] || [];
+  const customerObj = customerRecords.find(
+    (r) =>
+      String(r.customer_name ?? "")
+        .trim()
+        .toLowerCase() === customer.toLowerCase(),
+  );
+  const customerCode = customerObj ? String(customerObj.customer_id ?? "").trim() : customer;
+
+  const computedMasp =
+    masp_nhamay || mausac || customerCode ? `${masp_nhamay}_${mausac}_${customerCode}` : "";
+
+  const bematRecords = detailLookupData["8b34e2ab-8e01-443b-ba21-4f9e8a01cb23"] || [];
+
+  let bematList: string[] = [];
+  try {
+    const parsed = bemat_sanpham ? JSON.parse(bemat_sanpham) : [];
+    bematList = Array.isArray(parsed) ? parsed.map(String) : [];
+  } catch {
+    bematList = bemat_sanpham
+      .split("/")
+      .map((s) => s.trim())
+      .filter(Boolean);
+  }
+
+  const surfaceCodes = bematList
+    .map((s) => {
+      const found = bematRecords.find(
+        (r) =>
+          String(r.name ?? "")
+            .trim()
+            .toLowerCase() === s.toLowerCase() ||
+          String(r.code ?? "")
+            .trim()
+            .toLowerCase() === s.toLowerCase(),
+      );
+      if (found && found.code) {
+        return String(found.code).trim();
+      }
+      return s
+        .split(/\s+/)
+        .map((word) => word.charAt(0).toUpperCase())
+        .join("");
+    })
+    .join("/");
+
+  const computedMahtr = masp_nhamay ? `W${masp_nhamay}_${surfaceCodes}` : "";
 
   // Nạp record nguồn cho mọi field-lookup: field master (combobox) + lưới detail.
   const lookupKey = [
@@ -350,7 +622,6 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
     );
   }
 
-  const current = wizardSteps[Math.min(activeIdx, wizardSteps.length - 1)];
   if (!current) return null;
 
   // 1-entity mode: mọi bước dùng wizardEntityId; else: entity riêng từng bước.
@@ -364,19 +635,7 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
         .map((n) => entFields.find((f) => f.name === n))
         .filter(Boolean) as EntityField[])
     : entFields;
-  // 1-entity → form dùng chung 1 khoá cho mọi bước; else → form riêng theo step.id.
-  const formKey = wizardEntityId ? SINGLE_FORM_KEY : current.id;
   const form = forms[formKey] ?? {};
-  const setField = (k: string, v: string) => {
-    setForms((prev) => ({ ...prev, [formKey]: { ...(prev[formKey] ?? {}), [k]: v } }));
-    if (fieldErrors[k]) {
-      setFieldErrors((prev) => {
-        const next = { ...prev };
-        delete next[k];
-        return next;
-      });
-    }
-  };
   const isLast = activeIdx === wizardSteps.length - 1;
   const relatedImageCfg = current.relatedImage;
   const relatedParentValue = relatedImageCfg
@@ -467,7 +726,7 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
           value={value}
           onChange={onChange}
           options={opts}
-          emptyOption={`— chọn ${srcLabel} —`}
+          emptyOption={`chọn ${srcLabel}`}
           searchPlaceholder={`Tìm ${srcLabel}…`}
           columnHeaders={headers}
         />
@@ -490,7 +749,7 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
           value={value}
           onChange={onChange}
           options={f.options.map((o) => ({ value: o, label: o }))}
-          emptyOption="— chọn —"
+          emptyOption="chọn"
         />
       );
     }
@@ -601,12 +860,9 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
               : (wizardStep.fields ?? []),
           ),
         );
-        if (wizardEntityId) {
-          const entName = entities.find((e) => e.id === wizardEntityId)?.name;
-          if (entName === "tr_color") {
-            if (editableFieldNames.has("duongdan")) editableFieldNames.add("tenfile");
-            if (editableFieldNames.has("duongdan2")) editableFieldNames.add("tenfile2");
-          }
+        if (isColorEntity) {
+          if (editableFieldNames.has("duongdan")) editableFieldNames.add("tenfile");
+          if (editableFieldNames.has("duongdan2")) editableFieldNames.add("tenfile2");
         }
         // Khi KHÔNG có step nào khai báo fields tường minh (editableFieldNames rỗng),
         // bỏ filter — lưu tất cả field có giá trị. Tránh payload rỗng khi wizard
@@ -618,12 +874,16 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
           const t = typeOf(k);
           // Multiselect: form lưu CSV "a,b" → server yêu cầu MẢNG.
           if (t === "multiselect" || t === "multienum" || t === "multilookup") {
-            payload[k] = v
-              ? v
-                  .split(",")
-                  .map((s) => s.trim())
-                  .filter(Boolean)
-              : [];
+            if (k === "bemat_sanpham") {
+              payload[k] = v; // Gửi nguyên chuỗi "Trơn láng/ Giả cổ/ Da" cho DB text column
+            } else {
+              payload[k] = v
+                ? v
+                    .split(",")
+                    .map((s) => s.trim())
+                    .filter(Boolean)
+                : [];
+            }
             continue;
           }
           // Boolean: "true"/"false" → bool (vd active mặc định khi thêm).
@@ -634,6 +894,116 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
           if (v === "") continue;
           payload[k] = t === "date" || t === "datetime" ? toIsoDate(v) : v;
         }
+
+        // Tự động gán mã sản phẩm nếu entity là tr_sanpham
+        if (
+          ent?.techName === "tr_sanpham" ||
+          ent?.name === "tr_sanpham" ||
+          wizardEntityId === "b71515cf-4a57-4eed-a1f5-9275d7781c72"
+        ) {
+          payload.masp = computedMasp;
+          payload.ma_btp = computedMahtr;
+        }
+
+        // Kiểm tra trùng lặp cho khách hàng hoặc ngân hàng khi tạo mới
+        if (!editId) {
+          if (ent?.techName === "tr_khachhang") {
+            const customerIdVal = String(payload.customer_id ?? "").trim();
+            if (customerIdVal) {
+              const dupIdRes = await api.getRecords(wizardEntityId, {
+                filters: { customer_id: { op: "=", value: customerIdVal } },
+                limit: 1,
+              });
+              if (dupIdRes.rows.length > 0) {
+                setFieldErrors((prev) => ({ ...prev, customer_id: "Mã khách hàng đã tồn tại" }));
+                throw new Error("Mã khách hàng đã tồn tại");
+              }
+            }
+            const customerNameVal = String(payload.customer_name ?? "").trim();
+            if (customerNameVal) {
+              const dupNameRes = await api.getRecords(wizardEntityId, {
+                filters: { customer_name: { op: "=", value: customerNameVal } },
+                limit: 1,
+              });
+              if (dupNameRes.rows.length > 0) {
+                setFieldErrors((prev) => ({ ...prev, customer_name: "Tên khách hàng đã tồn tại" }));
+                throw new Error("Tên khách hàng đã tồn tại");
+              }
+            }
+          } else if (ent?.techName === "tr_nganhang") {
+            const nameVal = String(payload.name ?? "").trim();
+            if (nameVal) {
+              const dupName = await api.getRecords(wizardEntityId, {
+                filters: { name: { op: "=", value: nameVal } },
+                limit: 1,
+              });
+              if (dupName.rows.length > 0) {
+                setFieldErrors((prev) => ({ ...prev, name: "Tên ngân hàng đã tồn tại" }));
+                throw new Error("Tên ngân hàng đã tồn tại");
+              }
+            }
+            const abbrVal = String(payload.abbr_name ?? "").trim();
+            if (abbrVal) {
+              const dupAbbr = await api.getRecords(wizardEntityId, {
+                filters: { abbr_name: { op: "=", value: abbrVal } },
+                limit: 1,
+              });
+              if (dupAbbr.rows.length > 0) {
+                setFieldErrors((prev) => ({ ...prev, abbr_name: "Tên viết tắt đã tồn tại" }));
+                throw new Error("Tên viết tắt đã tồn tại");
+              }
+            }
+          } else if (ent?.techName === "tr_color") {
+            const codeVal = String(payload.code ?? "").trim();
+            if (codeVal) {
+              const dupCode = await api.getRecords(wizardEntityId, {
+                filters: { code: { op: "=", value: codeVal } },
+                limit: 1,
+              });
+              if (dupCode.rows.length > 0) {
+                setFieldErrors((prev) => ({ ...prev, code: "Mã màu đã tồn tại" }));
+                throw new Error("Mã màu đã tồn tại");
+              }
+            }
+          } else if (ent?.techName === "tr_hehang") {
+            const tenhhVal = String(payload.tenhh ?? "").trim();
+            if (tenhhVal) {
+              const dupTen = await api.getRecords(wizardEntityId, {
+                filters: { tenhh: { op: "=", value: tenhhVal } },
+                limit: 1,
+              });
+              if (dupTen.rows.length > 0) {
+                setFieldErrors((prev) => ({ ...prev, tenhh: "Tên hệ hàng đã tồn tại" }));
+                throw new Error("Tên hệ hàng đã tồn tại");
+              }
+            }
+          } else if (ent?.techName === "tr_sanpham_nhamay") {
+            const maspNhamayVal = String(payload.masp_nhamay ?? "").trim();
+            if (maspNhamayVal) {
+              const dupMasp = await api.getRecords(wizardEntityId, {
+                filters: { masp_nhamay: { op: "=", value: maspNhamayVal } },
+                limit: 1,
+              });
+              if (dupMasp.rows.length > 0) {
+                setFieldErrors((prev) => ({ ...prev, masp_nhamay: "Mã nhà máy đã tồn tại" }));
+                throw new Error("Mã nhà máy đã tồn tại");
+              }
+            }
+          } else if (ent?.techName === "tr_bemat") {
+            const codeVal = String(payload.code ?? "").trim();
+            if (codeVal) {
+              const dupCode = await api.getRecords(wizardEntityId, {
+                filters: { code: { op: "=", value: codeVal } },
+                limit: 1,
+              });
+              if (dupCode.rows.length > 0) {
+                setFieldErrors((prev) => ({ ...prev, code: "Mã bề mặt đã tồn tại" }));
+                throw new Error("Mã bề mặt đã tồn tại");
+              }
+            }
+          }
+        }
+
         const saved = editId
           ? await api.updateRecord(editId, payload)
           : await api.createRecord(wizardEntityId, payload);
@@ -719,7 +1089,12 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
     setImgUploading((u) => ({ ...u, [name]: true }));
     const fd = new FormData();
     fd.append("file", file);
-    const sub = ent?.name === "tr_color" ? "mau-sac" : "";
+    const sub =
+      ent?.techName === "tr_color" || ent?.name === "tr_color"
+        ? "mau-sac"
+        : ent?.techName === "tr_sanpham" || ent?.name === "tr_sanpham"
+          ? "san-pham"
+          : "";
     const url = sub ? `/upload/image?subfolder=${sub}` : "/upload/image";
     fetch(url, { method: "POST", body: fd })
       .then(async (res) => {
@@ -753,7 +1128,7 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
     setImgUploading((u) => ({ ...u, [name]: true }));
     const fd = new FormData();
     fd.append("file", file);
-    const sub = ent?.name === "tr_color" ? "mau-sac" : "";
+    const sub = ent?.techName === "tr_color" || ent?.name === "tr_color" ? "mau-sac" : "";
     const url = sub ? `/upload/file?subfolder=${sub}` : "/upload/file";
     fetch(url, { method: "POST", body: fd })
       .then(async (res) => {
@@ -819,12 +1194,13 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
             onChange={(v) => setField(f.name, v)}
             multi={f.type === "multi-lookup"}
             readOnly={readOnly}
+            reloadKey={lookupReloadKey}
           />
         );
       }
       if (f.type === "multiselect" && f.options?.length) {
         const arr = (form[f.name] ?? "")
-          .split(",")
+          .split(f.name === "bemat_sanpham" ? "/" : ",")
           .map((s) => s.trim())
           .filter(Boolean);
         return (
@@ -909,17 +1285,25 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
         const multiCol = labels.length >= 2;
         const opts = src.map((r) => {
           const val = String(r[lk.valueField] ?? "");
-          const lbl = labels
-            .map((x) => r[x])
-            .filter((x) => x != null && String(x) !== "")
-            .join(" — ");
+          const lbl = multiCol
+            ? String(r[lk.valueField] ?? "")
+            : labels
+                .map((x) => r[x])
+                .filter((x) => x != null && String(x) !== "")
+                .join(" — ");
           const cells = multiCol ? labels.map((x) => String(r[x] ?? "")) : undefined;
           return cells
             ? { value: val, label: lbl || val, cells, searchText: cells.join(" ") }
             : { value: val, label: lbl || val };
         });
         const headers = multiCol
-          ? labels.map((x) => refEnt?.fields.find((field) => field.name === x)?.label ?? x)
+          ? labels.map((x) => {
+              if (x === "code") return "Mã";
+              if (x === "name") return "Tên";
+              if (x === "masp_nhamay") return "nhà máy";
+              if (x === "tensp") return "Tên";
+              return refEnt?.fields.find((field) => field.name === x)?.label ?? x;
+            })
           : undefined;
         const srcLabel = refEnt?.name ?? "mục";
         return (
@@ -937,7 +1321,7 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
               }
             }}
             options={opts}
-            emptyOption={`— chọn ${srcLabel} —`}
+            emptyOption={`chọn ${srcLabel}`}
             searchPlaceholder={`Tìm ${srcLabel}…`}
             columnHeaders={headers}
           />
@@ -951,42 +1335,22 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
         valueField={f.refValueField}
         onChange={(v) => setField(f.name, v)}
         multi={f.type === "multi-lookup"}
+        reloadKey={lookupReloadKey}
       />
     ) : f.type === "multiselect" && f.options?.length ? (
-      // Chọn nhiều bằng checkbox — lưu CSV "a,b" (vừa khoá string của form).
-      (() => {
-        const arr = (form[f.name] ?? "")
-          .split(",")
-          .map((s) => s.trim())
-          .filter(Boolean);
-        return (
-          <div className="flex flex-wrap gap-x-4 gap-y-1.5 mt-0.5">
-            {f.options?.map((opt) => (
-              <label key={opt} className="flex items-center gap-1.5 text-sm cursor-pointer">
-                <input
-                  type="checkbox"
-                  className="accent-accent"
-                  checked={arr.includes(opt)}
-                  onChange={(e) =>
-                    setField(
-                      f.name,
-                      (e.target.checked ? [...arr, opt] : arr.filter((x) => x !== opt)).join(","),
-                    )
-                  }
-                />
-                {opt}
-              </label>
-            ))}
-          </div>
-        );
-      })()
+      <MultiselectDropdown
+        value={form[f.name] ?? ""}
+        onChange={(v) => setField(f.name, v)}
+        options={f.options}
+        placeholder={`Chọn ${f.label ?? "các mục"}…`}
+      />
     ) : f.type === "select" && f.options?.length ? (
       <SearchableSelect
         className="w-full"
         value={form[f.name] ?? ""}
         onChange={(v) => setField(f.name, v)}
         options={f.options.map((o) => ({ value: o, label: o }))}
-        emptyOption="— chọn —"
+        emptyOption="chọn"
       />
     ) : f.type === "boolean" ? (
       <label className="flex items-center gap-2 text-sm mt-0.5 cursor-pointer">
@@ -1082,8 +1446,43 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
         <div className="min-w-0 flex-1">{renderControl(f)}</div>
         <div className="shrink-0 flex items-center gap-1">
           {actions.map((a) =>
-            renderFieldAction({ ...a, iconOnly: a.iconOnly ?? true }, a.id, () =>
-              setLookupReloadKey((x) => x + 1),
+            renderFieldAction(
+              { ...a, iconOnly: a.iconOnly ?? true },
+              a.id,
+              (output) => {
+                setLookupReloadKey((x) => x + 1);
+                if (output && typeof output === "object") {
+                  const lk = current.fieldLookups?.[f.name];
+                  if (lk) {
+                    const val = output[lk.valueField] ?? output.id;
+                    if (val != null) {
+                      if (f.type === "multi-lookup") {
+                        let selected: string[] = [];
+                        const currentVal = form[f.name];
+                        try {
+                          const parsed = currentVal ? JSON.parse(String(currentVal)) : [];
+                          selected = Array.isArray(parsed) ? parsed.map(String) : [];
+                        } catch {
+                          selected = currentVal ? [String(currentVal)] : [];
+                        }
+                        if (!selected.includes(String(val))) {
+                          const next = [...selected, String(val)];
+                          setField(f.name, JSON.stringify(next));
+                        }
+                      } else {
+                        setField(f.name, String(val));
+                        if (lk.autofill) {
+                          for (const [tgt, srcField] of Object.entries(lk.autofill)) {
+                            const val = output[srcField];
+                            setField(tgt, val == null ? "" : String(val));
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              wrappedPageState,
             ),
           )}
         </div>
@@ -1099,9 +1498,40 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
       width={
         wizardSteps.some((s) => s.detail) || wizardSteps.some((s) => s.cols === 4)
           ? 920
-          : hasImagePanel || wizardSteps.some((s) => (s.cols ?? 1) >= 2)
+          : hasImageInAnyStep || wizardSteps.some((s) => (s.cols ?? 1) >= 2)
             ? 720
             : 540
+      }
+      footer={
+        <div className="flex items-center justify-between w-full">
+          <Button
+            variant="ghost"
+            onClick={() => {
+              if (activeIdx === 0) {
+                _onCancel();
+              } else {
+                setErr("");
+                setActiveIdx((i) => i - 1);
+              }
+            }}
+          >
+            {activeIdx === 0 ? "Huỷ" : "Quay lại"}
+          </Button>
+          <span className="text-xs text-muted">
+            {activeIdx + 1} / {wizardSteps.length}
+          </span>
+          <Button variant="primary" disabled={busy} onClick={() => void goNext()}>
+            {busy
+              ? "Đang lưu..."
+              : readOnly
+                ? isLast
+                  ? "Đóng"
+                  : "Tiếp theo →"
+                : isLast
+                  ? step.submitLabel || "Hoàn tất"
+                  : "Tiếp theo →"}
+          </Button>
+        </div>
       }
     >
       <div className="flex flex-col gap-4">
@@ -1134,11 +1564,59 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
           ))}
         </div>
 
+        {/* Tiêu đề & Mã computed cho Sản phẩm */}
+        {isProductEntity && (
+          <div className="flex items-center justify-between border-b border-border/60 pb-3 mb-2">
+            <div className="flex items-center gap-1.5 text-muted text-xs font-medium">
+              {activeIdx > 0 ? (
+                <button
+                  type="button"
+                  className="hover:text-accent flex items-center gap-1 transition-colors"
+                  onClick={() => {
+                    setErr("");
+                    setActiveIdx((i) => i - 1);
+                  }}
+                >
+                  <I.ChevronLeft size={14} />
+                  Quay lại bước trước
+                </button>
+              ) : (
+                <span className="flex items-center gap-1.5">
+                  <I.Info size={14} />
+                  Cập nhật thông tin sản phẩm
+                </span>
+              )}
+            </div>
+            <div className="flex gap-6 text-right text-xs shrink-0">
+              <div className="min-w-[100px] whitespace-nowrap">
+                <span className="text-muted font-medium block text-[10px] uppercase tracking-wider mb-0.5">
+                  Mã sản phẩm
+                </span>
+                <span className="font-semibold text-fg tabular-nums whitespace-nowrap">
+                  {computedMasp || "—"}
+                </span>
+              </div>
+              <div className="min-w-[120px] whitespace-nowrap">
+                <span className="text-muted font-medium block text-[10px] uppercase tracking-wider mb-0.5">
+                  Mã hàng trắng
+                </span>
+                <span className="font-semibold text-fg tabular-nums whitespace-nowrap">
+                  {computedMahtr || "—"}
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Nội dung bước */}
         <div
           className={cn(
             "space-y-3",
-            current.cols === 4 ? "min-h-[490px]" : "min-h-[140px]",
+            isProductEntity
+              ? "h-[400px] overflow-y-auto pr-1"
+              : current.cols === 4
+                ? "min-h-[490px]"
+                : "min-h-[140px]",
             readOnly && "opacity-95",
           )}
         >
@@ -1446,37 +1924,6 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
             {current.actions!.map((a) => renderAction(a, a.id))}
           </div>
         )}
-
-        {/* Điều hướng */}
-        <div className="flex items-center justify-between border-t border-border pt-3">
-          <Button
-            variant="ghost"
-            onClick={() => {
-              if (activeIdx === 0) {
-                _onCancel();
-              } else {
-                setErr("");
-                setActiveIdx((i) => i - 1);
-              }
-            }}
-          >
-            {activeIdx === 0 ? "Huỷ" : "Quay lại"}
-          </Button>
-          <span className="text-xs text-muted">
-            {activeIdx + 1} / {wizardSteps.length}
-          </span>
-          <Button variant="primary" disabled={busy} onClick={() => void goNext()}>
-            {busy
-              ? "Đang lưu..."
-              : readOnly
-                ? isLast
-                  ? "Đóng"
-                  : "Tiếp theo →"
-                : isLast
-                  ? step.submitLabel || "Hoàn tất"
-                  : "Tiếp theo →"}
-          </Button>
-        </div>
       </div>
     </Modal>
   );

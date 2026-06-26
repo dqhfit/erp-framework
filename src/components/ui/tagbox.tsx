@@ -237,7 +237,13 @@ export function TagBox({
         createPortal(
           <div
             ref={panelRef}
-            style={{ position: "fixed", top: pos.top, left: pos.left, minWidth: pos.width }}
+            style={{
+              position: "fixed",
+              top: pos.top !== undefined ? pos.top : "auto",
+              bottom: pos.bottom !== undefined ? pos.bottom : "auto",
+              left: pos.left,
+              minWidth: pos.width,
+            }}
             className="z-[1000] max-h-56 overflow-auto bg-bg border border-border rounded shadow"
           >
             {q.trim() &&

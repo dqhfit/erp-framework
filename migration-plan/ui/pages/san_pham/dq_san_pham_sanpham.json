@@ -120,9 +120,8 @@
           "fieldLookups": {
            "customer": {
             "entity": "5c138697-6875-40e5-b9fd-3451e241de0d",
-            "valueField": "customer_id",
+            "valueField": "customer_name",
             "labelFields": [
-             "customer_id",
              "customer_name"
             ]
            },
@@ -137,8 +136,7 @@
             "entity": "75a7b609-a322-4808-9cd8-4635090e603f",
             "valueField": "code",
             "labelFields": [
-             "code",
-             "name"
+             "code"
             ]
            },
            "dvt": {
@@ -166,91 +164,261 @@
              "tenuv": "name"
             }
            },
-           "mautrong": {
-            "entity": "75a7b609-a322-4808-9cd8-4635090e603f",
-            "valueField": "code",
-            "labelFields": [
-             "code",
-             "name"
-            ]
-           },
            "masp_nhamay": {
             "entity": "58042122-4c34-4c8d-b00e-00e6e4abcedc",
             "valueField": "masp_nhamay",
             "labelFields": [
              "masp_nhamay",
              "tensp"
+            ],
+            "autofill": {
+             "tensp": "tensp"
+            }
+           },
+           "mautrong": {
+            "entity": "75a7b609-a322-4808-9cd8-4635090e603f",
+            "valueField": "name",
+            "labelFields": [
+             "code",
+             "name"
+            ]
+           },
+           "bemat_sanpham": {
+            "entity": "8b34e2ab-8e01-443b-ba21-4f9e8a01cb23",
+            "valueField": "name",
+            "labelFields": [
+             "code",
+             "name"
             ]
            }
           },
-          "actions": [
-           {
-            "id": "act_copy_product",
-            "label": "Sao chép thông tin sản phẩm",
-            "variant": "default",
-            "steps": [
-             {
-              "id": "copy_step_1",
-              "kind": "procedure",
-              "name": "TR_SANPHAM_COMMON_INSERT"
-             }
-            ]
-           }
+          "fields": [
+           "customer",
+           "hehang",
+           "mausac",
+           "dvt",
+           "loaisp",
+           "masp_khachhang",
+           "masp_nhamay",
+           "ma_btp",
+           "ma_erp",
+           "mauuv",
+           "tenuv",
+           "mautrong",
+           "tensp",
+           "tensp_vn"
           ],
+          "fieldOverrides": {
+           "customer": {
+            "required": true
+           },
+           "hehang": {
+            "required": true
+           },
+           "mausac": {
+            "required": true
+           },
+           "dvt": {
+            "required": true
+           },
+           "loaisp": {
+            "required": true
+           },
+           "masp_khachhang": {
+            "required": true
+           },
+           "masp_nhamay": {
+            "required": true
+           },
+           "mauuv": {
+            "required": true
+           },
+           "tensp": {
+            "required": true
+           },
+           "tensp_vn": {
+            "required": true
+           },
+           "mautrong": {
+            "required": true
+           },
+           "bemat_sanpham": {
+            "required": true,
+            "type": "multi-lookup",
+            "ref": "8b34e2ab-8e01-443b-ba21-4f9e8a01cb23",
+            "refValueField": "name"
+           }
+          },
           "fieldActions": {
            "customer": [
             {
              "id": "act_add_customer_inline",
-             "label": "Th?m kh?ch h?ng",
+             "hint": "Thêm nhanh khách hàng",
              "icon": "Plus",
+             "label": "Thêm khách hàng",
              "variant": "ghost",
-             "hint": "Th?m nhanh kh?ch h?ng",
              "steps": [
               {
                "id": "open_add_customer",
                "kind": "open-wizard",
-               "title": "Th?m kh?ch h?ng",
-               "submitLabel": "L?u",
+               "title": "Thêm thông tin khách hàng",
+               "submitLabel": "Lưu",
                "entity": "5c138697-6875-40e5-b9fd-3451e241de0d",
+               "defaults": {
+                "active": "true",
+                "area": "Ngoài nước"
+               },
                "steps": [
                 {
                  "id": "customer_info",
-                 "title": "Th?ng tin kh?ch h?ng",
-                 "entity": "5c138697-6875-40e5-b9fd-3451e241de0d",
                  "cols": 2,
+                 "title": "Thông tin khách hàng",
+                 "entity": "5c138697-6875-40e5-b9fd-3451e241de0d",
                  "fields": [
+                  "customer_name",
                   "customer_id",
-                  "customer_name"
-                 ]
-                }
-               ]
-              }
-             ]
-            }
-           ],
-           "hehang": [
-            {
-             "id": "act_add_hehang_inline",
-             "label": "Th?m h? h?ng",
-             "icon": "Plus",
-             "variant": "ghost",
-             "hint": "Th?m nhanh h? h?ng",
-             "steps": [
-              {
-               "id": "open_add_hehang",
-               "kind": "open-wizard",
-               "title": "Th?m h? h?ng",
-               "submitLabel": "L?u",
-               "entity": "2eb5d6f8-4b18-49fd-88bc-f5c9be44320a",
-               "steps": [
-                {
-                 "id": "hehang_info",
-                 "title": "Th?ng tin h? h?ng",
-                 "entity": "2eb5d6f8-4b18-49fd-88bc-f5c9be44320a",
-                 "cols": 1,
-                 "fields": [
-                  "tenhh"
-                 ]
+                  "address",
+                  "area",
+                  "phone",
+                  "fax",
+                  "taxcode",
+                  "email",
+                  "customer_type",
+                  "website",
+                  "director",
+                  "bank_id",
+                  "active"
+                 ],
+                 "fieldLookups": {
+                  "bank_id": {
+                   "entity": "db7914c0-3240-490b-ab5e-c721a3e91dd3",
+                   "valueField": "id",
+                   "labelFields": [
+                    "name"
+                   ]
+                  }
+                 },
+                 "fieldActions": {
+                  "bank_id": [
+                   {
+                    "id": "act_add_bank_inline",
+                    "hint": "Thêm nhanh ngân hàng",
+                    "icon": "Plus",
+                    "label": "Thêm ngân hàng",
+                    "variant": "ghost",
+                    "steps": [
+                     {
+                      "id": "open_add_bank",
+                      "kind": "open-wizard",
+                      "title": "Thêm thông tin ngân hàng",
+                      "submitLabel": "Lưu",
+                      "entity": "db7914c0-3240-490b-ab5e-c721a3e91dd3",
+                      "steps": [
+                       {
+                        "id": "bank_info",
+                        "cols": 2,
+                        "title": "Thông tin ngân hàng",
+                        "entity": "db7914c0-3240-490b-ab5e-c721a3e91dd3",
+                        "fields": [
+                         "name",
+                         "abbr_name",
+                         "branch",
+                         "address",
+                         "swift",
+                         "acc_name",
+                         "acc_number",
+                         "isdefault"
+                        ],
+                        "fieldOverrides": {
+                         "name": {
+                          "label": "Tên ngân hàng",
+                          "required": true
+                         },
+                         "abbr_name": {
+                          "label": "Tên viết tắt",
+                          "required": true
+                         },
+                         "branch": {
+                          "label": "Chi nhánh"
+                         },
+                         "address": {
+                          "label": "Địa chỉ"
+                         },
+                         "swift": {
+                          "label": "Mã SWIFT"
+                         },
+                         "acc_name": {
+                          "label": "Tên tài khoản"
+                         },
+                         "acc_number": {
+                          "label": "Số tài khoản"
+                         },
+                         "isdefault": {
+                          "label": "Mặc định",
+                          "type": "boolean"
+                         }
+                        }
+                       }
+                      ]
+                     }
+                    ]
+                   }
+                  ]
+                 },
+                 "fieldOverrides": {
+                  "customer_name": {
+                   "label": "Tên khách hàng",
+                   "required": true
+                  },
+                  "customer_id": {
+                   "label": "Mã khách hàng",
+                   "required": true
+                  },
+                  "address": {
+                   "label": "Địa chỉ"
+                  },
+                  "area": {
+                   "label": "Khu vực",
+                   "type": "select",
+                   "options": [
+                    "Ngoài nước",
+                    "Trong nước"
+                   ]
+                  },
+                  "phone": {
+                   "label": "Số điện thoại"
+                  },
+                  "fax": {
+                   "label": "Fax"
+                  },
+                  "taxcode": {
+                   "label": "Mã số thuế"
+                  },
+                  "email": {
+                   "label": "Email"
+                  },
+                  "customer_type": {
+                   "label": "Khách mua",
+                   "type": "multiselect",
+                   "options": [
+                    "Xuất khẩu",
+                    "Vật tư nguyên liệu"
+                   ]
+                  },
+                  "website": {
+                   "label": "Website"
+                  },
+                  "director": {
+                   "label": "Giám đốc"
+                  },
+                  "bank_id": {
+                   "label": "Ngân hàng thanh toán"
+                  },
+                  "active": {
+                   "label": "Còn hợp tác",
+                   "type": "boolean"
+                  }
+                 }
                 }
                ]
               }
@@ -260,142 +428,316 @@
            "mausac": [
             {
              "id": "act_add_mausac_inline",
-             "label": "Th?m m?u",
+             "hint": "Thêm nhanh màu sắc",
              "icon": "Plus",
+             "label": "Thêm màu sắc",
              "variant": "ghost",
-             "hint": "Th?m nhanh m?u",
              "steps": [
               {
                "id": "open_add_mausac",
                "kind": "open-wizard",
-               "title": "Th?m m?u",
-               "submitLabel": "L?u",
+               "title": "Thêm màu sắc",
+               "submitLabel": "Lưu",
                "entity": "75a7b609-a322-4808-9cd8-4635090e603f",
+               "defaults": {
+                "active": "true",
+                "khachhang": "{{form.customer_id}}"
+               },
                "steps": [
                 {
                  "id": "mausac_info",
-                 "title": "Th?ng tin m?u",
-                 "entity": "75a7b609-a322-4808-9cd8-4635090e603f",
                  "cols": 2,
+                 "title": "Thông tin màu sắc",
+                 "entity": "75a7b609-a322-4808-9cd8-4635090e603f",
                  "fields": [
+                  "khachhang",
+                  "ncc",
+                  "phanloai",
                   "code",
-                  "name"
-                 ]
+                  "name",
+                  "hieuung",
+                  "ghichu",
+                  "dongia",
+                  "duongdan",
+                  "duongdan2",
+                  "hinhanh",
+                  "active"
+                 ],
+                 "fieldLookups": {
+                  "ncc": {
+                   "entity": "e9a159c5-d270-430a-ad67-6e2817f3b672",
+                   "valueField": "vendor_id",
+                   "labelFields": [
+                    "vendor_name"
+                   ]
+                  },
+                  "khachhang": {
+                   "entity": "5c138697-6875-40e5-b9fd-3451e241de0d",
+                   "valueField": "customer_id",
+                   "labelFields": [
+                    "customer_name"
+                   ]
+                  }
+                 },
+                 "fieldOverrides": {
+                  "ncc": {
+                   "label": "Nhà cung cấp sơn"
+                  },
+                  "code": {
+                   "label": "Mã màu",
+                   "required": true
+                  },
+                  "name": {
+                   "label": "Tên màu",
+                   "required": true
+                  },
+                  "active": {
+                   "type": "boolean",
+                   "label": "Đang dùng"
+                  },
+                  "dongia": {
+                   "type": "currency",
+                   "label": "Đơn giá sơn (VND)"
+                  },
+                  "ghichu": {
+                   "type": "longtext",
+                   "label": "Thông tin"
+                  },
+                  "hinhanh": {
+                   "type": "image",
+                   "label": "Hình ảnh"
+                  },
+                  "duongdan": {
+                   "type": "file",
+                   "label": "Quy trình sơn"
+                  },
+                  "phanloai": {
+                   "type": "select",
+                   "label": "Phân loại",
+                   "options": [
+                    "TRONG",
+                    "NGOAI"
+                   ],
+                   "required": true
+                  },
+                  "duongdan2": {
+                   "type": "file",
+                   "label": "Báo cáo test"
+                  }
+                 }
                 }
                ]
               }
              ]
             }
            ],
-           "dvt": [
+           "hehang": [
             {
-             "id": "act_add_dvt_inline",
-             "label": "Th?m ??n v? t?nh",
+             "id": "act_add_hehang_inline",
+             "hint": "Thêm nhanh hệ hàng",
              "icon": "Plus",
+             "label": "Thêm hệ hàng",
              "variant": "ghost",
-             "hint": "Th?m nhanh ??n v? t?nh",
              "steps": [
               {
-               "id": "open_add_dvt",
+               "id": "open_add_hehang",
                "kind": "open-wizard",
-               "title": "Th?m ??n v? t?nh",
-               "submitLabel": "L?u",
-               "entity": "11a35975-31b6-49e4-8bbe-f2150117b1a5",
+               "title": "Thêm hệ hàng",
+               "submitLabel": "Lưu",
+               "entity": "2eb5d6f8-4b18-49fd-88bc-f5c9be44320a",
+               "defaults": {
+                "heso": "1",
+                "khachhang": "{{form.customer_id}}"
+               },
                "steps": [
                 {
-                 "id": "dvt_info",
-                 "title": "Th?ng tin ??n v? t?nh",
-                 "entity": "11a35975-31b6-49e4-8bbe-f2150117b1a5",
-                 "cols": 1,
-                 "fields": [
-                  "don_vi_tinh"
-                 ]
-                }
-               ]
-              }
-             ]
-            }
-           ],
-           "loaisp": [
-            {
-             "id": "act_add_loaisp_inline",
-             "label": "Th?m lo?i s?n ph?m",
-             "icon": "Plus",
-             "variant": "ghost",
-             "hint": "Th?m nhanh lo?i s?n ph?m",
-             "steps": [
-              {
-               "id": "open_add_loaisp",
-               "kind": "open-wizard",
-               "title": "Th?m lo?i s?n ph?m",
-               "submitLabel": "L?u",
-               "entity": "6705084c-91bb-4240-b32a-375a01c1ca32",
-               "steps": [
-                {
-                 "id": "loaisp_info",
-                 "title": "Th?ng tin lo?i s?n ph?m",
-                 "entity": "6705084c-91bb-4240-b32a-375a01c1ca32",
+                 "id": "hehang_info",
                  "cols": 2,
+                 "title": "Thông tin hệ hàng",
+                 "entity": "2eb5d6f8-4b18-49fd-88bc-f5c9be44320a",
                  "fields": [
-                  "maloaisp",
-                  "tenloaisp"
-                 ]
+                  "tenhh",
+                  "khachhang",
+                  "heso",
+                  "ghichu"
+                 ],
+                 "fieldLookups": {
+                  "khachhang": {
+                   "entity": "5c138697-6875-40e5-b9fd-3451e241de0d",
+                   "valueField": "customer_id",
+                   "labelFields": [
+                    "customer_name"
+                   ]
+                  }
+                 },
+                 "fieldOverrides": {
+                  "tenhh": {
+                   "label": "Tên hệ hàng",
+                   "required": true
+                  },
+                  "khachhang": {
+                   "label": "Khách hàng",
+                   "required": true
+                  },
+                  "heso": {
+                   "label": "Hệ số",
+                   "type": "number"
+                  },
+                  "ghichu": {
+                   "label": "Ghi chú",
+                   "type": "longtext"
+                  }
+                 }
                 }
                ]
               }
              ]
             }
            ],
-           "mauuv": [
+           "masp_nhamay": [
             {
-             "id": "act_add_mauuv_inline",
-             "label": "Th?m m?u",
+             "id": "act_add_nhamay_inline",
+             "hint": "Thêm sản phẩm nhà máy",
              "icon": "Plus",
+             "label": "Thêm sản phẩm nhà máy",
              "variant": "ghost",
-             "hint": "Th?m nhanh m?u UV",
              "steps": [
               {
-               "id": "open_add_mausac",
+               "id": "open_add_nhamay",
                "kind": "open-wizard",
-               "title": "Th?m m?u",
-               "submitLabel": "L?u",
-               "entity": "75a7b609-a322-4808-9cd8-4635090e603f",
+               "title": "Thêm sản phẩm nhà máy",
+               "submitLabel": "Lưu",
+               "entity": "58042122-4c34-4c8d-b00e-00e6e4abcedc",
+               "defaults": {
+                "active": "true",
+                "hehang": "{{form.hehang}}"
+               },
                "steps": [
                 {
-                 "id": "mausac_info",
-                 "title": "Th?ng tin m?u",
-                 "entity": "75a7b609-a322-4808-9cd8-4635090e603f",
+                 "id": "nhamay_info",
                  "cols": 2,
+                 "title": "Thông tin sản phẩm nhà máy",
+                 "entity": "58042122-4c34-4c8d-b00e-00e6e4abcedc",
                  "fields": [
-                  "code",
-                  "name"
-                 ]
+                  "masp_nhamay",
+                  "tensp",
+                  "hehang",
+                  "active"
+                 ],
+                 "fieldLookups": {
+                  "hehang": {
+                   "entity": "2eb5d6f8-4b18-49fd-88bc-f5c9be44320a",
+                   "valueField": "tenhh",
+                   "labelFields": [
+                    "tenhh"
+                   ]
+                  }
+                 },
+                 "fieldOverrides": {
+                  "masp_nhamay": {
+                   "label": "Mã nhà máy",
+                   "required": true
+                  },
+                  "tensp": {
+                   "label": "Tên sản phẩm",
+                   "required": true
+                  },
+                  "hehang": {
+                   "label": "Hệ hàng",
+                   "required": true
+                  },
+                  "active": {
+                   "type": "boolean",
+                   "label": "Đang hoạt động"
+                  }
+                 }
+                }
+               ]
+              }
+             ]
+            },
+            {
+             "id": "act_edit_nhamay_inline",
+             "hint": "Sửa sản phẩm nhà máy",
+             "icon": "Edit",
+             "label": "Sửa sản phẩm nhà máy",
+             "variant": "ghost",
+             "steps": [
+              {
+               "id": "open_edit_nhamay",
+               "kind": "open-wizard",
+               "title": "Sửa sản phẩm nhà máy",
+               "submitLabel": "Lưu",
+               "entity": "58042122-4c34-4c8d-b00e-00e6e4abcedc",
+               "recordIdBinding": {
+                "source": "state",
+                "key": "form.masp_nhamay_id"
+               },
+               "steps": [
+                {
+                 "id": "nhamay_info",
+                 "cols": 2,
+                 "title": "Thông tin sản phẩm nhà máy",
+                 "entity": "58042122-4c34-4c8d-b00e-00e6e4abcedc",
+                 "fields": [
+                  "masp_nhamay",
+                  "tensp",
+                  "hehang",
+                  "active"
+                 ],
+                 "fieldLookups": {
+                  "hehang": {
+                   "entity": "2eb5d6f8-4b18-49fd-88bc-f5c9be44320a",
+                   "valueField": "tenhh",
+                   "labelFields": [
+                    "tenhh"
+                   ]
+                  }
+                 },
+                 "fieldOverrides": {
+                  "masp_nhamay": {
+                   "label": "Mã nhà máy",
+                   "required": true
+                  },
+                  "tensp": {
+                   "label": "Tên sản phẩm",
+                   "required": true
+                  },
+                  "hehang": {
+                   "label": "Hệ hàng",
+                   "required": true
+                  },
+                  "active": {
+                   "type": "boolean",
+                   "label": "Đang hoạt động"
+                  }
+                 }
                 }
                ]
               }
              ]
             }
            ],
-           "mautrong": [
+           "bemat_sanpham": [
             {
-             "id": "act_add_mautrong_inline",
-             "label": "Th?m m?u",
+             "id": "act_add_bemat_inline",
+             "hint": "Thêm nhanh bề mặt sản phẩm",
              "icon": "Plus",
+             "label": "Thêm bề mặt",
              "variant": "ghost",
-             "hint": "Th?m nhanh m?u trong",
              "steps": [
               {
-               "id": "open_add_mausac",
+               "id": "open_add_bemat",
                "kind": "open-wizard",
-               "title": "Th?m m?u",
-               "submitLabel": "L?u",
-               "entity": "75a7b609-a322-4808-9cd8-4635090e603f",
+               "title": "Thêm bề mặt sản phẩm",
+               "submitLabel": "Lưu",
+               "entity": "8b34e2ab-8e01-443b-ba21-4f9e8a01cb23",
                "steps": [
                 {
-                 "id": "mausac_info",
-                 "title": "Th?ng tin m?u",
-                 "entity": "75a7b609-a322-4808-9cd8-4635090e603f",
+                 "id": "bemat_info",
                  "cols": 2,
+                 "title": "Thông tin bề mặt",
+                 "entity": "8b34e2ab-8e01-443b-ba21-4f9e8a01cb23",
                  "fields": [
                   "code",
                   "name"
@@ -426,22 +768,10 @@
           ],
           "fieldOverrides": {
            "bemat_sanpham": {
-            "type": "select",
-            "options": [
-             "Bắn cát",
-             "Cào cước",
-             "Cào cước/ Ép lồi lõm",
-             "Cào cước/ Giả cổ",
-             "Cào cước/ Trơn láng",
-             "Da",
-             "Ép Cước",
-             "Ép lồi lõm",
-             "Giả cổ",
-             "Trơn láng",
-             "Trơn láng/ Bắn cát",
-             "Trơn láng/ Da",
-             "Trơn láng/ Giả cổ"
-            ]
+            "required": true,
+            "type": "multi-lookup",
+            "ref": "8b34e2ab-8e01-443b-ba21-4f9e8a01cb23",
+            "refValueField": "name"
            },
            "ketcau": {
             "type": "select",
@@ -449,368 +779,47 @@
              "Ráp chết",
              "Semi KD",
              "Tháo rời"
-            ]
+            ],
+            "required": true
            }
-          }
-         },
-         {
-          "id": "step_pricing",
-          "title": "Định giá & Hình ảnh",
-          "entity": "b71515cf-4a57-4eed-a1f5-9275d7781c72",
-          "cols": 2,
-          "sections": [
-           {
-            "title": "Giá mộc (chưa sơn)",
-            "fields": [
-             "dongia_moc",
-             "dongia_si_moc",
-             "dongia_le_moc"
-            ]
-           },
-           {
-            "title": "Giá thành phẩm (đã sơn)",
-            "fields": [
-             "dongia",
-             "dongia_si",
-             "dongia_le"
-            ]
-           }
-          ],
-          "relatedImage": {
-           "entityName": "tr_hinhanh",
-           "linkField": "masp",
-           "parentField": "masp",
-           "imageField": "hinhanh",
-           "label": "Hình ảnh"
-          }
-         }
-        ]
-       }
-      ]
-     },
-     {
-      "id": "act_edit",
-      "label": "Sửa",
-      "icon": "Edit",
-      "variant": "default",
-      "hint": "Chọn 1 dòng để sửa đổi",
-      "steps": [
-       {
-        "id": "s_edit",
-        "kind": "open-wizard",
-        "title": "Cập nhật sản phẩm",
-        "submitLabel": "Hoàn tất",
-        "entity": "b71515cf-4a57-4eed-a1f5-9275d7781c72",
-        "recordIdBinding": {
-         "source": "state",
-         "key": "sel"
-        },
-        "steps": [
-         {
-          "id": "step_masp",
-          "title": "Mã sản phẩm",
-          "entity": "b71515cf-4a57-4eed-a1f5-9275d7781c72",
-          "cols": 2,
-          "sections": [
-           {
-            "title": "Thông tin sản phẩm",
-            "fields": [
-             "customer",
-             "hehang",
-             "mausac",
-             "dvt",
-             "loaisp",
-             "masp_khachhang",
-             "masp_nhamay",
-             "ma_btp",
-             "ma_erp",
-             "mauuv",
-             "tenuv",
-             "mautrong",
-             "tensp",
-             "tensp_vn"
-            ]
-           }
+          },
+          "fields": [
+           "bemat_sanpham",
+           "ketcau",
+           "g_weight",
+           "n_weight"
           ],
           "fieldLookups": {
-           "customer": {
-            "entity": "5c138697-6875-40e5-b9fd-3451e241de0d",
-            "valueField": "customer_id",
-            "labelFields": [
-             "customer_id",
-             "customer_name"
-            ]
-           },
-           "hehang": {
-            "entity": "2eb5d6f8-4b18-49fd-88bc-f5c9be44320a",
-            "valueField": "tenhh",
-            "labelFields": [
-             "tenhh"
-            ]
-           },
-           "mausac": {
-            "entity": "75a7b609-a322-4808-9cd8-4635090e603f",
-            "valueField": "code",
+           "bemat_sanpham": {
+            "entity": "8b34e2ab-8e01-443b-ba21-4f9e8a01cb23",
+            "valueField": "name",
             "labelFields": [
              "code",
              "name"
-            ]
-           },
-           "dvt": {
-            "entity": "11a35975-31b6-49e4-8bbe-f2150117b1a5",
-            "valueField": "don_vi_tinh",
-            "labelFields": [
-             "don_vi_tinh"
-            ]
-           },
-           "loaisp": {
-            "entity": "6705084c-91bb-4240-b32a-375a01c1ca32",
-            "valueField": "maloaisp",
-            "labelFields": [
-             "tenloaisp"
-            ]
-           },
-           "mauuv": {
-            "entity": "75a7b609-a322-4808-9cd8-4635090e603f",
-            "valueField": "code",
-            "labelFields": [
-             "code",
-             "name"
-            ],
-            "autofill": {
-             "tenuv": "name"
-            }
-           },
-           "mautrong": {
-            "entity": "75a7b609-a322-4808-9cd8-4635090e603f",
-            "valueField": "code",
-            "labelFields": [
-             "code",
-             "name"
-            ]
-           },
-           "masp_nhamay": {
-            "entity": "58042122-4c34-4c8d-b00e-00e6e4abcedc",
-            "valueField": "masp_nhamay",
-            "labelFields": [
-             "masp_nhamay",
-             "tensp"
             ]
            }
           },
-          "actions": [
-           {
-            "id": "act_copy_product",
-            "label": "Sao chép thông tin sản phẩm",
-            "variant": "default",
-            "steps": [
-             {
-              "id": "copy_step_1",
-              "kind": "procedure",
-              "name": "TR_SANPHAM_COMMON_INSERT"
-             }
-            ]
-           }
-          ],
           "fieldActions": {
-           "customer": [
+           "bemat_sanpham": [
             {
-             "id": "act_add_customer_inline",
-             "label": "Th?m kh?ch h?ng",
+             "id": "act_add_bemat_inline",
+             "hint": "Thêm nhanh bề mặt sản phẩm",
              "icon": "Plus",
+             "label": "Thêm bề mặt",
              "variant": "ghost",
-             "hint": "Th?m nhanh kh?ch h?ng",
              "steps": [
               {
-               "id": "open_add_customer",
+               "id": "open_add_bemat",
                "kind": "open-wizard",
-               "title": "Th?m kh?ch h?ng",
-               "submitLabel": "L?u",
-               "entity": "5c138697-6875-40e5-b9fd-3451e241de0d",
+               "title": "Thêm bề mặt sản phẩm",
+               "submitLabel": "Lưu",
+               "entity": "8b34e2ab-8e01-443b-ba21-4f9e8a01cb23",
                "steps": [
                 {
-                 "id": "customer_info",
-                 "title": "Th?ng tin kh?ch h?ng",
-                 "entity": "5c138697-6875-40e5-b9fd-3451e241de0d",
+                 "id": "bemat_info",
                  "cols": 2,
-                 "fields": [
-                  "customer_id",
-                  "customer_name"
-                 ]
-                }
-               ]
-              }
-             ]
-            }
-           ],
-           "hehang": [
-            {
-             "id": "act_add_hehang_inline",
-             "label": "Th?m h? h?ng",
-             "icon": "Plus",
-             "variant": "ghost",
-             "hint": "Th?m nhanh h? h?ng",
-             "steps": [
-              {
-               "id": "open_add_hehang",
-               "kind": "open-wizard",
-               "title": "Th?m h? h?ng",
-               "submitLabel": "L?u",
-               "entity": "2eb5d6f8-4b18-49fd-88bc-f5c9be44320a",
-               "steps": [
-                {
-                 "id": "hehang_info",
-                 "title": "Th?ng tin h? h?ng",
-                 "entity": "2eb5d6f8-4b18-49fd-88bc-f5c9be44320a",
-                 "cols": 1,
-                 "fields": [
-                  "tenhh"
-                 ]
-                }
-               ]
-              }
-             ]
-            }
-           ],
-           "mausac": [
-            {
-             "id": "act_add_mausac_inline",
-             "label": "Th?m m?u",
-             "icon": "Plus",
-             "variant": "ghost",
-             "hint": "Th?m nhanh m?u",
-             "steps": [
-              {
-               "id": "open_add_mausac",
-               "kind": "open-wizard",
-               "title": "Th?m m?u",
-               "submitLabel": "L?u",
-               "entity": "75a7b609-a322-4808-9cd8-4635090e603f",
-               "steps": [
-                {
-                 "id": "mausac_info",
-                 "title": "Th?ng tin m?u",
-                 "entity": "75a7b609-a322-4808-9cd8-4635090e603f",
-                 "cols": 2,
-                 "fields": [
-                  "code",
-                  "name"
-                 ]
-                }
-               ]
-              }
-             ]
-            }
-           ],
-           "dvt": [
-            {
-             "id": "act_add_dvt_inline",
-             "label": "Th?m ??n v? t?nh",
-             "icon": "Plus",
-             "variant": "ghost",
-             "hint": "Th?m nhanh ??n v? t?nh",
-             "steps": [
-              {
-               "id": "open_add_dvt",
-               "kind": "open-wizard",
-               "title": "Th?m ??n v? t?nh",
-               "submitLabel": "L?u",
-               "entity": "11a35975-31b6-49e4-8bbe-f2150117b1a5",
-               "steps": [
-                {
-                 "id": "dvt_info",
-                 "title": "Th?ng tin ??n v? t?nh",
-                 "entity": "11a35975-31b6-49e4-8bbe-f2150117b1a5",
-                 "cols": 1,
-                 "fields": [
-                  "don_vi_tinh"
-                 ]
-                }
-               ]
-              }
-             ]
-            }
-           ],
-           "loaisp": [
-            {
-             "id": "act_add_loaisp_inline",
-             "label": "Th?m lo?i s?n ph?m",
-             "icon": "Plus",
-             "variant": "ghost",
-             "hint": "Th?m nhanh lo?i s?n ph?m",
-             "steps": [
-              {
-               "id": "open_add_loaisp",
-               "kind": "open-wizard",
-               "title": "Th?m lo?i s?n ph?m",
-               "submitLabel": "L?u",
-               "entity": "6705084c-91bb-4240-b32a-375a01c1ca32",
-               "steps": [
-                {
-                 "id": "loaisp_info",
-                 "title": "Th?ng tin lo?i s?n ph?m",
-                 "entity": "6705084c-91bb-4240-b32a-375a01c1ca32",
-                 "cols": 2,
-                 "fields": [
-                  "maloaisp",
-                  "tenloaisp"
-                 ]
-                }
-               ]
-              }
-             ]
-            }
-           ],
-           "mauuv": [
-            {
-             "id": "act_add_mauuv_inline",
-             "label": "Th?m m?u",
-             "icon": "Plus",
-             "variant": "ghost",
-             "hint": "Th?m nhanh m?u UV",
-             "steps": [
-              {
-               "id": "open_add_mausac",
-               "kind": "open-wizard",
-               "title": "Th?m m?u",
-               "submitLabel": "L?u",
-               "entity": "75a7b609-a322-4808-9cd8-4635090e603f",
-               "steps": [
-                {
-                 "id": "mausac_info",
-                 "title": "Th?ng tin m?u",
-                 "entity": "75a7b609-a322-4808-9cd8-4635090e603f",
-                 "cols": 2,
-                 "fields": [
-                  "code",
-                  "name"
-                 ]
-                }
-               ]
-              }
-             ]
-            }
-           ],
-           "mautrong": [
-            {
-             "id": "act_add_mautrong_inline",
-             "label": "Th?m m?u",
-             "icon": "Plus",
-             "variant": "ghost",
-             "hint": "Th?m nhanh m?u trong",
-             "steps": [
-              {
-               "id": "open_add_mausac",
-               "kind": "open-wizard",
-               "title": "Th?m m?u",
-               "submitLabel": "L?u",
-               "entity": "75a7b609-a322-4808-9cd8-4635090e603f",
-               "steps": [
-                {
-                 "id": "mausac_info",
-                 "title": "Th?ng tin m?u",
-                 "entity": "75a7b609-a322-4808-9cd8-4635090e603f",
-                 "cols": 2,
+                 "title": "Thông tin bề mặt",
+                 "entity": "8b34e2ab-8e01-443b-ba21-4f9e8a01cb23",
                  "fields": [
                   "code",
                   "name"
@@ -824,87 +833,49 @@
           }
          },
          {
-          "id": "step_physical",
-          "title": "Thông số vật lý",
-          "entity": "b71515cf-4a57-4eed-a1f5-9275d7781c72",
-          "cols": 2,
-          "sections": [
-           {
-            "title": "Thông tin sản phẩm",
-            "fields": [
-             "bemat_sanpham",
-             "ketcau",
-             "g_weight",
-             "n_weight"
-            ]
-           }
-          ],
-          "fieldOverrides": {
-           "bemat_sanpham": {
-            "type": "select",
-            "options": [
-             "Bắn cát",
-             "Cào cước",
-             "Cào cước/ Ép lồi lõm",
-             "Cào cước/ Giả cổ",
-             "Cào cước/ Trơn láng",
-             "Da",
-             "Ép Cước",
-             "Ép lồi lõm",
-             "Giả cổ",
-             "Trơn láng",
-             "Trơn láng/ Bắn cát",
-             "Trơn láng/ Da",
-             "Trơn láng/ Giả cổ"
-            ]
-           },
-           "ketcau": {
-            "type": "select",
-            "options": [
-             "Ráp chết",
-             "Semi KD",
-             "Tháo rời"
-            ]
-           }
-          }
-         },
-         {
           "id": "step_pricing",
           "title": "Định giá & Hình ảnh",
           "entity": "b71515cf-4a57-4eed-a1f5-9275d7781c72",
           "cols": 2,
-          "sections": [
-           {
-            "title": "Giá mộc (chưa sơn)",
-            "fields": [
-             "dongia_moc",
-             "dongia_si_moc",
-             "dongia_le_moc"
+          "fields": [
+           "dongia",
+           "loaitien",
+           "hinhanh"
+          ],
+          "fieldOverrides": {
+           "loaitien": {
+            "label": "Loại tiền",
+            "type": "select",
+            "options": [
+             "USD",
+             "VND"
             ]
            },
-           {
-            "title": "Giá thành phẩm (đã sơn)",
-            "fields": [
-             "dongia",
-             "dongia_si",
-             "dongia_le"
-            ]
+           "dongia": {
+            "label": "Đơn giá",
+            "type": "currency"
+           },
+           "hinhanh": {
+            "label": "Hình ảnh",
+            "type": "image"
            }
-          ],
-          "relatedImage": {
-           "entityName": "tr_hinhanh",
-           "linkField": "masp",
-           "parentField": "masp",
-           "imageField": "hinhanh",
-           "label": "Hình ảnh"
           }
          }
+        ],
+        "invalidateEntities": [
+         "b71515cf-4a57-4eed-a1f5-9275d7781c72"
         ]
        }
       ]
-     },
+     }
+    ],
+    "defaultSort": {
+     "field": "create_date",
+     "dir": "desc"
+    },
+    "rowActions": [
      {
-      "id": "act_view",
+      "id": "row_view",
       "label": "Xem chi tiết",
       "icon": "Eye",
       "variant": "default",
@@ -950,9 +921,8 @@
           "fieldLookups": {
            "customer": {
             "entity": "5c138697-6875-40e5-b9fd-3451e241de0d",
-            "valueField": "customer_id",
+            "valueField": "customer_name",
             "labelFields": [
-             "customer_id",
              "customer_name"
             ]
            },
@@ -967,8 +937,249 @@
             "entity": "75a7b609-a322-4808-9cd8-4635090e603f",
             "valueField": "code",
             "labelFields": [
+             "code"
+            ]
+           },
+           "dvt": {
+            "entity": "11a35975-31b6-49e4-8bbe-f2150117b1a5",
+            "valueField": "don_vi_tinh",
+            "labelFields": [
+             "don_vi_tinh"
+            ]
+           },
+           "loaisp": {
+            "entity": "6705084c-91bb-4240-b32a-375a01c1ca32",
+            "valueField": "maloaisp",
+            "labelFields": [
+             "tenloaisp"
+            ]
+           },
+           "mauuv": {
+            "entity": "75a7b609-a322-4808-9cd8-4635090e603f",
+            "valueField": "code",
+            "labelFields": [
+             "code"
+            ],
+            "autofill": {
+             "tenuv": "name"
+            }
+           },
+           "masp_nhamay": {
+            "entity": "58042122-4c34-4c8d-b00e-00e6e4abcedc",
+            "valueField": "masp_nhamay",
+            "labelFields": [
+             "masp_nhamay"
+            ],
+            "autofill": {
+             "tensp": "tensp"
+            }
+           },
+           "mautrong": {
+            "entity": "75a7b609-a322-4808-9cd8-4635090e603f",
+            "valueField": "name",
+            "labelFields": [
              "code",
              "name"
+            ]
+           }
+          },
+          "fields": [
+           "customer",
+           "hehang",
+           "mausac",
+           "dvt",
+           "loaisp",
+           "masp_khachhang",
+           "masp_nhamay",
+           "ma_btp",
+           "ma_erp",
+           "mauuv",
+           "tenuv",
+           "mautrong",
+           "tensp",
+           "tensp_vn"
+          ],
+          "fieldOverrides": {
+           "customer": {
+            "required": true
+           },
+           "hehang": {
+            "required": true
+           },
+           "mausac": {
+            "required": true
+           },
+           "dvt": {
+            "required": true
+           },
+           "loaisp": {
+            "required": true
+           },
+           "masp_khachhang": {
+            "required": true
+           },
+           "masp_nhamay": {
+            "required": true
+           },
+           "mauuv": {
+            "required": true
+           },
+           "tensp": {
+            "required": true
+           },
+           "tensp_vn": {
+            "required": true
+           },
+           "mautrong": {
+            "required": true
+           }
+          }
+         },
+         {
+          "id": "step_physical",
+          "title": "Thông số vật lý",
+          "entity": "b71515cf-4a57-4eed-a1f5-9275d7781c72",
+          "cols": 2,
+          "sections": [
+           {
+            "title": "Thông tin sản phẩm",
+            "fields": [
+             "bemat_sanpham",
+             "ketcau",
+             "g_weight",
+             "n_weight"
+            ]
+           }
+          ],
+          "fieldOverrides": {
+           "bemat_sanpham": {
+            "type": "multiselect",
+            "required": true,
+            "options": [
+             "Bắn cát",
+             "Cào cước",
+             "Ép lồi lõm",
+             "Giả cổ",
+             "Trơn láng",
+             "Da",
+             "Ép Cước"
+            ]
+           },
+           "ketcau": {
+            "type": "select",
+            "options": [
+             "Ráp chết",
+             "Semi KD",
+             "Tháo rời"
+            ],
+            "required": true
+           }
+          },
+          "fields": [
+           "bemat_sanpham",
+           "ketcau",
+           "g_weight",
+           "n_weight"
+          ]
+         },
+         {
+          "id": "step_pricing",
+          "title": "Định giá & Hình ảnh",
+          "entity": "b71515cf-4a57-4eed-a1f5-9275d7781c72",
+          "cols": 2,
+          "fields": [
+           "dongia",
+           "loaitien",
+           "hinhanh"
+          ],
+          "fieldOverrides": {
+           "loaitien": {
+            "label": "Loại tiền",
+            "type": "select",
+            "options": [
+             "USD",
+             "VND"
+            ]
+           },
+           "dongia": {
+            "label": "Đơn giá",
+            "type": "currency"
+           },
+           "hinhanh": {
+            "label": "Hình ảnh",
+            "type": "image"
+           }
+          }
+         }
+        ]
+       }
+      ],
+      "iconOnly": true
+     },
+     {
+      "id": "row_edit",
+      "label": "Sửa",
+      "icon": "Edit",
+      "variant": "default",
+      "hint": "Chọn 1 dòng để sửa đổi",
+      "steps": [
+       {
+        "id": "s_edit",
+        "kind": "open-wizard",
+        "title": "Cập nhật sản phẩm",
+        "submitLabel": "Hoàn tất",
+        "entity": "b71515cf-4a57-4eed-a1f5-9275d7781c72",
+        "recordIdBinding": {
+         "source": "state",
+         "key": "sel"
+        },
+        "steps": [
+         {
+          "id": "step_masp",
+          "title": "Mã sản phẩm",
+          "entity": "b71515cf-4a57-4eed-a1f5-9275d7781c72",
+          "cols": 2,
+          "sections": [
+           {
+            "title": "Thông tin sản phẩm",
+            "fields": [
+             "customer",
+             "hehang",
+             "mausac",
+             "dvt",
+             "loaisp",
+             "masp_khachhang",
+             "masp_nhamay",
+             "ma_btp",
+             "ma_erp",
+             "mauuv",
+             "tenuv",
+             "mautrong",
+             "tensp",
+             "tensp_vn"
+            ]
+           }
+          ],
+          "fieldLookups": {
+           "customer": {
+            "entity": "5c138697-6875-40e5-b9fd-3451e241de0d",
+            "valueField": "customer_name",
+            "labelFields": [
+             "customer_name"
+            ]
+           },
+           "hehang": {
+            "entity": "2eb5d6f8-4b18-49fd-88bc-f5c9be44320a",
+            "valueField": "tenhh",
+            "labelFields": [
+             "tenhh"
+            ]
+           },
+           "mausac": {
+            "entity": "75a7b609-a322-4808-9cd8-4635090e603f",
+            "valueField": "code",
+            "labelFields": [
+             "code"
             ]
            },
            "dvt": {
@@ -996,22 +1207,590 @@
              "tenuv": "name"
             }
            },
-           "mautrong": {
-            "entity": "75a7b609-a322-4808-9cd8-4635090e603f",
-            "valueField": "code",
-            "labelFields": [
-             "code",
-             "name"
-            ]
-           },
            "masp_nhamay": {
             "entity": "58042122-4c34-4c8d-b00e-00e6e4abcedc",
             "valueField": "masp_nhamay",
             "labelFields": [
              "masp_nhamay",
              "tensp"
+            ],
+            "autofill": {
+             "tensp": "tensp"
+            }
+           },
+           "mautrong": {
+            "entity": "75a7b609-a322-4808-9cd8-4635090e603f",
+            "valueField": "name",
+            "labelFields": [
+             "code",
+             "name"
+            ]
+           },
+           "bemat_sanpham": {
+            "entity": "8b34e2ab-8e01-443b-ba21-4f9e8a01cb23",
+            "valueField": "name",
+            "labelFields": [
+             "code",
+             "name"
             ]
            }
+          },
+          "fields": [
+           "customer",
+           "hehang",
+           "mausac",
+           "dvt",
+           "loaisp",
+           "masp_khachhang",
+           "masp_nhamay",
+           "ma_btp",
+           "ma_erp",
+           "mauuv",
+           "tenuv",
+           "mautrong",
+           "tensp",
+           "tensp_vn"
+          ],
+          "fieldOverrides": {
+           "customer": {
+            "required": true
+           },
+           "hehang": {
+            "required": true
+           },
+           "mausac": {
+            "required": true
+           },
+           "dvt": {
+            "required": true
+           },
+           "loaisp": {
+            "required": true
+           },
+           "masp_khachhang": {
+            "required": true
+           },
+           "masp_nhamay": {
+            "required": true
+           },
+           "mauuv": {
+            "required": true
+           },
+           "tensp": {
+            "required": true
+           },
+           "tensp_vn": {
+            "required": true
+           },
+           "mautrong": {
+            "required": true
+           },
+           "bemat_sanpham": {
+            "required": true,
+            "type": "multi-lookup",
+            "ref": "8b34e2ab-8e01-443b-ba21-4f9e8a01cb23",
+            "refValueField": "name"
+           }
+          },
+          "fieldActions": {
+           "customer": [
+            {
+             "id": "act_add_customer_inline",
+             "hint": "Thêm nhanh khách hàng",
+             "icon": "Plus",
+             "label": "Thêm khách hàng",
+             "variant": "ghost",
+             "steps": [
+              {
+               "id": "open_add_customer",
+               "kind": "open-wizard",
+               "title": "Thêm thông tin khách hàng",
+               "submitLabel": "Lưu",
+               "entity": "5c138697-6875-40e5-b9fd-3451e241de0d",
+               "defaults": {
+                "active": "true",
+                "area": "Ngoài nước"
+               },
+               "steps": [
+                {
+                 "id": "customer_info",
+                 "cols": 2,
+                 "title": "Thông tin khách hàng",
+                 "entity": "5c138697-6875-40e5-b9fd-3451e241de0d",
+                 "fields": [
+                  "customer_name",
+                  "customer_id",
+                  "address",
+                  "area",
+                  "phone",
+                  "fax",
+                  "taxcode",
+                  "email",
+                  "customer_type",
+                  "website",
+                  "director",
+                  "bank_id",
+                  "active"
+                 ],
+                 "fieldLookups": {
+                  "bank_id": {
+                   "entity": "db7914c0-3240-490b-ab5e-c721a3e91dd3",
+                   "valueField": "id",
+                   "labelFields": [
+                    "name"
+                   ]
+                  }
+                 },
+                 "fieldActions": {
+                  "bank_id": [
+                   {
+                    "id": "act_add_bank_inline",
+                    "hint": "Thêm nhanh ngân hàng",
+                    "icon": "Plus",
+                    "label": "Thêm ngân hàng",
+                    "variant": "ghost",
+                    "steps": [
+                     {
+                      "id": "open_add_bank",
+                      "kind": "open-wizard",
+                      "title": "Thêm thông tin ngân hàng",
+                      "submitLabel": "Lưu",
+                      "entity": "db7914c0-3240-490b-ab5e-c721a3e91dd3",
+                      "steps": [
+                       {
+                        "id": "bank_info",
+                        "cols": 2,
+                        "title": "Thông tin ngân hàng",
+                        "entity": "db7914c0-3240-490b-ab5e-c721a3e91dd3",
+                        "fields": [
+                         "name",
+                         "abbr_name",
+                         "branch",
+                         "address",
+                         "swift",
+                         "acc_name",
+                         "acc_number",
+                         "isdefault"
+                        ],
+                        "fieldOverrides": {
+                         "name": {
+                          "label": "Tên ngân hàng",
+                          "required": true
+                         },
+                         "abbr_name": {
+                          "label": "Tên viết tắt",
+                          "required": true
+                         },
+                         "branch": {
+                          "label": "Chi nhánh"
+                         },
+                         "address": {
+                          "label": "Địa chỉ"
+                         },
+                         "swift": {
+                          "label": "Mã SWIFT"
+                         },
+                         "acc_name": {
+                          "label": "Tên tài khoản"
+                         },
+                         "acc_number": {
+                          "label": "Số tài khoản"
+                         },
+                         "isdefault": {
+                          "label": "Mặc định",
+                          "type": "boolean"
+                         }
+                        }
+                       }
+                      ]
+                     }
+                    ]
+                   }
+                  ]
+                 },
+                 "fieldOverrides": {
+                  "customer_name": {
+                   "label": "Tên khách hàng",
+                   "required": true
+                  },
+                  "customer_id": {
+                   "label": "Mã khách hàng",
+                   "required": true
+                  },
+                  "address": {
+                   "label": "Địa chỉ"
+                  },
+                  "area": {
+                   "label": "Khu vực",
+                   "type": "select",
+                   "options": [
+                    "Ngoài nước",
+                    "Trong nước"
+                   ]
+                  },
+                  "phone": {
+                   "label": "Số điện thoại"
+                  },
+                  "fax": {
+                   "label": "Fax"
+                  },
+                  "taxcode": {
+                   "label": "Mã số thuế"
+                  },
+                  "email": {
+                   "label": "Email"
+                  },
+                  "customer_type": {
+                   "label": "Khách mua",
+                   "type": "multiselect",
+                   "options": [
+                    "Xuất khẩu",
+                    "Vật tư nguyên liệu"
+                   ]
+                  },
+                  "website": {
+                   "label": "Website"
+                  },
+                  "director": {
+                   "label": "Giám đốc"
+                  },
+                  "bank_id": {
+                   "label": "Ngân hàng thanh toán"
+                  },
+                  "active": {
+                   "label": "Còn hợp tác",
+                   "type": "boolean"
+                  }
+                 }
+                }
+               ]
+              }
+             ]
+            }
+           ],
+           "mausac": [
+            {
+             "id": "act_add_mausac_inline",
+             "hint": "Thêm nhanh màu sắc",
+             "icon": "Plus",
+             "label": "Thêm màu sắc",
+             "variant": "ghost",
+             "steps": [
+              {
+               "id": "open_add_mausac",
+               "kind": "open-wizard",
+               "title": "Thêm màu sắc",
+               "submitLabel": "Lưu",
+               "entity": "75a7b609-a322-4808-9cd8-4635090e603f",
+               "defaults": {
+                "active": "true",
+                "khachhang": "{{form.customer_id}}"
+               },
+               "steps": [
+                {
+                 "id": "mausac_info",
+                 "cols": 2,
+                 "title": "Thông tin màu sắc",
+                 "entity": "75a7b609-a322-4808-9cd8-4635090e603f",
+                 "fields": [
+                  "khachhang",
+                  "ncc",
+                  "phanloai",
+                  "code",
+                  "name",
+                  "hieuung",
+                  "ghichu",
+                  "dongia",
+                  "duongdan",
+                  "duongdan2",
+                  "hinhanh",
+                  "active"
+                 ],
+                 "fieldLookups": {
+                  "ncc": {
+                   "entity": "e9a159c5-d270-430a-ad67-6e2817f3b672",
+                   "valueField": "vendor_id",
+                   "labelFields": [
+                    "vendor_name"
+                   ]
+                  },
+                  "khachhang": {
+                   "entity": "5c138697-6875-40e5-b9fd-3451e241de0d",
+                   "valueField": "customer_id",
+                   "labelFields": [
+                    "customer_name"
+                   ]
+                  }
+                 },
+                 "fieldOverrides": {
+                  "ncc": {
+                   "label": "Nhà cung cấp sơn"
+                  },
+                  "code": {
+                   "label": "Mã màu",
+                   "required": true
+                  },
+                  "name": {
+                   "label": "Tên màu",
+                   "required": true
+                  },
+                  "active": {
+                   "type": "boolean",
+                   "label": "Đang dùng"
+                  },
+                  "dongia": {
+                   "type": "currency",
+                   "label": "Đơn giá sơn (VND)"
+                  },
+                  "ghichu": {
+                   "type": "longtext",
+                   "label": "Thông tin"
+                  },
+                  "hinhanh": {
+                   "type": "image",
+                   "label": "Hình ảnh"
+                  },
+                  "duongdan": {
+                   "type": "file",
+                   "label": "Quy trình sơn"
+                  },
+                  "phanloai": {
+                   "type": "select",
+                   "label": "Phân loại",
+                   "options": [
+                    "TRONG",
+                    "NGOAI"
+                   ],
+                   "required": true
+                  },
+                  "duongdan2": {
+                   "type": "file",
+                   "label": "Báo cáo test"
+                  }
+                 }
+                }
+               ]
+              }
+             ]
+            }
+           ],
+           "hehang": [
+            {
+             "id": "act_add_hehang_inline",
+             "hint": "Thêm nhanh hệ hàng",
+             "icon": "Plus",
+             "label": "Thêm hệ hàng",
+             "variant": "ghost",
+             "steps": [
+              {
+               "id": "open_add_hehang",
+               "kind": "open-wizard",
+               "title": "Thêm hệ hàng",
+               "submitLabel": "Lưu",
+               "entity": "2eb5d6f8-4b18-49fd-88bc-f5c9be44320a",
+               "defaults": {
+                "heso": "1",
+                "khachhang": "{{form.customer_id}}"
+               },
+               "steps": [
+                {
+                 "id": "hehang_info",
+                 "cols": 2,
+                 "title": "Thông tin hệ hàng",
+                 "entity": "2eb5d6f8-4b18-49fd-88bc-f5c9be44320a",
+                 "fields": [
+                  "tenhh",
+                  "khachhang",
+                  "heso",
+                  "ghichu"
+                 ],
+                 "fieldLookups": {
+                  "khachhang": {
+                   "entity": "5c138697-6875-40e5-b9fd-3451e241de0d",
+                   "valueField": "customer_id",
+                   "labelFields": [
+                    "customer_name"
+                   ]
+                  }
+                 },
+                 "fieldOverrides": {
+                  "tenhh": {
+                   "label": "Tên hệ hàng",
+                   "required": true
+                  },
+                  "khachhang": {
+                   "label": "Khách hàng",
+                   "required": true
+                  },
+                  "heso": {
+                   "label": "Hệ số",
+                   "type": "number"
+                  },
+                  "ghichu": {
+                   "label": "Ghi chú",
+                   "type": "longtext"
+                  }
+                 }
+                }
+               ]
+              }
+             ]
+            }
+           ],
+           "masp_nhamay": [
+            {
+             "id": "act_add_nhamay_inline",
+             "hint": "Thêm sản phẩm nhà máy",
+             "icon": "Plus",
+             "label": "Thêm sản phẩm nhà máy",
+             "variant": "ghost",
+             "steps": [
+              {
+               "id": "open_add_nhamay",
+               "kind": "open-wizard",
+               "title": "Thêm sản phẩm nhà máy",
+               "submitLabel": "Lưu",
+               "entity": "58042122-4c34-4c8d-b00e-00e6e4abcedc",
+               "defaults": {
+                "active": "true",
+                "hehang": "{{form.hehang}}"
+               },
+               "steps": [
+                {
+                 "id": "nhamay_info",
+                 "cols": 2,
+                 "title": "Thông tin sản phẩm nhà máy",
+                 "entity": "58042122-4c34-4c8d-b00e-00e6e4abcedc",
+                 "fields": [
+                  "masp_nhamay",
+                  "tensp",
+                  "hehang",
+                  "active"
+                 ],
+                 "fieldLookups": {
+                  "hehang": {
+                   "entity": "2eb5d6f8-4b18-49fd-88bc-f5c9be44320a",
+                   "valueField": "tenhh",
+                   "labelFields": [
+                    "tenhh"
+                   ]
+                  }
+                 },
+                 "fieldOverrides": {
+                  "masp_nhamay": {
+                   "label": "Mã nhà máy",
+                   "required": true
+                  },
+                  "tensp": {
+                   "label": "Tên sản phẩm",
+                   "required": true
+                  },
+                  "hehang": {
+                   "label": "Hệ hàng",
+                   "required": true
+                  },
+                  "active": {
+                   "type": "boolean",
+                   "label": "Đang hoạt động"
+                  }
+                 }
+                }
+               ]
+              }
+             ]
+            },
+            {
+             "id": "act_edit_nhamay_inline",
+             "hint": "Sửa sản phẩm nhà máy",
+             "icon": "Edit",
+             "label": "Sửa sản phẩm nhà máy",
+             "variant": "ghost",
+             "steps": [
+              {
+               "id": "open_edit_nhamay",
+               "kind": "open-wizard",
+               "title": "Sửa sản phẩm nhà máy",
+               "submitLabel": "Lưu",
+               "entity": "58042122-4c34-4c8d-b00e-00e6e4abcedc",
+               "recordIdBinding": {
+                "source": "state",
+                "key": "form.masp_nhamay_id"
+               },
+               "steps": [
+                {
+                 "id": "nhamay_info",
+                 "cols": 2,
+                 "title": "Thông tin sản phẩm nhà máy",
+                 "entity": "58042122-4c34-4c8d-b00e-00e6e4abcedc",
+                 "fields": [
+                  "masp_nhamay",
+                  "tensp",
+                  "hehang",
+                  "active"
+                 ],
+                 "fieldLookups": {
+                  "hehang": {
+                   "entity": "2eb5d6f8-4b18-49fd-88bc-f5c9be44320a",
+                   "valueField": "tenhh",
+                   "labelFields": [
+                    "tenhh"
+                   ]
+                  }
+                 },
+                 "fieldOverrides": {
+                  "masp_nhamay": {
+                   "label": "Mã nhà máy",
+                   "required": true
+                  },
+                  "tensp": {
+                   "label": "Tên sản phẩm",
+                   "required": true
+                  },
+                  "hehang": {
+                   "label": "Hệ hàng",
+                   "required": true
+                  },
+                  "active": {
+                   "type": "boolean",
+                   "label": "Đang hoạt động"
+                  }
+                 }
+                }
+               ]
+              }
+             ]
+            }
+           ],
+           "bemat_sanpham": [
+            {
+             "id": "act_add_bemat_inline",
+             "hint": "Thêm nhanh bề mặt sản phẩm",
+             "icon": "Plus",
+             "label": "Thêm bề mặt",
+             "variant": "ghost",
+             "steps": [
+              {
+               "id": "open_add_bemat",
+               "kind": "open-wizard",
+               "title": "Thêm bề mặt sản phẩm",
+               "submitLabel": "Lưu",
+               "entity": "8b34e2ab-8e01-443b-ba21-4f9e8a01cb23",
+               "steps": [
+                {
+                 "id": "bemat_info",
+                 "cols": 2,
+                 "title": "Thông tin bề mặt",
+                 "entity": "8b34e2ab-8e01-443b-ba21-4f9e8a01cb23",
+                 "fields": [
+                  "code",
+                  "name"
+                 ]
+                }
+               ]
+              }
+             ]
+            }
+           ]
           }
          },
          {
@@ -1032,22 +1811,10 @@
           ],
           "fieldOverrides": {
            "bemat_sanpham": {
-            "type": "select",
-            "options": [
-             "Bắn cát",
-             "Cào cước",
-             "Cào cước/ Ép lồi lõm",
-             "Cào cước/ Giả cổ",
-             "Cào cước/ Trơn láng",
-             "Da",
-             "Ép Cước",
-             "Ép lồi lõm",
-             "Giả cổ",
-             "Trơn láng",
-             "Trơn láng/ Bắn cát",
-             "Trơn láng/ Da",
-             "Trơn láng/ Giả cổ"
-            ]
+            "required": true,
+            "type": "multi-lookup",
+            "ref": "8b34e2ab-8e01-443b-ba21-4f9e8a01cb23",
+            "refValueField": "name"
            },
            "ketcau": {
             "type": "select",
@@ -1055,8 +1822,57 @@
              "Ráp chết",
              "Semi KD",
              "Tháo rời"
+            ],
+            "required": true
+           }
+          },
+          "fields": [
+           "bemat_sanpham",
+           "ketcau",
+           "g_weight",
+           "n_weight"
+          ],
+          "fieldLookups": {
+           "bemat_sanpham": {
+            "entity": "8b34e2ab-8e01-443b-ba21-4f9e8a01cb23",
+            "valueField": "name",
+            "labelFields": [
+             "code",
+             "name"
             ]
            }
+          },
+          "fieldActions": {
+           "bemat_sanpham": [
+            {
+             "id": "act_add_bemat_inline",
+             "hint": "Thêm nhanh bề mặt sản phẩm",
+             "icon": "Plus",
+             "label": "Thêm bề mặt",
+             "variant": "ghost",
+             "steps": [
+              {
+               "id": "open_add_bemat",
+               "kind": "open-wizard",
+               "title": "Thêm bề mặt sản phẩm",
+               "submitLabel": "Lưu",
+               "entity": "8b34e2ab-8e01-443b-ba21-4f9e8a01cb23",
+               "steps": [
+                {
+                 "id": "bemat_info",
+                 "cols": 2,
+                 "title": "Thông tin bề mặt",
+                 "entity": "8b34e2ab-8e01-443b-ba21-4f9e8a01cb23",
+                 "fields": [
+                  "code",
+                  "name"
+                 ]
+                }
+               ]
+              }
+             ]
+            }
+           ]
           }
          },
          {
@@ -1064,37 +1880,40 @@
           "title": "Định giá & Hình ảnh",
           "entity": "b71515cf-4a57-4eed-a1f5-9275d7781c72",
           "cols": 2,
-          "sections": [
-           {
-            "title": "Giá mộc (chưa sơn)",
-            "fields": [
-             "dongia_moc",
-             "dongia_si_moc",
-             "dongia_le_moc"
+          "fields": [
+           "dongia",
+           "loaitien",
+           "hinhanh"
+          ],
+          "fieldOverrides": {
+           "loaitien": {
+            "label": "Loại tiền",
+            "type": "select",
+            "options": [
+             "USD",
+             "VND"
             ]
            },
-           {
-            "title": "Giá thành phẩm (đã sơn)",
-            "fields": [
-             "dongia",
-             "dongia_si",
-             "dongia_le"
-            ]
+           "dongia": {
+            "label": "Đơn giá",
+            "type": "currency"
+           },
+           "hinhanh": {
+            "label": "Hình ảnh",
+            "type": "image"
            }
-          ],
-          "relatedImage": {
-           "entityName": "tr_hinhanh",
-           "linkField": "masp",
-           "parentField": "masp",
-           "imageField": "hinhanh",
-           "label": "Hình ảnh"
           }
          }
+        ],
+        "invalidateEntities": [
+         "b71515cf-4a57-4eed-a1f5-9275d7781c72"
         ]
        }
-      ]
+      ],
+      "iconOnly": true
      }
-    ]
+    ],
+    "rowActionsStyle": "inline"
    }
   },
   {

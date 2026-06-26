@@ -258,7 +258,7 @@ export function ComboboxWidget({ cfg }: { cfg: Record<string, unknown> }) {
           value={val}
           onChange={(v) => pageState.set(stateKey, v)}
           options={options}
-          emptyOption="— tất cả —"
+          emptyOption="tất cả"
         />
       </div>
     </div>

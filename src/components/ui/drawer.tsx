@@ -20,7 +20,14 @@ export function Drawer({ open, onClose, title, width = 420, children, footer }: 
   const titleId = useId();
   if (!open) return null;
   return (
-    <div className="fixed inset-0 z-800" onMouseDown={onClose}>
+    <div
+      className="fixed inset-0 z-800"
+      onMouseDown={(e) => {
+        if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+          onClose();
+        }
+      }}
+    >
       <div className="absolute inset-0 bg-black/40" />
       <div
         ref={containerRef}
@@ -33,7 +40,6 @@ export function Drawer({ open, onClose, title, width = 420, children, footer }: 
           isMobile && "w-screen max-w-full",
         )}
         style={isMobile ? undefined : { width }}
-        onMouseDown={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between p-3 border-b border-border h-12 shrink-0">
           <div id={titleId} className="font-semibold">

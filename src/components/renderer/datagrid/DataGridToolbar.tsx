@@ -654,7 +654,12 @@ export function DataGridToolbar<T>({
               ref={groupDropdownRef}
               onMouseEnter={cancelHoverClose}
               onMouseLeave={hoverScheduleClose}
-              style={{ position: "fixed", top: groupPos.top, left: groupPos.left }}
+              style={{
+                position: "fixed",
+                top: groupPos.top !== undefined ? groupPos.top : "auto",
+                bottom: groupPos.bottom !== undefined ? groupPos.bottom : "auto",
+                left: groupPos.left,
+              }}
               className="z-50 bg-panel border border-border rounded shadow-lg min-w-[200px] py-1 max-h-[70vh] overflow-y-auto"
             >
               {/* Tab bar — mặc định "Nhóm theo" */}

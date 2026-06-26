@@ -35,7 +35,7 @@ interface Props {
    *  render embeddedActions, cho step "open-create-form". */
   onOpenCreateForm?: () => void;
   /** Gọi sau khi chuỗi action chạy xong, dùng để refresh lookup trong wizard cha. */
-  onComplete?: () => void;
+  onComplete?: (output?: any) => void;
 }
 
 export function ActionWidget({
@@ -144,7 +144,7 @@ export function ActionWidget({
       if (res.completed && res.procedureRuns > 0 && !hasModuleProc) {
         toast.success(config.label ? `Đã chạy: ${config.label}` : "Đã chạy xong");
       }
-      if (res.completed) onComplete?.();
+      if (res.completed) onComplete?.(res.output);
     } catch {
       // toast.error đã hiển thị trong run-action.ts; nuốt để không crash widget.
     } finally {
@@ -194,11 +194,11 @@ export function ActionWidget({
             pageState={pageState}
             onDone={(value) => closeWizard(value)}
             onCancel={() => closeWizard(null)}
-            renderAction={(a, key, onActionComplete) => (
+            renderAction={(a, key, onActionComplete, customPageState) => (
               <ActionWidget
                 key={key}
                 config={a}
-                pageState={pageState}
+                pageState={customPageState || pageState}
                 inline
                 onComplete={onActionComplete}
               />
@@ -246,11 +246,11 @@ export function ActionWidget({
           pageState={pageState}
           onDone={(value) => closeWizard(value)}
           onCancel={() => closeWizard(null)}
-          renderAction={(a, key, onActionComplete) => (
+          renderAction={(a, key, onActionComplete, customPageState) => (
             <ActionWidget
               key={key}
               config={a}
-              pageState={pageState}
+              pageState={customPageState || pageState}
               inline
               onComplete={onActionComplete}
             />

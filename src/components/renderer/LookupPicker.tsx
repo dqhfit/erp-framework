@@ -34,6 +34,7 @@ interface Props {
    *  value lưu/khớp theo field đó (giữ tương thích data lưu tên/mã). */
   valueField?: string;
   readOnly?: boolean;
+  reloadKey?: number;
 }
 
 export function LookupPicker({
@@ -46,6 +47,7 @@ export function LookupPicker({
   onClose,
   valueField,
   readOnly = false,
+  reloadKey,
 }: Props) {
   const entities = useUserObjects((s) => s.entities);
   const [rows, setRows] = useState<Record<string, unknown>[]>([]);
@@ -93,6 +95,9 @@ export function LookupPicker({
 
   // Nhãn 1 dòng: ghép "mã — tên" nếu có field mã, ngược lại chỉ tên.
   const rowLabel = (row: Record<string, unknown>) => {
+    if (valueField === "name") {
+      return String(row.name ?? row.ten ?? "");
+    }
     const name = dispName ? String(row[dispName] ?? "") : "";
     const base = name || String(row.id ?? "");
     if (codeField) {
@@ -156,7 +161,7 @@ export function LookupPicker({
     return () => {
       alive = false;
     };
-  }, [refEntityId, multi]);
+  }, [refEntityId, multi, reloadKey]);
 
   // Tìm server-side (entity lớn): ILIKE trên field hiển thị + field mã, gộp.
   const doSearch = (raw: string) => {
@@ -325,7 +330,7 @@ export function LookupPicker({
       value={value}
       onChange={onChange}
       options={options}
-      emptyOption={`— chọn ${refEnt?.name ?? "bản ghi"} —`}
+      emptyOption={`chọn ${refEnt?.name ?? "bản ghi"}`}
       searchPlaceholder={
         serverMode ? `Gõ tìm ${refEnt?.name ?? "bản ghi"}…` : `Tìm ${refEnt?.name ?? "bản ghi"}…`
       }

@@ -128,6 +128,7 @@ export interface RunActionResult {
   completed: boolean;
   /** Số step procedure đã chạy thành công. */
   procedureRuns: number;
+  output?: unknown;
 }
 
 export async function runActionSteps(
@@ -136,6 +137,7 @@ export async function runActionSteps(
 ): Promise<RunActionResult> {
   const rs = makeRuntimeState(ctx);
   let procedureRuns = 0;
+  let lastResult: unknown;
   for (const step of steps) {
     if (step.kind === "confirm") {
       const ok = await ctx.dialog.confirm(step.message, {
@@ -185,6 +187,7 @@ export async function runActionSteps(
       const result = await ctx.openPopup(step, rs.get);
       if (result === null) return { completed: false, procedureRuns };
       if (step.saveOutputTo) rs.set(step.saveOutputTo, result);
+      lastResult = result;
       // Popup persist (tạo/sửa) xong → nạp lại list các entity liên quan.
       if (step.invalidateEntities?.length) {
         const stamp = Date.now();
@@ -204,6 +207,7 @@ export async function runActionSteps(
       const result = await ctx.openWizard(step, rs.get);
       if (result === null) return { completed: false, procedureRuns };
       if (step.saveOutputTo) rs.set(step.saveOutputTo, result);
+      lastResult = result;
       // Wizard lưu (tạo/sửa) xong → nạp lại list các entity liên quan.
       if (step.invalidateEntities?.length) {
         const stamp = Date.now();
@@ -253,6 +257,7 @@ export async function runActionSteps(
         const newId = await ctx.createRecord(step.entity, data as Record<string, unknown>);
         ctx.toast.success("Đã thêm");
         if (step.saveOutputTo && newId) rs.set(step.saveOutputTo, newId);
+        lastResult = { id: newId, ...data };
         if (step.invalidateEntities?.length) {
           const stamp = Date.now();
           for (const eid of step.invalidateEntities) rs.set(`__refresh:${eid}`, stamp);
@@ -381,6 +386,7 @@ export async function runActionSteps(
         if (step.saveOutputTo) {
           rs.set(step.saveOutputTo, result.output);
         }
+        lastResult = result.output;
         if (step.invalidateEntities && step.invalidateEntities.length > 0) {
           const stamp = Date.now();
           for (const eid of step.invalidateEntities) {
@@ -396,5 +402,5 @@ export async function runActionSteps(
       }
     }
   }
-  return { completed: true, procedureRuns };
+  return { completed: true, procedureRuns, output: lastResult };
 }

@@ -208,7 +208,7 @@ function EditableCell({
           className="w-full"
           value={str}
           options={getLookupOptions().map((o) => ({ value: o, label: o }))}
-          emptyOption="— chọn —"
+          emptyOption="chọn"
           autoOpen
           onClose={() => setEditing(false)}
           onChange={(v) => {
@@ -424,6 +424,7 @@ interface EditableListWidgetProps {
   addRowAtEnd?: boolean;
   /** Vị trí dòng thêm mới: đầu hay cuối lưới (cfg.addRowPos, mặc định "bottom"). */
   addRowPos?: "top" | "bottom";
+  embeddedActions?: ActionBarItem[];
 }
 
 /** Dòng MỚI nháp (chưa lưu): id tạm (`__new_*`) + vị trí chèn trên/dưới lưới.
@@ -498,6 +499,7 @@ function EditableListWidget({
   refFill,
   addRowAtEnd,
   addRowPos,
+  embeddedActions,
 }: EditableListWidgetProps) {
   const t = useT();
   const pageState = usePageState();
@@ -921,6 +923,13 @@ function EditableListWidget({
 
   return (
     <div className="h-full flex flex-col">
+      {embeddedActions && embeddedActions.length > 0 && (
+        <div className="px-2 py-1.5 border-b border-border flex items-center gap-1.5 flex-wrap shrink-0">
+          {embeddedActions.map((item) => (
+            <ActionWidget key={item.id} config={item} pageState={pageState} inline />
+          ))}
+        </div>
+      )}
       {loading && (
         <div className="text-xs px-2 py-1 border-b border-border text-muted flex items-center gap-1">
           <I.Table size={11} />
@@ -2250,6 +2259,7 @@ export function ListWidget({
         refFill={refFill}
         addRowAtEnd={addRowAtEnd}
         addRowPos={addRowPos}
+        embeddedActions={embeddedActions}
       />
     );
   }
