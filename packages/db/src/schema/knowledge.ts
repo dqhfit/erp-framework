@@ -5,6 +5,7 @@ import {
   jsonb,
   pgTable,
   primaryKey,
+  real,
   text,
   timestamp,
   uuid,
@@ -99,4 +100,37 @@ export const knowledgeSourceViewerGroups = pgTable(
       .references(() => viewerGroups.id, { onDelete: "cascade" }),
   },
   (t) => ({ pk: primaryKey({ columns: [t.sourceId, t.groupId] }) }),
+);
+
+/* ─── Knowledge graph (tang mong) ─────────────────────────────
+   Bo ba (subject, predicate, object) trich tu cac doan tri thuc — noi
+   cac chunk thuoc NHIEU nguon qua thuc the chung de multi-hop retrieval.
+   subject/object da CHUAN HOA (lowercase, bo dau) de khop; *_raw giu ban
+   goc. chunk_id = provenance (cascade theo chunk). Migration 0090. Xem
+   knowledge-graph.ts (extractRelations / expandGraph). */
+export const knowledgeEdges = pgTable(
+  "knowledge_edges",
+  {
+    id: uuid("id").default(sql`uuidv7()`).primaryKey(),
+    companyId: uuid("company_id")
+      .notNull()
+      .references(() => companies.id, { onDelete: "cascade" }),
+    sourceId: uuid("source_id")
+      .notNull()
+      .references(() => knowledgeSources.id, { onDelete: "cascade" }),
+    chunkId: uuid("chunk_id").references(() => knowledgeChunks.id, { onDelete: "cascade" }),
+    subject: text("subject").notNull(),
+    predicate: text("predicate").notNull(),
+    object: text("object").notNull(),
+    subjectRaw: text("subject_raw"),
+    objectRaw: text("object_raw"),
+    weight: real("weight").notNull().default(1),
+    meta: jsonb("meta").notNull().default(sql`'{}'::jsonb`),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({
+    companySubjectIdx: index("knowledge_edges_company_subject_idx").on(t.companyId, t.subject),
+    companyObjectIdx: index("knowledge_edges_company_object_idx").on(t.companyId, t.object),
+    sourceIdx: index("knowledge_edges_source_idx").on(t.sourceId),
+  }),
 );

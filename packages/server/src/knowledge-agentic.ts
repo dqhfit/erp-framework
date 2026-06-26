@@ -13,6 +13,7 @@ import { type FilterOp, fieldCan, type Role } from "@erp-framework/core";
 import { type SQL, sql } from "drizzle-orm";
 import type { AgentEntityInfo } from "./agent-records-search";
 import type { DB } from "./db";
+import { expandGraph } from "./knowledge-graph";
 import { type KnowledgeHit, type KnowledgeSearchOpts, knowledgeSearch } from "./knowledge-search";
 import { callLlmJson } from "./llm-json";
 import { webSearch } from "./web-search";
@@ -348,6 +349,11 @@ export interface AgenticRetrieveOpts extends KnowledgeSearchOpts {
   /** Bật graph expansion (lấy đoạn lân cận cùng nguồn) + nén ngữ cảnh.
    *  Rẻ (1 query DB, hàm thuần) nhưng đổi hình dạng hit → bật ở chế độ Deep. */
   expand?: boolean;
+  /** Bật knowledge-graph expansion: từ hit ban đầu đi 1-hop theo thực thể
+   *  chung (knowledge_edges) → kéo thêm đoạn CHÉO NGUỒN cho câu hỏi multi-hop.
+   *  Chỉ chạy khi nguồn đã trích quan hệ (meta.extractGraph). 1 query DB, áp
+   *  lại ACL+sourceIds (đoạn có thể thuộc nguồn khác). Bật ở chế độ Deep. */
+  graph?: boolean;
   /** Bật re-rank bằng LLM (chế độ Deep) — xếp lại theo độ liên quan. */
   rerank?: boolean;
   /** User hiện tại — ưu tiên profile LLM cá nhân khi rewrite/grade/rerank. */
@@ -393,8 +399,8 @@ export async function agenticRetrieve(
 
   const queries = opts.plan ? await planQueries(db, companyId, q, opts.userId) : [q];
 
-  // Khi expand/rerank: lấy rộng ứng viên hơn rồi mới tinh lọc về `limit`.
-  const wide = opts.expand === true || opts.rerank === true;
+  // Khi expand/rerank/graph: lấy rộng ứng viên hơn rồi mới tinh lọc về `limit`.
+  const wide = opts.expand === true || opts.rerank === true || opts.graph === true;
   const candLimit = wide ? Math.min(20, limit * 3) : limit;
   const candOpts: KnowledgeSearchOpts = { ...searchOpts, limit: candLimit };
 
@@ -404,10 +410,21 @@ export async function agenticRetrieve(
   );
   let hits = lists.length <= 1 ? (lists[0] ?? []).slice(0, candLimit) : mergeHits(lists, candLimit);
 
-  // Graph expansion (đoạn lân cận) → nén (gộp đoạn liền kề) → re-rank LLM →
-  // cắt top `limit`. Mỗi bước fail-safe; Fast mode (không cờ) bỏ qua hết.
+  // Graph expansion (đoạn lân cận) → nén (gộp đoạn liền kề) → graph-hop (đoạn
+  // chéo nguồn qua thực thể chung) → re-rank LLM → cắt top `limit`. Mỗi bước
+  // fail-safe; Fast mode (không cờ) bỏ qua hết.
   if (opts.expand) hits = await expandNeighbors(db, companyId, hits);
   if (opts.expand) hits = mergeContiguous(hits);
+  // Graph đặt SAU mergeContiguous (né ngân sách ký tự của nó) + TRƯỚC rerank
+  // để re-rank xếp lại cả union; expandGraph đã loại trùng các chunk hiện có.
+  if (opts.graph) {
+    const extra = await expandGraph(db, companyId, hits, {
+      acl: opts.acl,
+      sourceIds: opts.sourceIds,
+      limit,
+    });
+    if (extra.length) hits = [...hits, ...extra];
+  }
   if (opts.rerank) hits = await rerankHits(db, companyId, q, hits, opts.userId);
   hits = hits.slice(0, limit);
 

@@ -13,6 +13,7 @@ import { chunkText } from "./chunk";
 import type { DB } from "./db";
 import { embedTexts } from "./embeddings";
 import { extractText } from "./extract";
+import { deleteEdgesForSource, extractRelations } from "./knowledge-graph";
 import { getRecordStore } from "./record-store";
 
 type SourceRow = typeof knowledgeSources.$inferSelect;
@@ -123,6 +124,10 @@ export async function runKbIngest(db: DB, sourceId: string): Promise<void> {
 
   await setIngest({ total: 0, embedded: 0, startedAt }, { status: "processing", error: null });
 
+  // Chunk đã chèn (id + content) — dùng cho trích knowledge-graph SAU khi nguồn
+  // đã ready (bước phụ, không nằm trong luồng status chính).
+  let insertedChunks: Array<{ id: string; content: string }> = [];
+
   try {
     const { text, warn: loadWarn } = await loadText(db, src);
     let chunks = chunkText(text);
@@ -159,18 +164,22 @@ export async function runKbIngest(db: DB, sourceId: string): Promise<void> {
       });
     }
 
-    // Thay toàn bộ chunk cũ của nguồn này.
+    // Thay toàn bộ chunk cũ của nguồn này. (Xoá chunk cascade luôn edge cũ
+    // theo chunk_id — knowledge_edges.chunk_id ON DELETE CASCADE.)
     await db.delete(knowledgeChunks).where(eq(knowledgeChunks.sourceId, sourceId));
-    await db.insert(knowledgeChunks).values(
-      chunks.map((c, i) => ({
-        companyId: src.companyId,
-        sourceId,
-        seq: c.seq,
-        content: c.content,
-        tokens: c.tokens,
-        embedding: vectors[i] ?? null,
-      })),
-    );
+    insertedChunks = await db
+      .insert(knowledgeChunks)
+      .values(
+        chunks.map((c, i) => ({
+          companyId: src.companyId,
+          sourceId,
+          seq: c.seq,
+          content: c.content,
+          tokens: c.tokens,
+          embedding: vectors[i] ?? null,
+        })),
+      )
+      .returning({ id: knowledgeChunks.id, content: knowledgeChunks.content });
 
     const durationMs = Date.now() - t0;
     const perSec = durationMs > 0 ? Math.round((chunks.length / (durationMs / 1000)) * 10) / 10 : 0;
@@ -225,5 +234,25 @@ export async function runKbIngest(db: DB, sourceId: string): Promise<void> {
       detail: `Nạp tri thức "${src.title}" lỗi: ${msg}`.slice(0, 480),
     });
     throw e;
+  }
+
+  // Trích knowledge-graph (OPT-IN qua meta.extractGraph) — chạy SAU khi nguồn
+  // đã ready, NGOÀI luồng status chính: lỗi/null KHÔNG làm nguồn fail (graph là
+  // bước phụ, mỗi đoạn +1 lời gọi LLM nên mặc định TẮT, tôn trọng rẻ-mặc-định).
+  if (baseMeta.extractGraph === true && insertedChunks.length) {
+    try {
+      // Edge cũ đã cascade khi xoá chunk; xoá thêm cho chắc (vd từng tắt rồi bật).
+      await deleteEdgesForSource(db, sourceId);
+      const n = await extractRelations(db, src.companyId, sourceId, insertedChunks);
+      await logActivity(db, {
+        companyId: src.companyId,
+        kind: "kb-ingest",
+        objectType: "knowledge",
+        target: sourceId,
+        detail: `Trích knowledge-graph "${src.title}" — ${n} quan hệ.`.slice(0, 480),
+      });
+    } catch (e) {
+      console.warn("[kb-ingest] trích graph lỗi (bỏ qua):", (e as Error).message);
+    }
   }
 }

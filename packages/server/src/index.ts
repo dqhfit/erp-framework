@@ -717,6 +717,9 @@ async function main(): Promise<void> {
               expand: body.deepSearch === true,
               rerank: body.deepSearch === true,
               compress: body.deepSearch === true,
+              // Knowledge-graph hop (đoạn chéo nguồn qua thực thể chung) — chỉ
+              // có tác dụng với nguồn đã trích quan hệ (meta.extractGraph).
+              graph: body.deepSearch === true,
               webFallback: webEnabled || route.targets.includes("web"),
               sourceIds: agentSourceIds,
             });
