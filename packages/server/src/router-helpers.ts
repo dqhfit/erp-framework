@@ -343,7 +343,11 @@ async function refRecordIds(
 }
 
 /** Quét tất cả entity trong công ty có field lookup/multi-lookup, tìm các
- *  record active đang trỏ tới targetRecordId. Backend-aware (EAV + bảng thật). */
+ *  record active đang trỏ tới targetRecordId. Backend-aware (EAV + bảng thật).
+ *
+ *  Perf: EAV entities -> 1 SQL duy nhat dung jsonb_array_elements LATERAL.
+ *  Table-tier entities -> van per-entity-per-field (it hon, Phase 0 chu yeu EAV).
+ */
 export async function scanBackRefs(
   db: DB,
   companyId: string,
@@ -380,7 +384,80 @@ export async function scanBackRefs(
     sampleIds: string[];
   }> = [];
 
-  for (const ent of ents) {
+  // Tach EAV vs table-tier.
+  const eavEnts: typeof ents = [];
+  const tableEnts: typeof ents = [];
+  for (const e of ents) {
+    if (storageOfMeta(e.meta)) tableEnts.push(e);
+    else eavEnts.push(e);
+  }
+
+  // --- EAV entities: 1 SQL cho toan bo (jsonb_array_elements LATERAL) ---
+  if (eavEnts.length > 0) {
+    // Loc ra entity co it nhat 1 lookup field (tranh scan entity rong).
+    const eavIds = eavEnts
+      .filter((e) =>
+        ((e.fields ?? []) as Array<{ type: string }>).some((f) => lookupKind(f.type).lookup),
+      )
+      .map((e) => e.id);
+
+    if (eavIds.length > 0) {
+      // Tra count thuc + 5 sample ids (chinh xac hon cu: cu gioi han 50 roi dung length).
+      type EavRow = {
+        entity_id: string;
+        entity_name: string;
+        entity_label: string;
+        field_key: string;
+        field_type: string;
+        cnt: number;
+        sample_ids: string[];
+      };
+      const rawRes = await db.execute(sql`
+        SELECT
+          e.id          AS entity_id,
+          e.name        AS entity_name,
+          e.label       AS entity_label,
+          f.value->>'name'  AS field_key,
+          f.value->>'type'  AS field_type,
+          count(r.id)::int                        AS cnt,
+          (array_agg(r.id ORDER BY r.id))[1:5]   AS sample_ids
+        FROM entities e
+        CROSS JOIN LATERAL jsonb_array_elements(e.fields) AS f(value)
+        JOIN entity_records r
+          ON  r.entity_id  = e.id
+          AND r.company_id = ${companyId}::uuid
+          AND r.deleted_at IS NULL
+          AND (
+            (     f.value->>'type' IN ('multilookup','multi-lookup')
+              AND r.data->(f.value->>'name') @> to_jsonb(${targetRecordId}::text) )
+            OR
+            (     f.value->>'type' IN ('lookup','relation')
+              AND r.data->>(f.value->>'name') = ${targetRecordId} )
+          )
+        WHERE e.company_id = ${companyId}::uuid
+          AND e.id         = ANY(${eavIds}::uuid[])
+          AND f.value->>'type' IN ('lookup','relation','multilookup','multi-lookup')
+        GROUP BY e.id, e.name, e.label, f.value->>'name', f.value->>'type'
+      `);
+      const eavRows: EavRow[] = Array.isArray(rawRes)
+        ? (rawRes as unknown as EavRow[])
+        : ((rawRes as unknown as { rows?: EavRow[] }).rows ?? []);
+      for (const row of eavRows) {
+        out.push({
+          entityId: row.entity_id,
+          entityName: row.entity_name,
+          entityLabel: row.entity_label,
+          fieldKey: row.field_key,
+          fieldType: row.field_type,
+          count: row.cnt,
+          sampleIds: row.sample_ids ?? [],
+        });
+      }
+    }
+  }
+
+  // --- Table-tier entities: per-entity per-field (giu nguyen, it hon Phase 0) ---
+  for (const ent of tableEnts) {
     const storage = storageOfMeta(ent.meta);
     const fields = (ent.fields ?? []) as Array<{ name: string; type: string }>;
     for (const f of fields) {
@@ -409,6 +486,7 @@ export async function scanBackRefs(
       }
     }
   }
+
   return out;
 }
 
@@ -461,14 +539,37 @@ export async function applyCascadeOnDelete(
     );
 
     if (behavior === "setnull") {
-      for (const id of ids) {
-        const rec = await store.getById(companyId, id);
-        if (!rec) continue;
-        const data = rec.data as Record<string, unknown>;
-        const newVal = multi
-          ? ((data[ref.fieldKey] as string[] | undefined) ?? []).filter((x) => x !== targetRecordId)
-          : null;
-        await store.merge(companyId, id, { [ref.fieldKey]: newVal }, rec.version + 1);
+      // Thay N round-trip getById+merge bang 1 UPDATE batch (EAV entity_records).
+      // Table-tier: Phase 0 chi co EAV store -> ids tu bat buoc la EAV records.
+      // TODO(hybrid-phase4): them nhanh UPDATE tren bang that khi store dispatch dung tier.
+      if (multi) {
+        // Multi-lookup: loc bo targetRecordId khoi mang JSON.
+        await db.execute(sql`
+          UPDATE entity_records
+            SET data    = jsonb_set(
+                            data,
+                            ARRAY[${ref.fieldKey}::text],
+                            COALESCE(
+                              (SELECT jsonb_agg(elem)
+                               FROM jsonb_array_elements(data->${ref.fieldKey}) elem
+                               WHERE elem <> to_jsonb(${targetRecordId}::text)),
+                              '[]'::jsonb
+                            ),
+                            true
+                          ),
+                version = version + 1
+          WHERE id = ANY(${ids}::uuid[])
+            AND company_id = ${companyId}::uuid
+        `);
+      } else {
+        // Single lookup: dat field ve null.
+        await db.execute(sql`
+          UPDATE entity_records
+            SET data    = data || jsonb_build_object(${ref.fieldKey}, null)::jsonb,
+                version = version + 1
+          WHERE id = ANY(${ids}::uuid[])
+            AND company_id = ${companyId}::uuid
+        `);
       }
     } else if (behavior === "cascade") {
       for (const id of ids) {

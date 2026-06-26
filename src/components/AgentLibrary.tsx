@@ -6,11 +6,12 @@
    ========================================================== */
 import { createObjectsClient } from "@erp-framework/client";
 import { useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { I } from "@/components/Icons";
 import { Button, Chip, Drawer } from "@/components/ui";
 import { useT } from "@/hooks/useT";
 import { dialog } from "@/lib/dialog";
+import { normalizeVi } from "@/lib/text-utils";
 import { useUserObjects } from "@/stores/userObjects";
 
 const api = createObjectsClient("");
@@ -76,28 +77,45 @@ export function AgentLibraryPage() {
       .finally(() => setLoading(false));
   }, []);
 
-  /* Map templateId → agents da kich hoat */
-  const installedMap = new Map<string, { id: string; name: string }[]>();
-  for (const a of userAgents) {
-    if (a.templateId) {
-      const list = installedMap.get(a.templateId) ?? [];
-      list.push({ id: a.id, name: a.name });
-      installedMap.set(a.templateId, list);
+  /* Map templateId → agents đã kích hoạt — memo tránh xây lại map mỗi render. */
+  const installedMap = useMemo(() => {
+    const map = new Map<string, { id: string; name: string }[]>();
+    for (const a of userAgents) {
+      if (a.templateId) {
+        const list = map.get(a.templateId) ?? [];
+        list.push({ id: a.id, name: a.name });
+        map.set(a.templateId, list);
+      }
     }
-  }
+    return map;
+  }, [userAgents]);
 
-  const departments = Object.keys(DEPT_KEY_TO_I18N);
+  // Precompute text bỏ-dấu 1 lần/template — không normalize lại mỗi phím gõ.
+  const normIndex = useMemo(
+    () =>
+      (templates ?? []).map((tpl) =>
+        normalizeVi(`${tpl.name} ${tpl.description} ${tpl.departmentKey}`),
+      ),
+    [templates],
+  );
 
-  const filtered = (templates ?? []).filter((tpl) => {
-    const matchDept = activeTab === "all" || tpl.departmentKey === activeTab;
-    const q = search.trim().toLowerCase();
-    const matchSearch =
-      !q ||
-      tpl.name.toLowerCase().includes(q) ||
-      tpl.description.toLowerCase().includes(q) ||
-      tpl.departmentKey.includes(q);
-    return matchDept && matchSearch;
-  });
+  const filtered = useMemo(() => {
+    const qn = normalizeVi(search.trim());
+    return (templates ?? []).filter((tpl, i) => {
+      const matchDept = activeTab === "all" || tpl.departmentKey === activeTab;
+      const matchSearch = !qn || (normIndex[i] ?? "").includes(qn);
+      return matchDept && matchSearch;
+    });
+  }, [templates, normIndex, search, activeTab]);
+
+  // Map số lượng template mỗi phòng ban — memo tránh filter lại trong JSX.
+  const deptCounts = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const tpl of templates ?? []) {
+      map.set(tpl.departmentKey, (map.get(tpl.departmentKey) ?? 0) + 1);
+    }
+    return map;
+  }, [templates]);
 
   const handleActivate = async (tpl: Template) => {
     setBusy(tpl.id);
@@ -177,8 +195,8 @@ export function AgentLibraryPage() {
         <TabBtn active={activeTab === "all"} onClick={() => setActiveTab("all")}>
           {t("agent_lib.all")} ({(templates ?? []).length})
         </TabBtn>
-        {departments.map((dk) => {
-          const count = (templates ?? []).filter((tpl) => tpl.departmentKey === dk).length;
+        {Object.keys(DEPT_KEY_TO_I18N).map((dk) => {
+          const count = deptCounts.get(dk) ?? 0;
           if (count === 0) return null;
           const DIcon = I[DEPT_ICON[dk] ?? "Bot"];
           return (

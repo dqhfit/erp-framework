@@ -105,7 +105,19 @@ export function resolveBinding(
 ): unknown {
   if (!b) return undefined;
   if (b.source === "const") return b.value;
-  if (b.source === "state") return getter(b.key);
+  if (b.source === "state") {
+    // Tra trực tiếp theo key; nếu chưa có VÀ key dạng "obj.field" → đi sâu vào
+    // object lưu ở state (vd "selProduct.id" lấy id của record popup trả về).
+    const direct = getter(b.key);
+    if (direct !== undefined || !b.key.includes(".")) return direct;
+    const parts = b.key.split(".");
+    let cur: unknown = getter(parts[0] ?? b.key);
+    for (const part of parts.slice(1)) {
+      if (cur == null || typeof cur !== "object") return undefined;
+      cur = (cur as Record<string, unknown>)[part];
+    }
+    return cur;
+  }
   if (b.source === "template") return interpolate(b.template, getter);
   return undefined;
 }
@@ -329,6 +341,48 @@ export async function runActionSteps(
         }
       } catch (e) {
         await ctx.dialog.alert(friendlyActionError(e, "cập nhật bản ghi"), {
+          title: "Không lưu được",
+        });
+        throw e;
+      }
+      continue;
+    }
+    if (step.kind === "update-many-fields") {
+      if (!ctx.updateRecord) {
+        ctx.toast.error("Cập nhật không khả dụng trong ngữ cảnh này");
+        return { completed: false, procedureRuns };
+      }
+      const idsRaw = resolveBinding(step.recordIdsBinding, rs.get);
+      const ids = (Array.isArray(idsRaw) ? idsRaw : [])
+        .map((x) => (x == null ? "" : String(x)))
+        .filter((x) => x !== "");
+      if (ids.length === 0) {
+        ctx.toast.info("Chưa chọn bản ghi nào để áp dụng");
+        return { completed: false, procedureRuns };
+      }
+      const data: Record<string, unknown> = {};
+      for (const [field, val] of Object.entries(step.fields)) {
+        if (val === "$currentUser") {
+          data[field] = ctx.currentUser?.name ?? ctx.currentUser?.email ?? "";
+        } else if (val === "$now") {
+          data[field] = new Date().toISOString();
+        } else {
+          data[field] = resolveBinding(val as BindingValue, rs.get);
+        }
+      }
+      try {
+        let ok = 0;
+        for (const id of ids) {
+          await ctx.updateRecord(id, data);
+          ok++;
+        }
+        ctx.toast.success(`Đã áp dụng cho ${ok} bản ghi`);
+        if (step.invalidateEntities?.length) {
+          const stamp = Date.now();
+          for (const eid of step.invalidateEntities) rs.set(`__refresh:${eid}`, stamp);
+        }
+      } catch (e) {
+        await ctx.dialog.alert(friendlyActionError(e, "áp dụng cho các bản ghi"), {
           title: "Không lưu được",
         });
         throw e;

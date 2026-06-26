@@ -1,5 +1,6 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
+import { ChatNavButton } from "@/components/ChatNavButton";
 import { CompanySwitcher } from "@/components/CompanySwitcher";
 import { SubmitFeedbackModal } from "@/components/feedback/SubmitFeedbackModal";
 import { I } from "@/components/Icons";
@@ -145,6 +146,8 @@ export function Topbar() {
         title={t("topbar.toggle_theme")}
       />
       <LanguagePicker />
+
+      <ChatNavButton />
 
       <Button
         variant="ghost"

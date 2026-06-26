@@ -11,13 +11,15 @@ import { procTable, rows } from "../src/proc-table";
 export async function trDenghiThanhtoanHuyduyet(
   db: DB,
   companyId: string,
-  args: { id: string; type: number; lydo?: string | null },
+  args: { id?: string; _id?: string; type: number; lydo?: string | null },
 ): Promise<Array<{ updated: number; dondathang_updated: number }>> {
-  if (!args.id) throw new Error("Thiếu id");
+  if (!args.id && !args._id) throw new Error("Thiếu id");
   if (args.type == null) throw new Error("Thiếu type");
 
   const t = await procTable(db, companyId, "tr_denghi_thanhtoan");
-  const where = sql`${t.text("id")} = ${args.id}`;
+  // _id = uuid VẬT LÝ dòng (rowAction inject) → match cột id; id = GUID
+  // nghiệp vụ (caller cũ) → match field "id" (text).
+  const where = args._id ? sql`id = ${args._id}::uuid` : sql`${t.text("id")} = ${args.id}`;
   const now = new Date().toISOString();
 
   let updated = 0;

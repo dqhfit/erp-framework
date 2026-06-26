@@ -14,7 +14,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { AssignPageToMenuModal } from "@/components/AssignPageToMenuModal";
 import { I } from "@/components/Icons";
-import { Button, Card, Chip, EmptyState, Input, SearchableSelect } from "@/components/ui";
+import { Button, Card, Chip, EmptyState, Input, Modal, SearchableSelect } from "@/components/ui";
 import { dialog } from "@/lib/dialog";
 import { menuNodeLabel } from "@/lib/menu-node-label";
 import { toast } from "@/lib/toast";
@@ -53,6 +53,13 @@ function MenuPagesPage() {
   const [renameCode, setRenameCode] = useState<string | null>(null);
   const [renameVal, setRenameVal] = useState("");
   const [moveCode, setMoveCode] = useState<string | null>(null);
+  // Modal "Thêm trang": parentCode đang thêm vào (null = gốc); null = modal đóng.
+  const [addPageCtx, setAddPageCtx] = useState<{ parentCode: string | null } | null>(null);
+  // Bước trong modal: 'choose' = chọn loại; 'pick-existing' = gắn trang có sẵn.
+  const [addPageStep, setAddPageStep] = useState<"choose" | "pick-existing">("choose");
+  const [addPagePickedId, setAddPagePickedId] = useState<string>("");
+  const [addPageNodeName, setAddPageNodeName] = useState<string>("");
+  const [addPageBusy, setAddPageBusy] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -241,7 +248,7 @@ function MenuPagesPage() {
       const nodes = nodesByPage.get(pageId) ?? [];
       if (nodes.length === 0) return;
       const where = nodes.map((n) => n.name || n.sourceCode).join(", ");
-      const ok = await dialog.confirm(`Gỡ trang khỏi menu “${where}”?`, {
+      const ok = await dialog.confirm(`Gỡ trang khỏi menu "${where}"?`, {
         title: "Gỡ khỏi menu",
         danger: true,
       });
@@ -288,10 +295,26 @@ function MenuPagesPage() {
     void runStruct(code, () => api.renameNode(code, name));
   };
 
-  // Thêm TRANG con: tạo node (kind=page) + 1 trang mới (draft) gán vào node đó
-  // (setNodePage tự xuất bản riêng tư). Trang để trống, mở sau ở Trình dựng.
-  const addPage = async (parentCode: string | null) => {
-    const name = (await dialog.prompt("Tên trang mới:", "", { title: "Thêm trang" }))?.trim();
+  // Mở modal chọn loại thêm trang (tạo mới hoặc gắn trang có sẵn).
+  const openAddPage = (parentCode: string | null) => {
+    setAddPageCtx({ parentCode });
+    setAddPageStep("choose");
+    setAddPagePickedId("");
+    setAddPageNodeName("");
+  };
+
+  // Đóng / reset toàn bộ trạng thái modal thêm trang.
+  const closeAddPage = () => {
+    setAddPageCtx(null);
+    setAddPageStep("choose");
+    setAddPagePickedId("");
+    setAddPageNodeName("");
+  };
+
+  // Nhánh B: Tạo trang mới — đóng modal rồi hỏi tên, giữ nguyên luồng cũ.
+  const addPageNew = async (parentCode: string | null) => {
+    closeAddPage();
+    const name = (await dialog.prompt("Tên trang mới:", "", { title: "Thêm trang mới" }))?.trim();
     if (!name) return;
     setBusyCode(parentCode ?? "__root__");
     try {
@@ -307,11 +330,38 @@ function MenuPagesPage() {
       await hydrate(); // store trang mới
       await reloadRows();
       if (parentCode) setExpanded((s) => new Set(s).add(parentCode));
-      toast.success(`Đã tạo trang “${name}” (đã gán, xuất bản riêng tư)`);
+      toast.success(`Đã tạo trang "${name}" (đã gán, xuất bản riêng tư)`);
     } catch (e) {
       await dialog.alert(`Lỗi: ${(e as Error)?.message ?? e}`);
     } finally {
       setBusyCode(null);
+    }
+  };
+
+  // Nhánh A: Gắn trang CÓ SẴN — tạo node menu rồi liên kết page_id đã chọn.
+  const addPageExisting = async () => {
+    if (!addPageCtx || !addPagePickedId) return;
+    const { parentCode } = addPageCtx;
+    const nodeName = addPageNodeName.trim();
+    if (!nodeName) {
+      await dialog.alert("Vui lòng nhập tên mục trong menu.");
+      return;
+    }
+    setAddPageBusy(true);
+    try {
+      const { sourceCode } = await api.addNode(parentCode, nodeName, "page");
+      const res = await api.setNodePage(sourceCode, addPagePickedId);
+      // setNodePage có thể tự xuất bản trang nháp → đồng bộ store.
+      if (res.autoPublished) publishPage(addPagePickedId, "private");
+      await reloadRows();
+      if (parentCode) setExpanded((s) => new Set(s).add(parentCode));
+      const pg = pages.find((p) => p.id === addPagePickedId);
+      toast.success(`Đã gắn trang "${pg?.name ?? addPagePickedId}" vào menu`);
+      closeAddPage();
+    } catch (e) {
+      await dialog.alert(`Lỗi: ${(e as Error)?.message ?? e}`);
+    } finally {
+      setAddPageBusy(false);
     }
   };
 
@@ -324,7 +374,7 @@ function MenuPagesPage() {
       await api.addNode(parentCode, name, "folder");
       await reloadRows();
       if (parentCode) setExpanded((s) => new Set(s).add(parentCode));
-      toast.success(`Đã tạo thư mục “${name}”`);
+      toast.success(`Đã tạo thư mục "${name}"`);
     } catch (e) {
       await dialog.alert(`Lỗi: ${(e as Error)?.message ?? e}`);
     } finally {
@@ -333,7 +383,7 @@ function MenuPagesPage() {
   };
 
   const removeNode = async (code: string, name: string) => {
-    const ok = await dialog.confirm(`Xoá mục “${name || code}”? Không thể hoàn tác.`, {
+    const ok = await dialog.confirm(`Xoá mục "${name || code}"? Không thể hoàn tác.`, {
       title: "Xoá mục",
       danger: true,
     });
@@ -543,7 +593,7 @@ function MenuPagesPage() {
                         disabled={busy}
                         title="Thêm trang con"
                         aria-label="Thêm trang con"
-                        onClick={() => addPage(r.sourceCode)}
+                        onClick={() => openAddPage(r.sourceCode)}
                         className="inline-flex h-7 w-7 items-center justify-center rounded text-muted hover:bg-accent-2/15 hover:text-accent-2 disabled:opacity-40"
                       >
                         <I.FilePlus size={15} />
@@ -828,7 +878,7 @@ function MenuPagesPage() {
               <Button
                 variant="default"
                 size="sm"
-                onClick={() => addPage(null)}
+                onClick={() => openAddPage(null)}
                 icon={<I.FilePlus size={14} />}
               >
                 Thêm trang gốc
@@ -843,8 +893,8 @@ function MenuPagesPage() {
             <I.FolderPlus size={12} className="inline text-warning" /> = thêm{" "}
             <span className="text-warning">thư mục con</span> (chứa mục, không gắn trang);{" "}
             <I.FilePlus size={12} className="inline text-accent-2" /> = thêm{" "}
-            <span className="text-accent-2">trang con</span> (tạo trang mới + gắn). Chỉnh tay được
-            giữ qua mỗi lần re-import DQHF.
+            <span className="text-accent-2">trang con</span> (chọn trang có sẵn hoặc tạo trang mới).
+            Chỉnh tay được giữ qua mỗi lần re-import DQHF.
           </p>
         )}
 
@@ -909,7 +959,7 @@ function MenuPagesPage() {
                 </p>
               ) : listedPages.length === 0 ? (
                 <p className="px-1 py-3 text-center text-sm text-muted">
-                  Không có trang nào khớp “{orphanQ}”.
+                  Không có trang nào khớp "{orphanQ}".
                 </p>
               ) : (
                 <div className="max-h-[22rem] space-y-0.5 overflow-y-auto pr-1">
@@ -982,7 +1032,7 @@ function MenuPagesPage() {
                 </div>
               )}
               <p className="px-1 text-xs text-muted">
-                “Gán vào menu” → chọn mục menu đích; trang hiện tại của mục đó (nếu có) sẽ được thay
+                "Gán vào menu" → chọn mục menu đích; trang hiện tại của mục đó (nếu có) sẽ được thay
                 bằng trang này. Hoặc gán trực tiếp ở cây menu bên dưới.
               </p>
             </div>
@@ -1012,6 +1062,106 @@ function MenuPagesPage() {
           )}
         </Card>
       </div>
+
+      {/* Modal chọn loại thêm trang: Gắn trang có sẵn / Tạo trang mới. */}
+      <Modal
+        open={addPageCtx !== null}
+        onClose={closeAddPage}
+        title="Thêm trang vào menu"
+        width={480}
+        footer={
+          addPageStep === "pick-existing" ? (
+            <>
+              <Button variant="ghost" size="sm" onClick={closeAddPage}>
+                Huỷ
+              </Button>
+              <Button
+                variant="primary"
+                size="sm"
+                disabled={addPageBusy || !addPagePickedId || !addPageNodeName.trim()}
+                onClick={() => void addPageExisting()}
+              >
+                {addPageBusy ? "Đang gắn…" : "Gắn trang"}
+              </Button>
+            </>
+          ) : undefined
+        }
+      >
+        {addPageStep === "choose" ? (
+          <div className="space-y-3">
+            <p className="text-sm text-muted">Chọn cách thêm trang vào vị trí này trong menu:</p>
+            <div className="grid grid-cols-2 gap-3">
+              {/* Tuỳ chọn A: gắn trang có sẵn */}
+              <button
+                type="button"
+                onClick={() => setAddPageStep("pick-existing")}
+                className="flex flex-col items-center gap-2 rounded-lg border border-border bg-panel-2 p-4 text-center transition-colors hover:border-accent-2 hover:bg-accent-2/10"
+              >
+                <I.File size={24} className="text-accent-2" />
+                <span className="text-sm font-medium text-text">Chọn trang có sẵn</span>
+                <span className="text-[11px] text-muted">Gắn trang đã tạo vào vị trí này</span>
+              </button>
+              {/* Tuỳ chọn B: tạo trang mới (giữ hành vi cũ) */}
+              <button
+                type="button"
+                onClick={() => {
+                  if (addPageCtx) void addPageNew(addPageCtx.parentCode);
+                }}
+                className="flex flex-col items-center gap-2 rounded-lg border border-border bg-panel-2 p-4 text-center transition-colors hover:border-accent hover:bg-accent/10"
+              >
+                <I.FilePlus size={24} className="text-accent" />
+                <span className="text-sm font-medium text-text">Tạo trang mới</span>
+                <span className="text-[11px] text-muted">Tạo trang trắng và gắn vào đây</span>
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {/* Nút quay lại bước chọn loại */}
+            <button
+              type="button"
+              onClick={() => setAddPageStep("choose")}
+              className="flex items-center gap-1.5 text-xs text-muted hover:text-text"
+            >
+              <I.ChevronLeft size={14} />
+              Quay lại
+            </button>
+            <div className="space-y-3">
+              <div>
+                <label className="mb-1 block text-xs font-medium text-muted">Trang</label>
+                <SearchableSelect
+                  value={addPagePickedId}
+                  onChange={(v) => {
+                    setAddPagePickedId(v);
+                    // Tự điền tên node theo tên trang nếu người dùng chưa nhập.
+                    if (!addPageNodeName && v) {
+                      const pg = pages.find((p) => p.id === v);
+                      if (pg) setAddPageNodeName(pg.name);
+                    }
+                  }}
+                  options={pageOptions}
+                  placeholder="Tìm + chọn trang…"
+                  searchPlaceholder="Gõ tên trang…"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-muted">
+                  Tên mục trong menu
+                </label>
+                <Input
+                  value={addPageNodeName}
+                  onChange={(e) => setAddPageNodeName(e.target.value)}
+                  placeholder="Tên hiển thị trong menu…"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && addPagePickedId && addPageNodeName.trim())
+                      void addPageExisting();
+                  }}
+                />
+              </div>
+            </div>
+          </div>
+        )}
+      </Modal>
 
       {/* Gán 1 trang vào 1 mục menu — DUYỆT CÂY (chọn đúng vị trí), hỗ trợ thêm
           mục con + gắn trang built-in. Đồng bộ với nút "Gán vào menu" ở Sidebar. */}

@@ -18,10 +18,9 @@ import {
 } from "@erp-framework/client";
 import { type Role, roleCan } from "@erp-framework/core";
 import { createFileRoute } from "@tanstack/react-router";
-import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
+import { Fragment, lazy, Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { I } from "@/components/Icons";
 import { AuditTab } from "@/components/migration/AuditTab";
-import { DiagramTab } from "@/components/migration/DiagramTab";
 import { DiscoverTab } from "@/components/migration/DiscoverTab";
 import { EnrichTab } from "@/components/migration/EnrichTab";
 import { FullJobsScreen } from "@/components/migration/FullJobsScreen";
@@ -41,6 +40,11 @@ import { useT } from "@/hooks/useT";
 import { dialog } from "@/lib/dialog";
 import { useAuth } from "@/stores/auth";
 import { CockpitPage } from "./settings.cockpit";
+
+// DiagramTab kéo @xyflow/react (~800KB) — lazy-load chỉ khi user bấm tab "Diagram".
+const DiagramTab = lazy(() =>
+  import("@/components/migration/DiagramTab").then((m) => ({ default: m.DiagramTab })),
+);
 
 const migration = createMigrationClient("");
 const connectionsApi = createMssqlConnectionsClient("");
@@ -714,7 +718,12 @@ function ModuleDetailPane({
             onChanged={onChanged}
           />
         )}
-        {activeTab === "diagram" && <DiagramTab moduleName={moduleName} onChanged={onChanged} />}
+        {activeTab === "diagram" && (
+          // Suspense bọc DiagramTab lazy — hiện spinner nhỏ trong lúc tải @xyflow/react.
+          <Suspense fallback={<div className="p-4 text-sm text-muted">Đang tải sơ đồ…</div>}>
+            <DiagramTab moduleName={moduleName} onChanged={onChanged} />
+          </Suspense>
+        )}
         {activeTab === "review" && <ReviewTab moduleName={moduleName} onChanged={onChanged} />}
         {activeTab === "audit" && <AuditTab moduleName={moduleName} />}
         {activeTab === "procedures" && (

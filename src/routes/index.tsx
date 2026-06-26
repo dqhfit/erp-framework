@@ -8,6 +8,7 @@ import { useResolvedShortcuts } from "@/hooks/useShortcut";
 import { useT } from "@/hooks/useT";
 import type { IconName } from "@/lib/object-types";
 import { formatCombo } from "@/lib/shortcuts";
+import { normalizeVi } from "@/lib/text-utils";
 import { useAuth } from "@/stores/auth";
 import type { SidebarFavItem } from "@/stores/preferences";
 import { useUI } from "@/stores/ui";
@@ -78,8 +79,13 @@ function PinPicker({
 }) {
   const t = useT();
   const [q, setQ] = useState("");
-  const ql = q.trim().toLowerCase();
-  const filtered = ql ? candidates.filter((c) => c.label.toLowerCase().includes(ql)) : candidates;
+  // Precompute chuỗi bỏ-dấu 1 lần/candidate — không normalize lại mỗi phím gõ.
+  const normIndex = useMemo(() => candidates.map((c) => normalizeVi(c.label)), [candidates]);
+  const filtered = useMemo(() => {
+    const qn = normalizeVi(q.trim());
+    if (!qn) return candidates;
+    return candidates.filter((_, i) => (normIndex[i] ?? "").includes(qn));
+  }, [candidates, normIndex, q]);
   const CAP = 200;
   const shown = filtered.slice(0, CAP);
   return (

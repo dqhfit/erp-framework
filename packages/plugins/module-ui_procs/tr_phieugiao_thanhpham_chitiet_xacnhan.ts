@@ -13,15 +13,18 @@ import { procTable } from "../src/proc-table";
 export async function trPhieugiaoThanhphamChitietXacnhan(
   db: DB,
   companyId: string,
-  args: { id: number; xacnhan: boolean; nguoixacnhan: string | null },
+  args: { id?: number; _id?: string; xacnhan: boolean; nguoixacnhan: string | null },
 ): Promise<Array<{ updated: number; phieugiao_id: number | null }>> {
-  if (args.id == null) throw new Error("Thiếu id");
+  if (args.id == null && !args._id) throw new Error("Thiếu id");
 
   // GETDATE() của proc gốc
   const ngayxacnhan = new Date().toISOString();
 
   const t = await procTable(db, companyId, "tr_phieugiao_thanhpham_chitiet");
-  const [ct] = await t.listWhere(sql`${t.num("id")} = ${args.id}`, { limit: 1 });
+  // _id = uuid VẬT LÝ dòng (rowAction inject) → match cột id; id = PK int
+  // nghiệp vụ (caller cũ) → match field "id".
+  const where = args._id ? sql`id = ${args._id}::uuid` : sql`${t.num("id")} = ${args.id}`;
+  const [ct] = await t.listWhere(where, { limit: 1 });
 
   if (args.xacnhan) {
     // TODO: EXEC TR_TONKHO_THANHPHAM2_CREATE @madonhang, @masp, @mathung, @soluong
@@ -34,7 +37,7 @@ export async function trPhieugiaoThanhphamChitietXacnhan(
 
   const updated = await t.updateWhere(
     { xacnhan: args.xacnhan, nguoixacnhan: args.nguoixacnhan, ngayxacnhan },
-    sql`${t.num("id")} = ${args.id}`,
+    where,
   );
 
   // TODO: EXEC TR_PHIEUGIAO_THANHPHAM_AUTOFINISH @phieugiao_id — chưa port:

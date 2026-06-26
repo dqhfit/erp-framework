@@ -10,6 +10,7 @@ import { type AgentMemberRole, createAuthClient, createObjectsClient } from "@er
    ========================================================== */
 import { create } from "zustand";
 import { t } from "@/hooks/useT";
+import { closeRealtime } from "@/lib/realtime";
 import { useUserObjects } from "./userObjects";
 
 const auth = createAuthClient("");
@@ -123,6 +124,9 @@ export const useAuth = create<AuthState>()((set, get) => ({
     } catch {
       /* ignore */
     }
+    // Dong WS dung chung — tranh socket cu (phien cu) con song khi user khac
+    // dang nhap lai cung tab. Reconnect se dung cookie phien moi.
+    closeRealtime();
     set({ status: "out", user: null, primaryAgentId: null, myAgentRoles: {} });
   },
 

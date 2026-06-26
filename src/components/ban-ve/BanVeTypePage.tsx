@@ -411,8 +411,15 @@ export function BanVeTypePage({ phanloai }: { phanloai: string }) {
   });
 
   useEffect(() => {
-    jget<{ rows: string[] }>("/banvesvc/hehang").then((d) => {
-      setHehangs((d.rows ?? []).map((h) => ({ value: h, label: h })));
+    // Server trả object { hehang, daco, chuaco, total } từ commit 74bf984;
+    // phải extract .hehang (không dùng trực tiếp object làm value/label).
+    jget<{ rows: Array<{ hehang?: string } | string> }>("/banvesvc/hehang").then((d) => {
+      setHehangs(
+        (d.rows ?? []).map((h) => {
+          const hh = typeof h === "string" ? h : ((h as { hehang?: string }).hehang ?? "");
+          return { value: hh, label: hh };
+        }),
+      );
     });
   }, []);
 
@@ -778,11 +785,15 @@ export function BanVeTypePage({ phanloai }: { phanloai: string }) {
         const fd = new FormData();
         fd.append("file", f);
         // Lấy thư mục tương ứng với loại bản vẽ
+        // Map loại bản vẽ → thư mục lưu file (giống getPhanloaiSlug trong handleRowFileChange).
+        // BUG CŨ: thiếu "Bản vẽ mẫu" và "Bản vẽ phát triển" → file lên thư mục ky-thuat sai.
         let sub = "ky-thuat";
         if (subType === "Bản vẽ đóng gói") sub = "dong-goi";
         else if (subType === "Bản vẽ dao") sub = "dao";
         else if (subType === "Bản vẽ AI") sub = "ai";
         else if (subType === "Màu sắc" || subType === "Bản vẽ màu sắc") sub = "mau-sac";
+        else if (subType === "Bản vẽ mẫu" || subType === "Bản vẽ mẫu (PPS)") sub = "mau";
+        else if (subType === "Bản vẽ phát triển") sub = "phat-trien";
 
         const upRes = await fetch(`/upload/file?subfolder=${sub}`, {
           method: "POST",

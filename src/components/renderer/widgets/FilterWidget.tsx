@@ -2,7 +2,7 @@
    riêng) + MultiItemFilter (nhiều item, lọc cha-con + visibleWhen) + FilterWidget
    (dispatcher) + LegacyCascadeFilter (bộ lọc tầng cũ). Đẩy/đọc pageState. Tách
    từ ConsumerPage.tsx (Phase A4) — chỉ di chuyển code, KHÔNG đổi hành vi. */
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { I } from "@/components/Icons";
 import { usePageState, useWidgetData } from "@/components/renderer/page-data";
@@ -10,7 +10,157 @@ import type { FItemCfg } from "@/components/renderer/page-types";
 import { SearchableSelect } from "@/components/ui";
 import { TagBox } from "@/components/ui/tagbox";
 import { useDropdownPosition } from "@/hooks/useDropdownPosition";
+import { normalizeVi } from "@/lib/text-utils";
 import { cn } from "@/lib/utils";
+
+/** Tối đa option render ra DOM/lần trong dropdown lọc — cap để không lag. */
+const FILTER_RENDER_CAP = 150;
+
+/** Combobox ĐA CHỌN cho filter: dropdown checkbox + search, nhãn theo optionLabels,
+ *  ghi string[] vào pageState (list lọc op "in"). */
+function MultiCombo({
+  stateKey,
+  label,
+  options,
+  width,
+}: {
+  stateKey: string;
+  label: string;
+  options: { value: string; label: string }[];
+  width?: number;
+}) {
+  const pageState = usePageState();
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const pos = useDropdownPosition(triggerRef, open);
+
+  const raw = pageState.get(stateKey);
+  const selected: string[] = Array.isArray(raw) ? (raw as string[]) : [];
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      const tgt = e.target as Node;
+      if (!triggerRef.current?.contains(tgt) && !panelRef.current?.contains(tgt)) setOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [open]);
+
+  // Precompute nhãn bỏ-dấu 1 lần/option + defer để gõ mượt với list lớn.
+  const normIndex = useMemo(() => options.map((o) => normalizeVi(o.label)), [options]);
+  const deferredQuery = useDeferredValue(query);
+  const filtered = useMemo(() => {
+    const q = normalizeVi(deferredQuery.trim());
+    if (!q) return options;
+    return options.filter((_, i) => (normIndex[i] ?? "").includes(q));
+  }, [options, normIndex, deferredQuery]);
+  const shown =
+    filtered.length > FILTER_RENDER_CAP ? filtered.slice(0, FILTER_RENDER_CAP) : filtered;
+  const overflow = filtered.length - shown.length;
+  const toggle = (v: string) =>
+    pageState.set(
+      stateKey,
+      selected.includes(v) ? selected.filter((x) => x !== v) : [...selected, v],
+    );
+
+  const triggerLabel =
+    selected.length === 0
+      ? label
+        ? `${label}: tất cả`
+        : "— tất cả —"
+      : `${label ? `${label}: ` : ""}${selected.length} đã chọn`;
+  const wrapCls = width ? "shrink-0" : "shrink-0 min-w-[160px] max-w-[240px]";
+
+  return (
+    <div className={wrapCls} style={width ? { width } : undefined}>
+      <button
+        ref={triggerRef}
+        type="button"
+        onClick={() => {
+          setOpen((o) => !o);
+          setQuery("");
+        }}
+        className="input flex w-full items-center justify-between gap-2 text-left"
+      >
+        <span className={cn("truncate", selected.length === 0 && "text-muted")}>
+          {triggerLabel}
+        </span>
+        <I.ChevronDown size={14} className="shrink-0 text-muted" />
+      </button>
+      {open &&
+        pos &&
+        createPortal(
+          <div
+            ref={panelRef}
+            style={{
+              position: "fixed",
+              top: pos.top,
+              left: pos.left,
+              minWidth: Math.max(pos.width, 200),
+            }}
+            className="z-[1000] w-max max-w-[300px] rounded-md border border-border bg-panel shadow-lg"
+          >
+            <div className="flex items-center gap-1.5 border-b border-border px-2 py-1.5">
+              <I.Search size={13} className="shrink-0 text-muted" />
+              <input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Tìm…"
+                className="w-full bg-transparent text-sm outline-none placeholder:text-muted/60"
+              />
+              {selected.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => pageState.set(stateKey, [])}
+                  className="shrink-0 text-xs text-muted hover:text-danger"
+                  title="Bỏ chọn hết"
+                >
+                  <I.X size={12} />
+                </button>
+              )}
+            </div>
+            <ul className="max-h-60 overflow-y-auto py-1">
+              {filtered.length === 0 ? (
+                <li className="px-3 py-2 text-sm text-muted italic">Không có kết quả</li>
+              ) : (
+                shown.map((o) => {
+                  const checked = selected.includes(o.value);
+                  return (
+                    <li key={o.value}>
+                      <button
+                        type="button"
+                        onClick={() => toggle(o.value)}
+                        className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm hover:bg-hover/40"
+                      >
+                        <span
+                          className={cn(
+                            "flex h-4 w-4 shrink-0 items-center justify-center rounded border",
+                            checked ? "bg-accent border-accent text-white" : "border-border",
+                          )}
+                        >
+                          {checked && <I.Check size={11} />}
+                        </span>
+                        <span className="truncate">{o.label}</span>
+                      </button>
+                    </li>
+                  );
+                })
+              )}
+              {overflow > 0 && (
+                <li className="px-3 py-1.5 text-xs text-muted/70 italic border-t border-border/50">
+                  Còn {overflow} mục — gõ thêm để thu hẹp…
+                </li>
+              )}
+            </ul>
+          </div>,
+          document.body,
+        )}
+    </div>
+  );
+}
 
 /** Một thành phần lọc: combobox / tagbox / search với data loading riêng. */
 function FilterItem({ item }: { item: FItemCfg }) {
@@ -18,6 +168,18 @@ function FilterItem({ item }: { item: FItemCfg }) {
   const { rows } = useWidgetData(item as Record<string, unknown>);
   const stateKey = item.stateKey || "";
   const label = item.label || "";
+
+  // Seed giá trị chọn sẵn (defaultValue) 1 lần khi mount — chỉ khi state CHƯA có
+  // (không ghi đè lựa chọn người dùng / giá trị đã khôi phục).
+  const seededRef = useRef(false);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: chủ ý seed 1 lần khi mount
+  useEffect(() => {
+    if (seededRef.current) return;
+    seededRef.current = true;
+    if (stateKey && item.defaultValue !== undefined && pageState.get(stateKey) === undefined) {
+      pageState.set(stateKey, item.defaultValue);
+    }
+  }, []);
 
   // Lọc liên kết (cross-filter): gộp phụ thuộc legacy (filterFromState/filterField)
   // + dependsOn[]. Options của item thu hẹp theo MỌI cha đang có giá trị (AND).
@@ -47,11 +209,12 @@ function FilterItem({ item }: { item: FItemCfg }) {
 
   const labelOptions = useMemo(() => {
     if (item.options) {
+      const labels = item.optionLabels ?? {};
       return item.options
         .split(",")
         .map((s) => s.trim())
         .filter(Boolean)
-        .map((o) => ({ value: o, label: o }));
+        .map((o) => ({ value: o, label: labels[o] ?? o }));
     }
     if (!item.field || !filteredRows.length) return [];
     const seen = new Set<string>();
@@ -65,7 +228,7 @@ function FilterItem({ item }: { item: FItemCfg }) {
     }
     out.sort((a, b) => a.value.localeCompare(b.value));
     return out;
-  }, [filteredRows, item.field, item.labelField, item.options]);
+  }, [filteredRows, item.field, item.labelField, item.options, item.optionLabels]);
 
   const suggestions = labelOptions.map((o) => o.value);
 
@@ -85,6 +248,11 @@ function FilterItem({ item }: { item: FItemCfg }) {
   const wrapStyle = item.width ? { width: item.width } : undefined;
 
   if (item.kind === "combobox") {
+    if (item.multiSelect) {
+      return (
+        <MultiCombo stateKey={stateKey} label={label} options={labelOptions} width={item.width} />
+      );
+    }
     const val = (pageState.get(stateKey) as string) ?? "";
     const wrapCls = item.width ? "shrink-0" : "shrink-0 min-w-[160px] max-w-[240px]";
     return (
@@ -240,7 +408,6 @@ function LegacyCascadeFilter({ cfg }: { cfg: Record<string, unknown> }) {
   const dropPos = useDropdownPosition(triggerRef, dropOpen);
 
   // Đóng dropdown khi click ngoài.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: chỉ gắn/gỡ listener khi dropOpen đổi
   useEffect(() => {
     if (!dropOpen) return;
     const handler = (e: MouseEvent) => {
@@ -252,18 +419,22 @@ function LegacyCascadeFilter({ cfg }: { cfg: Record<string, unknown> }) {
     return () => document.removeEventListener("mousedown", handler);
   }, [dropOpen]);
 
+  // Precompute chuỗi bỏ-dấu 1 lần/option (không normalize lại mỗi phím gõ).
+  const productNormIndex = useMemo(
+    () => productOptions.map((o) => normalizeVi(`${o.label} ${o.value ?? ""}`)),
+    [productOptions],
+  );
+  const deferredSearchQ = useDeferredValue(searchQ);
   const filteredProducts = useMemo(() => {
-    const q = searchQ.trim().toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/đ/g, "d");
-    return productOptions.filter((o) => {
-      if (!q) return true;
-      const norm = (o.label + " " + (o.value ?? ""))
-        .toLowerCase()
-        .normalize("NFD")
-        .replace(/[̀-ͯ]/g, "")
-        .replace(/đ/g, "d");
-      return norm.includes(q);
-    });
-  }, [productOptions, searchQ]);
+    const q = normalizeVi(deferredSearchQ.trim());
+    if (!q) return productOptions;
+    return productOptions.filter((_, i) => (productNormIndex[i] ?? "").includes(q));
+  }, [productOptions, productNormIndex, deferredSearchQ]);
+  const shownProducts =
+    filteredProducts.length > FILTER_RENDER_CAP
+      ? filteredProducts.slice(0, FILTER_RENDER_CAP)
+      : filteredProducts;
+  const productOverflow = filteredProducts.length - shownProducts.length;
 
   const selectedLabel = productOptions.find((o) => o.value === masp)?.label ?? masp;
   const title = (cfg.title as string) || "Sản phẩm";
@@ -368,7 +539,7 @@ function LegacyCascadeFilter({ cfg }: { cfg: Record<string, unknown> }) {
                 {filteredProducts.length === 0 ? (
                   <li className="px-3 py-2 text-sm text-muted italic">Không có kết quả</li>
                 ) : (
-                  filteredProducts.map((o) => (
+                  shownProducts.map((o) => (
                     <li key={o.value}>
                       <button
                         type="button"
@@ -387,6 +558,11 @@ function LegacyCascadeFilter({ cfg }: { cfg: Record<string, unknown> }) {
                       </button>
                     </li>
                   ))
+                )}
+                {productOverflow > 0 && (
+                  <li className="px-3 py-1.5 text-xs text-muted/70 italic border-t border-border/50">
+                    Còn {productOverflow} mục — gõ thêm để thu hẹp…
+                  </li>
                 )}
               </ul>
             </div>,

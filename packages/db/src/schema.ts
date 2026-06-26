@@ -12,6 +12,7 @@
 
 export * from "./schema/activity";
 export * from "./schema/auth";
+export * from "./schema/chat";
 export * from "./schema/entities";
 export * from "./schema/entity-advanced";
 export * from "./schema/enums";

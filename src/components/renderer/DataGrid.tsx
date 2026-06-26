@@ -173,8 +173,9 @@ export function DataGrid<T>({
   const theadRef = useRef<HTMLTableSectionElement>(null);
   const [hdrTops, setHdrTops] = useState<number[]>([]);
   const [filterTop, setFilterTop] = useState(0);
-  // Không deps: đo lại sau mỗi render (cột/độ cao có thể đổi) — đã chặn set dư
-  // bằng so sánh giá trị nên không vòng lặp; ResizeObserver bắt thay đổi kích thước.
+  // Deps []: đo 1 lần khi mount để gắn ResizeObserver — observer tự kích hoạt
+  // lại khi thead thay đổi kích thước (thêm/bớt cột, wrap tiêu đề).
+  // Đã chặn set dư bằng so sánh giá trị nên không vòng lặp.
   useLayoutEffect(() => {
     const thead = theadRef.current;
     if (!thead) return;
@@ -197,7 +198,7 @@ export function DataGrid<T>({
     const ro = new ResizeObserver(measure);
     ro.observe(thead);
     return () => ro.disconnect();
-  });
+  }, []);
 
   // Restore (mount) + debounce-save trạng thái lưới xuống IDB theo stateKey.
   useGridPersistence({
@@ -448,6 +449,8 @@ export function DataGrid<T>({
   const leafCols = table
     .getVisibleLeafColumns()
     .filter((c) => c.id !== "__expand__" && c.id !== "__select__");
+  // Chuỗi id ổn định để dùng làm deps useMemo (tránh trigger khi array ref mới nhưng id giữ nguyên).
+  const leafColIds = leafCols.map((c) => c.id).join(",");
   const exportCols = leafCols.map((c) => ({
     id: c.id,
     header: c.columnDef.header?.toString() ?? c.id,
@@ -502,24 +505,28 @@ export function DataGrid<T>({
   // không set → auto "sum". Có ≥1 cột summary mới hiện footer.
   // Server mode: tính client trên 1 trang là SAI → dùng server.summary (toàn
   // bảng) nếu caller cấp; không có → tắt footer.
-  const clientSummaryByCol = new Map<string, { type: SummaryType; value: number }>();
-  if (!serverMode) {
-    for (const col of leafCols) {
-      const colMeta = col.columnDef.meta as GridColMeta | undefined;
-      const type: SummaryType | null = colMeta?.summary
-        ? colMeta.summary
-        : colMeta?.noSummary
-          ? null
-          : isNumericColumn(filteredRows, col.id)
-            ? "sum"
-            : null;
-      if (type)
-        clientSummaryByCol.set(col.id, {
-          type,
-          value: computeSummary(filteredRows, col.id, type),
-        });
+  // biome-ignore lint/correctness/useExhaustiveDependencies: leafColIds (string ổn định) thay leafCols array mới mỗi render; serverMode ổn định từ props
+  const clientSummaryByCol = useMemo(() => {
+    const m = new Map<string, { type: SummaryType; value: number }>();
+    if (!serverMode) {
+      for (const col of leafCols) {
+        const colMeta = col.columnDef.meta as GridColMeta | undefined;
+        const type: SummaryType | null = colMeta?.summary
+          ? colMeta.summary
+          : colMeta?.noSummary
+            ? null
+            : isNumericColumn(filteredRows, col.id)
+              ? "sum"
+              : null;
+        if (type)
+          m.set(col.id, {
+            type,
+            value: computeSummary(filteredRows, col.id, type),
+          });
+      }
     }
-  }
+    return m;
+  }, [filteredRows, leafColIds, serverMode]);
   const summaryByCol = serverMode
     ? new Map<string, { type: SummaryType; value: number }>(Object.entries(server?.summary ?? {}))
     : clientSummaryByCol;

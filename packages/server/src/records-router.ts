@@ -29,7 +29,7 @@ import { makeInvokeProcedure } from "./procedure-runner";
 import { indexRecordEmbedding, semanticSearchRecords } from "./record-embedding";
 import { getRecordStore } from "./record-store";
 import { recordTree } from "./record-tree";
-import { applyRollups, invalidateRollupsFor } from "./rollup";
+import { applyRollups, applyRollupsBatch, invalidateRollupsFor } from "./rollup";
 import {
   applyCascadeOnDelete,
   assertUnique,
@@ -86,23 +86,23 @@ export const recordsRouter = router({
       });
       const listFields = await loadEntityFields(ctx.db, ctx.user.companyId, input.entityId);
       // Rollup fields (aggregate cross-row, vd tổng tiền đơn = sum dòng chi tiết)
-      // — tính per-row, có cache (rollup_cache + rollup_invalidated). Bỏ qua nếu
-      // entity không có field rollup nào (zero overhead cho list thường).
+      // — có cache (rollup_cache + rollup_invalidated). Bỏ qua nếu entity không có
+      // field rollup (zero overhead). Dùng batch (1 query/field) thay vì N×M queries.
       let outRows = result.rows;
       if (listFields.some((f) => f.type === "rollup" && f.rollup)) {
-        outRows = await Promise.all(
-          outRows.map(async (r) => ({
-            ...r,
-            data: await applyRollups(
-              ctx.db,
-              ctx.user.companyId,
-              listFields,
-              r.id,
-              (r.data ?? {}) as Record<string, unknown>,
-              { rollupCache: r.rollupCache, rollupInvalidated: r.rollupInvalidated },
-            ),
+        // Batch: gom toan bo matchValues cua page -> 1 query/rollup-field.
+        const computedDatas = await applyRollupsBatch(
+          ctx.db,
+          ctx.user.companyId,
+          listFields,
+          outRows.map((r) => ({
+            id: r.id,
+            data: (r.data ?? {}) as Record<string, unknown>,
+            rollupCache: r.rollupCache,
+            rollupInvalidated: r.rollupInvalidated,
           })),
         );
+        outRows = outRows.map((r, i) => ({ ...r, data: computedDatas[i]! }));
       }
       // Field-level RBAC: strip cột không có quyền đọc khỏi TỪNG row.
       // (get/export đã strip từ trước — list bị sót, vá 2026-06-11.)

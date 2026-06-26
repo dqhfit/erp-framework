@@ -10,14 +10,18 @@ export async function trPhieuxuatUpdatestatus(
   db: DB,
   companyId: string,
   args: {
-    so_px: string;
+    so_px?: string;
+    _id?: string;
     active: boolean;
   },
 ): Promise<Array<Record<string, never>>> {
-  if (!args.so_px) throw new Error("Thiếu so_px");
+  if (!args.so_px && !args._id) throw new Error("Thiếu so_px");
 
   const t = await procTable(db, companyId, "tr_phieuxuat");
-  await t.updateWhere({ active: args.active }, sql`${t.text("sopx")} = ${args.so_px}`);
+  // _id = uuid VẬT LÝ dòng (rowAction inject) → match cột id; so_px = số phiếu
+  // nghiệp vụ (caller cũ) → match field "sopx". Phiếu xuất head 1 dòng/số PX.
+  const where = args._id ? sql`id = ${args._id}::uuid` : sql`${t.text("sopx")} = ${args.so_px}`;
+  await t.updateWhere({ active: args.active }, where);
 
   return [];
 }

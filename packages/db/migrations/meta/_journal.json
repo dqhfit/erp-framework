@@ -629,7 +629,49 @@
       "idx": 89,
       "version": "7",
       "when": 1783800002000,
-      "tag": "0089_tr_bemat_created_by",
+      "tag": "0089_chat",
+      "breakpoints": false
+    },
+    {
+      "idx": 90,
+      "version": "7",
+      "when": 1783800003000,
+      "tag": "0090_knowledge_edges",
+      "breakpoints": false
+    },
+    {
+      "idx": 91,
+      "version": "7",
+      "when": 1783800004000,
+      "tag": "0091_chat_phase2",
+      "breakpoints": false
+    },
+    {
+      "idx": 92,
+      "version": "7",
+      "when": 1783800005000,
+      "tag": "0092_chat_attachments",
+      "breakpoints": false
+    },
+    {
+      "idx": 93,
+      "version": "7",
+      "when": 1783800006000,
+      "tag": "0093_migration_reverse_sync",
+      "breakpoints": false
+    },
+    {
+      "idx": 94,
+      "version": "7",
+      "when": 1783800007000,
+      "tag": "0094_perf_indexes",
+      "breakpoints": false
+    },
+    {
+      "idx": 95,
+      "version": "7",
+      "when": 1783800008000,
+      "tag": "0095_tr_bemat_created_by",
       "breakpoints": false
     }
   ]

@@ -159,7 +159,7 @@ function extractPageRefs(content) {
       else if (v && typeof v === "object") walk(v);
     }
   }
-  components.forEach((c) => walk(c.config ?? {}));
+  for (const c of components) walk(c.config ?? {});
   return { entityIds, dsIds };
 }
 
@@ -339,7 +339,9 @@ try {
     : FORCE_PULL
       ? "1 CHIỀU ↓ PULL (prod ghi đè local)"
       : "2 CHIỀU (so timestamp)";
-  console.log(`Đồng bộ pages + datasources — ${modeLabel} — ${APPLY ? "APPLY" : "DRY (xem trước)"}`);
+  console.log(
+    `Đồng bộ pages + datasources — ${modeLabel} — ${APPLY ? "APPLY" : "DRY (xem trước)"}`,
+  );
   if (ONLY.size) console.log(`  --only: ${[...ONLY].join(", ")}`);
   if (NO_DEPS) console.log(`  --no-deps: bỏ qua đồng bộ datasource`);
 
@@ -371,7 +373,7 @@ try {
 
     if (FORCE_PUSH) {
       // 1 chiều: local wins → đẩy mọi trang local trong scope (bỏ qua so sánh).
-      if (!lp || (!inScope(lp.name))) continue;
+      if (!lp || !inScope(lp.name)) continue;
       const clash = !pp && prodBaseToIds.get(baseName(lp.name));
       if (clash && clash.size > 0) strays.push(lp);
       else toPush.push({ p: lp, why: pp ? "ghi đè prod" : "mới ở local" });
@@ -401,12 +403,18 @@ try {
   console.log(
     `\nKế hoạch: PUSH ${toPush.length} · PULL ${toPull.length} · STRAY ${strays.length} · CONFLICT ${conflicts.length} · SKIP(trùng) ${skip}`,
   );
-  for (const { p, why } of toPush) console.log(`  ↑ PUSH  ${p.name} [${p.id.slice(0, 8)}] (${why})`);
-  for (const { p, why } of toPull) console.log(`  ↓ PULL  ${p.name} [${p.id.slice(0, 8)}] (${why})`);
+  for (const { p, why } of toPush)
+    console.log(`  ↑ PUSH  ${p.name} [${p.id.slice(0, 8)}] (${why})`);
+  for (const { p, why } of toPull)
+    console.log(`  ↓ PULL  ${p.name} [${p.id.slice(0, 8)}] (${why})`);
   for (const p of strays)
-    console.log(`  ⚠ STRAY ${p.name} [${p.id.slice(0, 8)}] — prod có "${baseName(p.name)}" id khác → xoá local rồi PULL`);
+    console.log(
+      `  ⚠ STRAY ${p.name} [${p.id.slice(0, 8)}] — prod có "${baseName(p.name)}" id khác → xoá local rồi PULL`,
+    );
   for (const p of conflicts)
-    console.log(`  ⁉ CONFLICT ${p.name} [${p.id.slice(0, 8)}] — cùng giờ, khác nội dung → tự quyết`);
+    console.log(
+      `  ⁉ CONFLICT ${p.name} [${p.id.slice(0, 8)}] — cùng giờ, khác nội dung → tự quyết`,
+    );
 
   // ── Phân tích dependency (DS + entity) ───────────────────────────────
   const pushDsIds = new Set();
@@ -440,11 +448,16 @@ try {
     }
   } else {
     // ── Build entity maps ────────────────────────────────────────────
-    let entityMaps = { local: { byId: new Map(), byName: new Map() }, prod: { byId: new Map(), byName: new Map() } };
+    let entityMaps = {
+      local: { byId: new Map(), byName: new Map() },
+      prod: { byId: new Map(), byName: new Map() },
+    };
     if (!NO_DEPS && (pushDsIds.size || pullDsIds.size)) {
       console.log("\n[Bước 1] Đọc entity maps (local + prod)…");
       entityMaps = await buildEntityMaps(sqldb);
-      console.log(`  local ${entityMaps.local.byId.size} entity · prod ${entityMaps.prod.byId.size} entity`);
+      console.log(
+        `  local ${entityMaps.local.byId.size} entity · prod ${entityMaps.prod.byId.size} entity`,
+      );
     }
 
     // ── PUSH datasources trước (để trang đẩy lên prod dùng đúng DS UUID) ──
@@ -471,7 +484,8 @@ try {
         }
       }
       if (!NO_DEPS) {
-        const trEntity = (id) => translateEntityId(id, entityMaps.local.byId, entityMaps.prod.byName);
+        const trEntity = (id) =>
+          translateEntityId(id, entityMaps.local.byId, entityMaps.prod.byName);
         const trDs = (id) => localDsIdToProdDsId.get(id) ?? id;
         const translated = translatePageContent(content, trEntity, trDs);
         // Chỉ dùng bản dịch nếu có thay đổi thật sự (tránh ghi khi không cần)
@@ -496,7 +510,9 @@ try {
       });
       if (r.status === "name_conflict") {
         conflict++;
-        console.log(`  ✗ PUSH ${p.name}: name_conflict (prod có tên này ở id ${String(r.pageId).slice(0, 8)})`);
+        console.log(
+          `  ✗ PUSH ${p.name}: name_conflict (prod có tên này ở id ${String(r.pageId).slice(0, 8)})`,
+        );
       } else {
         pushed++;
         console.log(`  ↑ ${p.name} → ${r.status}`);
@@ -539,7 +555,8 @@ try {
             }
           }
           if (!NO_DEPS && entityMaps.prod.byId.size) {
-            const trEntity = (id) => translateEntityId(id, entityMaps.prod.byId, entityMaps.local.byName);
+            const trEntity = (id) =>
+              translateEntityId(id, entityMaps.prod.byId, entityMaps.local.byName);
             const trDs = (id) => id; // DS UUID giữ nguyên prod UUID
             const translated = translatePageContent(content, trEntity, trDs);
             if (JSON.stringify(translated) !== JSON.stringify(content)) content = translated;

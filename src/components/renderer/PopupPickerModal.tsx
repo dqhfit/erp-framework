@@ -8,24 +8,145 @@
    - form   : Form trống, người dùng nhập, "Xác nhận" → trả về object
    ========================================================== */
 import { createApiDataSource } from "@erp-framework/client";
-import { type ReactNode, useEffect, useState } from "react";
+import { type ReactNode, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { I } from "@/components/Icons";
 import { FileCell, ImageCell } from "@/components/renderer/FilePreviewModal";
 import { Button, Input, Modal, SearchableSelect } from "@/components/ui";
-
+import { normalizeVi } from "@/lib/text-utils";
 import { useUserObjects } from "@/stores/userObjects";
 import type { ActionStepOpenPopup } from "@/types/page";
+
+/** Tối đa dòng render trong bảng list — cap để DOM không lag khi tập kết quả lớn. */
+const LIST_ROW_CAP = 200;
+
+/** Ngưỡng bản ghi: nhỏ hơn → lọc client; lớn hơn → tìm server-side (debounce). */
+const LOOKUP_THRESHOLD = 300;
+
+/** Combobox cho 1 field lookup trong form popup.
+ *  Tự quyết small/large: tải sẵn ≤LOOKUP_THRESHOLD → lọc client (zero re-fetch);
+ *  entity lớn → gõ debounce 350ms → tìm server-side, huỷ request cũ khi gõ tiếp. */
+function PopupLookupSelect({
+  entity,
+  valueField,
+  labelField,
+  value,
+  onChange,
+}: {
+  entity: string;
+  valueField: string;
+  labelField: string;
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  const [opts, setOpts] = useState<Array<{ value: string; label: string }>>([]);
+  const [isLarge, setIsLarge] = useState(false);
+  const [searching, setSearching] = useState(false);
+  // term gõ — cập nhật đồng bộ (ô không lag); fetch chạy qua debounce 350ms
+  const [q, setQ] = useState("");
+  // Giữ preload để khôi phục khi q xoá trống (không fetch lại)
+  const preloadRef = useRef<Array<{ value: string; label: string }>>([]);
+
+  // Tải sẵn ban đầu: limit THRESHOLD+1 → quyết small/large
+  useEffect(() => {
+    let alive = true;
+    api
+      .getRecords(entity, { limit: LOOKUP_THRESHOLD + 1 })
+      .then((res) => {
+        if (!alive) return;
+        const large = res.rows.length > LOOKUP_THRESHOLD;
+        setIsLarge(large);
+        const preload = (large ? res.rows.slice(0, LOOKUP_THRESHOLD) : res.rows)
+          .map((r) => {
+            const d = r.data as Record<string, unknown>;
+            const val = d[valueField];
+            const lbl = d[labelField];
+            return {
+              value: val == null ? "" : String(val),
+              label: lbl == null ? String(val ?? "") : String(lbl),
+            };
+          })
+          .filter((o) => o.value !== "")
+          .sort((a, b) => a.label.localeCompare(b.label, "vi"));
+        preloadRef.current = preload;
+        setOpts(preload);
+      })
+      .catch(() => {
+        if (alive) setOpts([]);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [entity, valueField, labelField]);
+
+  // Server-search (chỉ khi entity lớn): debounce 350ms, huỷ request cũ khi gõ tiếp.
+  useEffect(() => {
+    if (!isLarge) return;
+    const term = q.trim();
+    if (!term) {
+      // Xoá term → khôi phục preload, không cần fetch lại
+      setOpts(preloadRef.current);
+      return;
+    }
+    let alive = true;
+    const handle = setTimeout(() => {
+      setSearching(true);
+      api
+        .getRecords(entity, {
+          filters: { [labelField]: { op: "contains", value: term } },
+          limit: 40,
+        })
+        .then((res) => {
+          if (!alive) return;
+          setOpts(
+            res.rows
+              .map((r) => {
+                const d = r.data as Record<string, unknown>;
+                const val = d[valueField];
+                const lbl = d[labelField];
+                return {
+                  value: val == null ? "" : String(val),
+                  label: lbl == null ? String(val ?? "") : String(lbl),
+                };
+              })
+              .filter((o) => o.value !== ""),
+          );
+          setSearching(false);
+        })
+        .catch(() => {
+          if (alive) setSearching(false);
+        });
+    }, 350);
+    return () => {
+      alive = false;
+      clearTimeout(handle);
+    };
+  }, [q, isLarge, entity, valueField, labelField]);
+
+  return (
+    <SearchableSelect
+      className="w-full"
+      value={value}
+      onChange={onChange}
+      options={opts}
+      emptyOption="— chọn —"
+      onSearch={isLarge ? setQ : undefined}
+      loading={isLarge ? searching : undefined}
+    />
+  );
+}
 
 const api = createApiDataSource("");
 
 interface Props {
   step: ActionStepOpenPopup;
   recordId?: unknown;
+  /** (list) Lọc server-side đã resolve: field → giá trị (op "="). */
+  filters?: Record<string, unknown>;
   onSelect: (value: Record<string, unknown>) => void;
   onCancel: () => void;
 }
 
-export function PopupPickerModal({ step, recordId, onSelect, onCancel }: Props) {
+export function PopupPickerModal({ step, recordId, filters, onSelect, onCancel }: Props) {
   const entities = useUserObjects((s) => s.entities);
   const entity = entities.find((e) => e.id === step.entity);
 
@@ -51,10 +172,13 @@ export function PopupPickerModal({ step, recordId, onSelect, onCancel }: Props) 
   });
 
   const [rows, setRows] = useState<Record<string, unknown>[]>([]);
-  // Options cho field-dropdown nguồn-entity (lookups): { fieldName → [{value,label}] }.
-  const [lookupOpts, setLookupOpts] = useState<
-    Record<string, Array<{ value: string; label: string }>>
-  >({});
+  // Map field name → lookup config từ step — tra O(1) trong render (thay cho lookupOpts + effect)
+  const lookupCfgByField = useMemo(
+    () => Object.fromEntries((step.lookups ?? []).map((l) => [l.field, l])),
+    [step.lookups],
+  );
+  // (list) Map nhãn cho cột lookup: { fieldName → { giá trị lưu → nhãn } }.
+  const [listLabels, setListLabels] = useState<Record<string, Record<string, string>>>({});
   const [detailRow, setDetailRow] = useState<Record<string, unknown> | null>(null);
   const [formValues, setFormValues] = useState<Record<string, string>>({});
   // Dữ liệu record nạp sẵn cho form "Sửa" (có recordId). null = form thêm mới.
@@ -62,8 +186,22 @@ export function PopupPickerModal({ step, recordId, onSelect, onCancel }: Props) 
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [search, setSearch] = useState("");
+  // (list multiSelect) tập id dòng đang chọn.
+  const [selected, setSelected] = useState<Set<string>>(() => new Set());
+  const multi = step.popupMode === "list" && step.multiSelect === true;
+  const toggleSel = (id: string) =>
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+
+  // Khoá ổn định cho filters (object đổi identity mỗi render) → tránh refetch loop.
+  const filtersKey = JSON.stringify(filters ?? null);
 
   /* Fetch records (list) / record đơn (detail) / record nạp form sửa (form+recordId) */
+  // biome-ignore lint/correctness/useExhaustiveDependencies: filters dùng qua filtersKey (khoá JSON ổn định) thay vì object identity
   useEffect(() => {
     if (!step.entity) return;
     // Form THÊM mới (không recordId) → không fetch; effect init rỗng bên dưới lo.
@@ -71,8 +209,17 @@ export function PopupPickerModal({ step, recordId, onSelect, onCancel }: Props) 
 
     if (step.popupMode === "list") {
       setLoading(true);
+      // Lọc server-side theo filters (op "=") — vd chỉ sản phẩm cùng màu phiên bản.
+      const f = filters
+        ? Object.fromEntries(
+            Object.entries(filters).map(([k, v]) => [k, { op: "=" as const, value: v }]),
+          )
+        : undefined;
+      const sort = step.listSort
+        ? { sort: { field: step.listSort.field, dir: step.listSort.dir ?? "asc" } }
+        : {};
       api
-        .getRecords(step.entity, { limit: 300 })
+        .getRecords(step.entity, { limit: 500, ...(f ? { filters: f } : {}), ...sort })
         .then((res) => setRows(res.rows.map((r) => ({ ...r.data, id: r.id }))))
         .catch(() => setRows([]))
         .finally(() => setLoading(false));
@@ -97,7 +244,7 @@ export function PopupPickerModal({ step, recordId, onSelect, onCancel }: Props) 
     } else {
       setLoading(false);
     }
-  }, [step.entity, step.popupMode, recordId]);
+  }, [step.entity, step.popupMode, recordId, filtersKey]);
 
   /* Khởi tạo form: rỗng (thêm mới) hoặc đổ từ formSeed (sửa). */
   // biome-ignore lint/correctness/useExhaustiveDependencies: chu y chi reset form khi doi popupMode/entity/seed, khong reset khi visibleFields thay doi de tranh xoa input dang nhap
@@ -111,46 +258,36 @@ export function PopupPickerModal({ step, recordId, onSelect, onCancel }: Props) 
     setFormValues(init);
   }, [step.entity, step.popupMode, formSeed]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  /* Nạp options cho các field-dropdown nguồn-entity (lookups). */
-  // biome-ignore lint/correctness/useExhaustiveDependencies: chi chay lai khi popupMode (form) doi; step.lookups on dinh theo lan mo popup
+  /* (list) Nạp nhãn cho cột lookup (vd bom_son_version_id → mã phiên bản). */
+  // biome-ignore lint/correctness/useExhaustiveDependencies: chỉ chạy lại khi đổi popupMode/entity; step.listLookups ổn định theo lần mở popup
   useEffect(() => {
-    const lks = step.lookups ?? [];
-    if (step.popupMode !== "form" || lks.length === 0) return;
+    const lks = step.listLookups ?? [];
+    if (step.popupMode !== "list" || lks.length === 0) return;
     let alive = true;
     Promise.all(
       lks.map(async (lk) => {
-        // Options tĩnh (value≠label) → dùng thẳng, không fetch.
-        if (lk.options && lk.options.length > 0) return [lk.field, lk.options] as const;
-        if (!lk.entity || !lk.valueField || !lk.labelField)
-          return [lk.field, [] as Array<{ value: string; label: string }>] as const;
-        const valueField = lk.valueField;
-        const labelField = lk.labelField;
+        const vf = lk.valueField ?? "id";
         try {
           const res = await api.getRecords(lk.entity, { limit: 2000 });
-          const opts = res.rows
-            .map((r) => {
-              const d = r.data as Record<string, unknown>;
-              const value = d[valueField];
-              const label = d[labelField];
-              return {
-                value: value == null ? "" : String(value),
-                label: label == null ? String(value ?? "") : String(label),
-              };
-            })
-            .filter((o) => o.value !== "")
-            .sort((a, b) => a.label.localeCompare(b.label, "vi"));
-          return [lk.field, opts] as const;
+          const map: Record<string, string> = {};
+          for (const r of res.rows) {
+            const d = r.data as Record<string, unknown>;
+            const val = vf === "id" ? r.id : d[vf];
+            const lbl = d[lk.labelField];
+            if (val != null) map[String(val)] = lbl == null ? String(val) : String(lbl);
+          }
+          return [lk.field, map] as const;
         } catch {
-          return [lk.field, [] as Array<{ value: string; label: string }>] as const;
+          return [lk.field, {} as Record<string, string>] as const;
         }
       }),
     ).then((pairs) => {
-      if (alive) setLookupOpts(Object.fromEntries(pairs));
+      if (alive) setListLabels(Object.fromEntries(pairs));
     });
     return () => {
       alive = false;
     };
-  }, [step.popupMode]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [step.popupMode, step.entity]);
 
   const onConfirmForm = async () => {
     const data: Record<string, unknown> = {};
@@ -183,6 +320,12 @@ export function PopupPickerModal({ step, recordId, onSelect, onCancel }: Props) 
     }
   };
 
+  const confirmMulti = () => {
+    const ids = [...selected];
+    const items = rows.filter((r) => ids.includes(String(r.id)));
+    onSelect({ __many: true, ids, items });
+  };
+
   const defaultTitle =
     step.popupMode === "list"
       ? `Chọn ${entity?.name ?? "bản ghi"}`
@@ -191,15 +334,22 @@ export function PopupPickerModal({ step, recordId, onSelect, onCancel }: Props) 
         : `Nhập ${entity?.name ?? ""}`;
   const title = step.title || defaultTitle;
 
-  const filteredRows = search
-    ? rows.filter((r) =>
-        visibleFields.some((f) =>
-          String(r[f.name] ?? "")
-            .toLowerCase()
-            .includes(search.toLowerCase()),
-        ),
-      )
-    : rows;
+  // Precompute text bỏ-dấu 1 lần/row (gộp mọi visible field) — không normalize lại mỗi phím gõ.
+  const rowNormIndex = useMemo(
+    () => rows.map((r) => normalizeVi(visibleFields.map((f) => String(r[f.name] ?? "")).join(" "))),
+    [rows, visibleFields],
+  );
+  // Defer search → lọc+render chạy nền, ô tìm không bị chặn khi table lớn.
+  const deferredSearch = useDeferredValue(search);
+  const filteredRows = useMemo(() => {
+    if (!deferredSearch) return rows;
+    const q = normalizeVi(deferredSearch);
+    return rows.filter((_, i) => (rowNormIndex[i] ?? "").includes(q));
+  }, [rows, rowNormIndex, deferredSearch]);
+  // Chỉ render tối đa LIST_ROW_CAP dòng — bảng lớn không vẽ hết vào DOM.
+  const shownRows =
+    filteredRows.length > LIST_ROW_CAP ? filteredRows.slice(0, LIST_ROW_CAP) : filteredRows;
+  const tableOverflow = filteredRows.length - shownRows.length;
 
   // Form rộng hơn để chứa 2 cột trên màn lớn; list 760; detail 520.
   // Modal cap theo viewport (w-full + maxWidth) nên màn nhỏ tự co lại.
@@ -234,6 +384,15 @@ export function PopupPickerModal({ step, recordId, onSelect, onCancel }: Props) 
               Chọn
             </Button>
           </>
+        ) : multi ? (
+          <>
+            <Button variant="ghost" onClick={onCancel}>
+              Huỷ
+            </Button>
+            <Button variant="primary" disabled={selected.size === 0} onClick={confirmMulti}>
+              Áp dụng ({selected.size})
+            </Button>
+          </>
         ) : null
       }
     >
@@ -263,6 +422,25 @@ export function PopupPickerModal({ step, recordId, onSelect, onCancel }: Props) 
                 <table className="w-full text-sm">
                   <thead className="sticky top-0 bg-panel-2 border-b border-border">
                     <tr>
+                      {multi && (
+                        <th className="w-9 px-3 py-2">
+                          <input
+                            type="checkbox"
+                            aria-label="Chọn tất cả"
+                            checked={
+                              filteredRows.length > 0 &&
+                              filteredRows.every((r) => selected.has(String(r.id)))
+                            }
+                            onChange={(e) =>
+                              setSelected(
+                                e.target.checked
+                                  ? new Set(filteredRows.map((r) => String(r.id)))
+                                  : new Set(),
+                              )
+                            }
+                          />
+                        </th>
+                      )}
                       {visibleFields.map((f) => (
                         <th
                           key={f.id}
@@ -271,29 +449,64 @@ export function PopupPickerModal({ step, recordId, onSelect, onCancel }: Props) 
                           {f.label}
                         </th>
                       ))}
-                      <th className="w-8" />
+                      {!multi && <th className="w-8" />}
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredRows.map((row, i) => (
-                      <tr
-                        // biome-ignore lint/suspicious/noArrayIndexKey: row la Record dong, khong dam bao co id on dinh; chi so hang la danh tinh hien thi
-                        key={i}
-                        className="border-t border-border hover:bg-hover cursor-pointer group/row"
-                        onClick={() => onSelect(row)}
-                      >
-                        {visibleFields.map((f) => (
-                          <td key={f.id} className="px-3 py-2 max-w-[180px] truncate">
-                            {String(row[f.name] ?? "")}
-                          </td>
-                        ))}
-                        <td className="pr-2 text-right">
-                          <span className="text-[10px] text-accent opacity-0 group-hover/row:opacity-100">
-                            Chọn →
-                          </span>
+                    {shownRows.map((row, i) => {
+                      const rid = String(row.id);
+                      const isSel = multi && selected.has(rid);
+                      return (
+                        <tr
+                          // biome-ignore lint/suspicious/noArrayIndexKey: row la Record dong, khong dam bao co id on dinh; chi so hang la danh tinh hien thi
+                          key={i}
+                          className={`border-t border-border cursor-pointer group/row ${isSel ? "bg-accent/10" : "hover:bg-hover"}`}
+                          onClick={() => (multi ? toggleSel(rid) : onSelect(row))}
+                        >
+                          {multi && (
+                            <td className="px-3 py-2">
+                              <input
+                                type="checkbox"
+                                aria-label="Chọn dòng"
+                                checked={isSel}
+                                onChange={() => toggleSel(rid)}
+                                onClick={(e) => e.stopPropagation()}
+                              />
+                            </td>
+                          )}
+                          {visibleFields.map((f) => {
+                            const raw = String(row[f.name] ?? "");
+                            const disp = listLabels[f.name]?.[raw] ?? raw;
+                            return (
+                              <td
+                                key={f.id}
+                                className="px-3 py-2 max-w-[180px] truncate"
+                                title={disp}
+                              >
+                                {disp}
+                              </td>
+                            );
+                          })}
+                          {!multi && (
+                            <td className="pr-2 text-right">
+                              <span className="text-[10px] text-accent opacity-0 group-hover/row:opacity-100">
+                                Chọn →
+                              </span>
+                            </td>
+                          )}
+                        </tr>
+                      );
+                    })}
+                    {tableOverflow > 0 && (
+                      <tr>
+                        <td
+                          colSpan={visibleFields.length + (multi ? 1 : 0) + (!multi ? 1 : 0)}
+                          className="px-3 py-1.5 text-xs text-muted/70 italic border-t border-border/50"
+                        >
+                          Còn {tableOverflow} dòng — gõ thêm để thu hẹp…
                         </td>
                       </tr>
-                    ))}
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -409,13 +622,23 @@ export function PopupPickerModal({ step, recordId, onSelect, onCancel }: Props) 
                       )}
                     </div>
                   </div>
-                ) : lookupOpts[f.name] ? (
+                ) : lookupCfgByField[f.name]?.options?.length ? (
+                  // Options tĩnh (value≠label) — không cần fetch
                   <SearchableSelect
                     className="w-full"
                     value={formValues[f.name] ?? ""}
                     onChange={(val) => setFormValues((v) => ({ ...v, [f.name]: val }))}
-                    options={lookupOpts[f.name] ?? []}
+                    options={lookupCfgByField[f.name]?.options ?? []}
                     emptyOption="— chọn —"
+                  />
+                ) : lookupCfgByField[f.name]?.entity ? (
+                  // Lookup từ entity: small → lọc client; large → tìm server-side debounce
+                  <PopupLookupSelect
+                    entity={lookupCfgByField[f.name]?.entity ?? ""}
+                    valueField={lookupCfgByField[f.name]?.valueField ?? "id"}
+                    labelField={lookupCfgByField[f.name]?.labelField ?? "id"}
+                    value={formValues[f.name] ?? ""}
+                    onChange={(val) => setFormValues((v) => ({ ...v, [f.name]: val }))}
                   />
                 ) : f.type === "boolean" ? (
                   <label className="flex items-center gap-2 text-sm">

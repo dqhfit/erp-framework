@@ -807,6 +807,28 @@ export function Sidebar() {
                 })
               }
             />
+            {!isViewer &&
+              (
+                [
+                  ["/ban-ve/ky-thuat", "Bản vẽ kỹ thuật"],
+                  ["/ban-ve/dong-goi", "Bản vẽ đóng gói"],
+                  ["/ban-ve/phat-trien", "Bản vẽ phát triển"],
+                  ["/ban-ve/ai", "Bản vẽ AI"],
+                  ["/ban-ve/mau", "Bản vẽ mẫu"],
+                  ["/ban-ve/dao", "Bản vẽ dao"],
+                ] as const
+              ).map(([to, label]) => (
+                <SidebarItem
+                  key={to}
+                  to={to}
+                  active={pathname === to}
+                  icon={<I.FileText size={14} />}
+                  collapsed={collapsed}
+                  label={label}
+                  isFavorited={favs.isFav(to)}
+                  onToggleFavorite={() => favs.toggle({ id: to, to, label, iconName: "FileText" })}
+                />
+              ))}
             {!isViewer && (
               <SidebarItem
                 to="/sanluong"

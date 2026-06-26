@@ -7,8 +7,10 @@
 import { createObjectsClient } from "@erp-framework/client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { I } from "@/components/Icons";
+import { useChannel } from "@/hooks/useRealtime";
 import { useT } from "@/hooks/useT";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/stores/auth";
 
 const api = createObjectsClient("");
 
@@ -40,6 +42,7 @@ function safeNavigate(url: string): void {
 
 export function NotificationBell() {
   const t = useT();
+  const me = useAuth((s) => s.user?.id) ?? "";
   const [open, setOpen] = useState(false);
   const [count, setCount] = useState(0);
   const [items, setItems] = useState<NotiRow[]>([]);
@@ -62,12 +65,31 @@ export function NotificationBell() {
       });
   }, []);
 
-  // Poll số chưa đọc mỗi 30s (server không push realtime).
+  // Poll số chưa đọc mỗi 30s (fallback khi WS rớt / chưa kết nối).
+  // Guard: bỏ qua khi tab ẩn; fetch ngay khi tab hiện lại.
   useEffect(() => {
     loadCount();
-    const id = setInterval(loadCount, 30_000);
-    return () => clearInterval(id);
+    const onTick = () => {
+      if (document.hidden) return;
+      loadCount();
+    };
+    const id = setInterval(onTick, 30_000);
+    window.addEventListener("visibilitychange", onTick);
+    return () => {
+      clearInterval(id);
+      window.removeEventListener("visibilitychange", onTick);
+    };
   }, [loadCount]);
+
+  // Realtime: server push notification mới → tăng badge ngay (prepend nếu đang mở).
+  useChannel(me ? `notifications:${me}` : null, (payload) => {
+    const p = payload as { type?: string; notification?: NotiRow };
+    if (p.type !== "new" || !p.notification) return;
+    setCount((c) => c + 1);
+    setItems((xs) =>
+      xs.some((x) => x.id === p.notification?.id) ? xs : [p.notification as NotiRow, ...xs],
+    );
+  });
 
   // Đóng dropdown khi click ra ngoài.
   useEffect(() => {

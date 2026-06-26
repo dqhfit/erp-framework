@@ -4,6 +4,7 @@ import { I } from "@/components/Icons";
 import { Kbd } from "@/components/ui";
 import { useT } from "@/hooks/useT";
 import type { IconName } from "@/lib/object-types";
+import { normalizeVi } from "@/lib/text-utils";
 import { cn } from "@/lib/utils";
 import { useUI } from "@/stores/ui";
 import { useUserObjects } from "@/stores/userObjects";
@@ -272,13 +273,16 @@ export function CommandPalette() {
     [t, setAgentOpen, entities, pages, workflows, agents],
   );
 
+  // Precompute chuỗi bỏ-dấu 1 lần/item — không normalize lại mỗi phím gõ.
+  const normIndex = useMemo(
+    () => items.map((item) => normalizeVi(`${item.label} ${item.hint}`)),
+    [items],
+  );
   const filtered = useMemo(() => {
     if (!q.trim()) return items;
-    const lower = q.toLowerCase();
-    return items.filter(
-      (i) => i.label.toLowerCase().includes(lower) || i.hint.toLowerCase().includes(lower),
-    );
-  }, [items, q]);
+    const qn = normalizeVi(q.trim());
+    return items.filter((_, i) => (normIndex[i] ?? "").includes(qn));
+  }, [items, normIndex, q]);
 
   useEffect(() => {
     if (open) {

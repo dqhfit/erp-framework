@@ -14,7 +14,9 @@ installGlobalErrorReporter();
 
 const router = createRouter({ routeTree });
 const queryClient = new QueryClient({
-  defaultOptions: { queries: { staleTime: 30_000, retry: 1 } },
+  // refetchOnWindowFocus: false — tắt refetch tự động khi focus window,
+  // tránh hàng loạt request mỗi lần người dùng alt-tab về (D8 perf).
+  defaultOptions: { queries: { staleTime: 30_000, retry: 1, refetchOnWindowFocus: false } },
 });
 
 declare module "@tanstack/react-router" {

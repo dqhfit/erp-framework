@@ -8,7 +8,7 @@
    ngắm gọn (mask tối + 4 góc), đổi camera trước/sau (mặc định CAMERA SAU).
    Dùng cho trang bản vẽ + nhập sản lượng mobile.
    ========================================================== */
-import jsQR from "jsqr";
+// jsqr không import tĩnh — tải động lần đầu dùng (fallback path, không trên mọi thiết bị).
 import { useCallback, useEffect, useRef, useState } from "react";
 import { I } from "@/components/Icons";
 
@@ -68,8 +68,11 @@ export function QrScanner({
       ? new Detector({ formats: ["qr_code", "code_128", "code_39", "ean_13"] })
       : null;
 
-    const decodeJsQr = (video: HTMLVideoElement): string | null => {
+    // Dynamic import jsqr: chỉ tải khi BarcodeDetector không có (fallback).
+    // Module được cache sau lần tải đầu → các khung tiếp theo không tốn network.
+    const decodeJsQr = async (video: HTMLVideoElement): Promise<string | null> => {
       if (video.readyState < 2 || !video.videoWidth) return null;
+      const jsQR = (await import("jsqr")).default;
       const canvas = canvasRef.current ?? document.createElement("canvas");
       canvasRef.current = canvas;
       const w = video.videoWidth;
@@ -98,7 +101,7 @@ export function QrScanner({
           const codes = await detector.detect(video);
           if (codes?.[0]?.rawValue) return finish(String(codes[0].rawValue));
         } else {
-          const code = decodeJsQr(video);
+          const code = await decodeJsQr(video);
           if (code) return finish(code);
         }
       } catch {

@@ -29,12 +29,12 @@ interface Connection {
 const connections = new Set<Connection>();
 
 /** Đăng ký 1 connection mới — caller tự set userId từ session auth. */
-export function registerConnection(
-  ws: WsLike, userId: string, companyId: string,
-): Connection {
+export function registerConnection(ws: WsLike, userId: string, companyId: string): Connection {
   const conn: Connection = { ws, userId, companyId, channels: new Set() };
   connections.add(conn);
-  ws.on("close", () => { connections.delete(conn); });
+  ws.on("close", () => {
+    connections.delete(conn);
+  });
   return conn;
 }
 
@@ -51,7 +51,11 @@ function broadcastLocal(channel: string, msg: string): void {
   for (const c of connections) {
     if (!c.channels.has(channel)) continue;
     if (c.ws.readyState !== 1 /* OPEN */) continue;
-    try { c.ws.send(msg); } catch { /* dead conn — close event sẽ xoá */ }
+    try {
+      c.ws.send(msg);
+    } catch {
+      /* dead conn — close event sẽ xoá */
+    }
   }
 }
 
@@ -66,21 +70,25 @@ if (REDIS_URL) {
   try {
     pubClient = new Redis(REDIS_URL, { lazyConnect: false });
     subClient = new Redis(REDIS_URL, { lazyConnect: false });
-    subClient.subscribe(REDIS_CHANNEL).catch((e) =>
-      console.error("[ws-hub] Redis subscribe lỗi:", e.message));
+    subClient
+      .subscribe(REDIS_CHANNEL)
+      .catch((e) => console.error("[ws-hub] Redis subscribe lỗi:", e.message));
     subClient.on("message", (_ch, raw) => {
       try {
         const { channel } = JSON.parse(raw) as { channel: string };
         // Broadcast local — message đã serialized sẵn.
         broadcastLocal(channel, raw);
-      } catch { /* malformed — ignore */ }
+      } catch {
+        /* malformed — ignore */
+      }
     });
     pubClient.on("error", (e) => console.error("[ws-hub] Redis pub lỗi:", e.message));
     subClient.on("error", (e) => console.error("[ws-hub] Redis sub lỗi:", e.message));
     console.log("[ws-hub] Redis pub/sub enabled →", REDIS_URL);
   } catch (e) {
     console.error("[ws-hub] Redis init lỗi, fallback single-node:", (e as Error).message);
-    pubClient = null; subClient = null;
+    pubClient = null;
+    subClient = null;
   }
 }
 
@@ -90,7 +98,10 @@ if (REDIS_URL) {
 const internalSubs = new Map<string, Set<(payload: unknown) => void>>();
 export function subscribeChannel(channel: string, cb: (payload: unknown) => void): void {
   let set = internalSubs.get(channel);
-  if (!set) { set = new Set(); internalSubs.set(channel, set); }
+  if (!set) {
+    set = new Set();
+    internalSubs.set(channel, set);
+  }
   set.add(cb);
 }
 export function unsubscribeChannel(channel: string, cb: (payload: unknown) => void): void {
@@ -107,19 +118,32 @@ export function unsubscribeChannel(channel: string, cb: (payload: unknown) => vo
 export function publish(channel: string, payload: unknown): void {
   const msg = JSON.stringify({ channel, payload, ts: Date.now() });
   if (pubClient) {
-    pubClient.publish(REDIS_CHANNEL, msg).catch((e) =>
-      console.error("[ws-hub] Redis publish lỗi:", e.message));
+    pubClient
+      .publish(REDIS_CHANNEL, msg)
+      .catch((e) => console.error("[ws-hub] Redis publish lỗi:", e.message));
   } else {
     broadcastLocal(channel, msg);
   }
   const subs = internalSubs.get(channel);
   if (subs) {
     for (const cb of subs) {
-      try { cb(payload); } catch (e) {
+      try {
+        cb(payload);
+      } catch (e) {
         console.error("[ws-hub] internal sub cb lỗi:", (e as Error).message);
       }
     }
   }
+}
+
+/** userId đang online (có ít nhất 1 connection) trong 1 công ty. Dùng cho
+ *  presence chat. LƯU Ý: chỉ thấy connection của NODE NÀY — multi-node
+ *  (Redis) mỗi node giữ set riêng; presence dạng poll vẫn chấp nhận được
+ *  cho MVP (single-node là use case chính). */
+export function getOnlineUserIds(companyId: string): string[] {
+  const set = new Set<string>();
+  for (const c of connections) if (c.companyId === companyId) set.add(c.userId);
+  return [...set];
 }
 
 /** Số conn hiện tại cho debug/health. */

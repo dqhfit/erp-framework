@@ -9,8 +9,11 @@
    song song→gộp/khử trùng). P2 sẽ chèn bước grade/correct vào
    agenticRetrieve (đã chừa hook). Toàn bộ fail-safe.
    ========================================================== */
+import { type FilterOp, fieldCan, type Role } from "@erp-framework/core";
 import { type SQL, sql } from "drizzle-orm";
+import type { AgentEntityInfo } from "./agent-records-search";
 import type { DB } from "./db";
+import { expandGraph } from "./knowledge-graph";
 import { type KnowledgeHit, type KnowledgeSearchOpts, knowledgeSearch } from "./knowledge-search";
 import { callLlmJson } from "./llm-json";
 import { webSearch } from "./web-search";
@@ -55,6 +58,19 @@ const COMPRESS_SYSTEM =
   "câu hỏi, loại bỏ phần thừa. Nếu một đoạn hoàn toàn không liên quan, BỎ QUA " +
   "(không đưa vào kết quả). Giữ nguyên số liệu, tên riêng, thuật ngữ; KHÔNG bịa " +
   'thêm. Trả JSON: {"kept":[{"i":<chỉ số đoạn>,"text":"<nội dung đã nén>"}]}.';
+
+const ROUTE_SYSTEM =
+  "Bạn là bộ ĐỊNH TUYẾN truy vấn cho trợ lý ERP. Cho CÂU HỎI của người dùng " +
+  "và danh sách ENTITY có thể tra dữ liệu. Chọn (các) NGUỒN phù hợp:\n" +
+  '- "records": câu hỏi về SỐ LIỆU/BẢN GHI cụ thể của một entity (đơn hàng, ' +
+  'sản phẩm, định mức…) — kèm "entity" = ĐÚNG tên kỹ thuật trong danh sách và ' +
+  '"recordQuery" = từ khoá tìm.\n' +
+  '- "kb": câu hỏi về TÀI LIỆU/QUY TRÌNH/VĂN BẢN nội bộ.\n' +
+  '- "web": cần thông tin CÔNG KHAI bên ngoài công ty (chỉ khi được phép).\n' +
+  '- "direct": chào hỏi/giải thích chung KHÔNG cần tra cứu dữ liệu.\n' +
+  'Có thể chọn NHIỀU nguồn nếu cần. KHÔNG chắc → chọn "kb". CHỈ chọn entity có ' +
+  "trong danh sách. Trả JSON: " +
+  '{"targets":["kb"|"records"|"web"|"direct"],"entity":"...","recordQuery":"...","reason":"ngắn gọn"}.';
 
 interface QueryPlan {
   queries?: string[];
@@ -333,6 +349,11 @@ export interface AgenticRetrieveOpts extends KnowledgeSearchOpts {
   /** Bật graph expansion (lấy đoạn lân cận cùng nguồn) + nén ngữ cảnh.
    *  Rẻ (1 query DB, hàm thuần) nhưng đổi hình dạng hit → bật ở chế độ Deep. */
   expand?: boolean;
+  /** Bật knowledge-graph expansion: từ hit ban đầu đi 1-hop theo thực thể
+   *  chung (knowledge_edges) → kéo thêm đoạn CHÉO NGUỒN cho câu hỏi multi-hop.
+   *  Chỉ chạy khi nguồn đã trích quan hệ (meta.extractGraph). 1 query DB, áp
+   *  lại ACL+sourceIds (đoạn có thể thuộc nguồn khác). Bật ở chế độ Deep. */
+  graph?: boolean;
   /** Bật re-rank bằng LLM (chế độ Deep) — xếp lại theo độ liên quan. */
   rerank?: boolean;
   /** User hiện tại — ưu tiên profile LLM cá nhân khi rewrite/grade/rerank. */
@@ -378,8 +399,8 @@ export async function agenticRetrieve(
 
   const queries = opts.plan ? await planQueries(db, companyId, q, opts.userId) : [q];
 
-  // Khi expand/rerank: lấy rộng ứng viên hơn rồi mới tinh lọc về `limit`.
-  const wide = opts.expand === true || opts.rerank === true;
+  // Khi expand/rerank/graph: lấy rộng ứng viên hơn rồi mới tinh lọc về `limit`.
+  const wide = opts.expand === true || opts.rerank === true || opts.graph === true;
   const candLimit = wide ? Math.min(20, limit * 3) : limit;
   const candOpts: KnowledgeSearchOpts = { ...searchOpts, limit: candLimit };
 
@@ -389,10 +410,21 @@ export async function agenticRetrieve(
   );
   let hits = lists.length <= 1 ? (lists[0] ?? []).slice(0, candLimit) : mergeHits(lists, candLimit);
 
-  // Graph expansion (đoạn lân cận) → nén (gộp đoạn liền kề) → re-rank LLM →
-  // cắt top `limit`. Mỗi bước fail-safe; Fast mode (không cờ) bỏ qua hết.
+  // Graph expansion (đoạn lân cận) → nén (gộp đoạn liền kề) → graph-hop (đoạn
+  // chéo nguồn qua thực thể chung) → re-rank LLM → cắt top `limit`. Mỗi bước
+  // fail-safe; Fast mode (không cờ) bỏ qua hết.
   if (opts.expand) hits = await expandNeighbors(db, companyId, hits);
   if (opts.expand) hits = mergeContiguous(hits);
+  // Graph đặt SAU mergeContiguous (né ngân sách ký tự của nó) + TRƯỚC rerank
+  // để re-rank xếp lại cả union; expandGraph đã loại trùng các chunk hiện có.
+  if (opts.graph) {
+    const extra = await expandGraph(db, companyId, hits, {
+      acl: opts.acl,
+      sourceIds: opts.sourceIds,
+      limit,
+    });
+    if (extra.length) hits = [...hits, ...extra];
+  }
   if (opts.rerank) hits = await rerankHits(db, companyId, q, hits, opts.userId);
   hits = hits.slice(0, limit);
 
@@ -452,4 +484,292 @@ export async function agenticRetrieve(
   }
 
   return { hits, queries, gradedOut };
+}
+
+/* ==========================================================
+   QUERY ROUTING (Phase 5) — định tuyến câu hỏi → nguồn tra cứu.
+   Bước classify orchestrated chạy cho MỌI adapter (gồm claude-cli):
+   1 lời gọi callLlmJson rẻ phân loại ý định → caller dispatch sang
+   KB (agenticRetrieve) / records (searchAgentRecords) / web / direct.
+   Xem docs/AGENTIC-RAG-DESIGN-2026-05-31.md §11.
+   ========================================================== */
+
+export type RouteTarget = "kb" | "records" | "direct" | "web";
+
+export interface RouteDecision {
+  /** Nguồn cần tra (đã chuẩn hoá, LUÔN ≥1 phần tử). */
+  targets: RouteTarget[];
+  /** Tên kỹ thuật entity khi targets gồm "records" (đã validate allowlist). */
+  entity?: string;
+  /** Từ khoá FTS cho records (thiếu → caller dùng câu hỏi gốc). */
+  recordQuery?: string;
+  /** Lý do định tuyến — telemetry/hiển thị. */
+  reason?: string;
+}
+
+interface RawRoute {
+  targets?: unknown;
+  entity?: unknown;
+  recordQuery?: unknown;
+  reason?: unknown;
+}
+
+const VALID_TARGETS: RouteTarget[] = ["kb", "records", "direct", "web"];
+
+export interface NormalizeRouteOpts {
+  /** Tên entity (LOWERCASE) được phép tra records — ngoài tập này thì bỏ "records". */
+  allowedEntities?: Set<string>;
+  /** Có cho phép nhánh "web" không (SearXNG đã cấu hình). */
+  allowWeb?: boolean;
+}
+
+/** Chuẩn hoá kết quả LLM router → RouteDecision an toàn. Hàm THUẦN (unit-test):
+ *  - chỉ giữ target hợp lệ; bỏ "web" nếu !allowWeb; bỏ "records" nếu entity
+ *    không nằm trong allowlist; "direct" CHỈ giữ khi không còn data-target nào
+ *    khác (có dữ liệu cần tra → không phải direct). Rỗng sau lọc → ["kb"]
+ *    (fail-safe = hành vi auto-RAG hiện tại). */
+export function normalizeRoute(raw: RawRoute | null, opts: NormalizeRouteOpts = {}): RouteDecision {
+  const allowed = opts.allowedEntities;
+  const rawTargets = Array.isArray(raw?.targets) ? raw.targets : [];
+  let targets = [...new Set(rawTargets.map((t) => String(t).trim().toLowerCase()))].filter(
+    (t): t is RouteTarget => (VALID_TARGETS as string[]).includes(t),
+  );
+  if (!opts.allowWeb) targets = targets.filter((t) => t !== "web");
+
+  const entityRaw = typeof raw?.entity === "string" ? raw.entity.trim() : "";
+  const entityValid =
+    entityRaw && (!allowed || allowed.has(entityRaw.toLowerCase())) ? entityRaw : "";
+  if (!entityValid) targets = targets.filter((t) => t !== "records");
+
+  // "direct" loại trừ data-target: còn nguồn dữ liệu cần tra thì bỏ "direct".
+  const dataTargets = targets.filter((t) => t !== "direct");
+  if (dataTargets.length) targets = dataTargets;
+
+  if (!targets.length) targets = ["kb"]; // fail-safe mặc định
+
+  const hasRecords = targets.includes("records");
+  const recordQuery =
+    typeof raw?.recordQuery === "string" && raw.recordQuery.trim()
+      ? raw.recordQuery.trim()
+      : undefined;
+  const reason = typeof raw?.reason === "string" ? raw.reason.trim() : undefined;
+  return {
+    targets,
+    entity: hasRecords ? entityValid : undefined,
+    recordQuery: hasRecords ? recordQuery : undefined,
+    reason,
+  };
+}
+
+export interface RouteQueryOpts {
+  /** Entity được phép tra records (name kỹ thuật + nhãn) — feed cho LLM + allowlist. */
+  entities?: Array<{ name: string; label: string }>;
+  /** Có cho phép nhánh "web" (SearXNG đã cấu hình). */
+  allowWeb?: boolean;
+  /** User hiện tại — ưu tiên profile LLM cá nhân khi classify. */
+  userId?: string;
+}
+
+/** Chuẩn hoá câu hỏi để khớp heuristic: bỏ dấu tiếng Việt (NFD + strip
+ *  combining), đ→d, hạ chữ thường, đổi mọi ký tự không phải chữ-số thành
+ *  khoảng trắng (nuốt dấu câu/emoji), gộp khoảng trắng. */
+function normForRoute(s: string): string {
+  return s
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .replace(/[đĐ]/g, "d")
+    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/** Các câu chào hỏi/ack/chitchat (dạng đã chuẩn hoá) — KHỚP TRỌN câu mới
+ *  tính (tránh bắt nhầm câu hỏi thật có chứa "ok"/"chào"). */
+const GREETINGS = new Set([
+  // chào
+  "hi",
+  "hello",
+  "hey",
+  "helu",
+  "halo",
+  "alo",
+  "yo",
+  "hi hi",
+  "hello ban",
+  "hi ban",
+  "chao",
+  "chao ban",
+  "chao bot",
+  "chao ban oi",
+  "xin chao",
+  "xin chao ban",
+  "chao buoi sang",
+  // cảm ơn
+  "cam on",
+  "cam on ban",
+  "cam on nhe",
+  "cam on nhieu",
+  "cam on bot",
+  "thanks",
+  "thank you",
+  "thank",
+  "tks",
+  "ty",
+  "thank u",
+  "thanks ban",
+  "thanks nhe",
+  // xác nhận / ack
+  "ok",
+  "oke",
+  "oki",
+  "okay",
+  "okie",
+  "oke ban",
+  "dong y",
+  "duoc roi",
+  "tot",
+  "tuyet",
+  // tạm biệt
+  "bye",
+  "tam biet",
+  "goodbye",
+  "see you",
+  "hen gap lai",
+  "good bye",
+]);
+
+/** Câu hỏi meta về chính trợ lý (định danh/năng lực) — KHÔNG cần tra cứu. */
+const META_PATTERNS: RegExp[] = [
+  /^ban (la ai|la gi|ten (la )?gi|ten gi)\b/,
+  /^ban (co the |)(lam|giup) (duoc |)(gi|nhung gi|nhung dieu gi|duoc gi)\b/,
+  /^ban biet (lam )?(nhung )?gi\b/,
+  /^(gioi thieu|tu gioi thieu)( ve)?( ban| ban than| chinh ban)?\s*$/,
+  /^who are you\b/,
+  /^what can you do\b/,
+  /^help$/,
+];
+
+/** Pre-router heuristic (KHÔNG LLM, hàm THUẦN): nhận diện ca HIỂN NHIÊN để
+ *  short-circuit — chào hỏi / cảm ơn / ack / hỏi-về-trợ-lý → "direct" (khỏi
+ *  truy hồi). Đây là điểm "bật routing mặc định mà vẫn rẻ": gọi được cả ở
+ *  đường Fast (0 LLM) để chào hỏi không tốn embedding+search, và đứng trước
+ *  LLM router để né 1 lời gọi cho ca rõ ràng. CHỈ trả quyết định khi CHẮC
+ *  CHẮN; mơ hồ → null (caller lùi về LLM router hoặc mặc định kb). */
+export function preRoute(userQuery: string): RouteDecision | null {
+  const n = normForRoute(userQuery);
+  if (!n) return null;
+  if (GREETINGS.has(n) || META_PATTERNS.some((re) => re.test(n))) {
+    return { targets: ["direct"], reason: "pre-route: chào hỏi/chitchat" };
+  }
+  return null;
+}
+
+/** Định tuyến câu hỏi → nguồn tra cứu (kb/records/web/direct). 1 lời gọi
+ *  callLlmJson rẻ (maxTokens nhỏ) rồi normalizeRoute (thuần). Fail-safe:
+ *  lỗi/null → ["kb"] (lùi về hành vi auto-RAG hiện tại). */
+export async function routeQuery(
+  db: DB,
+  companyId: string,
+  userQuery: string,
+  opts: RouteQueryOpts = {},
+): Promise<RouteDecision> {
+  const q = userQuery.trim();
+  const ents = opts.entities ?? [];
+  const allowed = new Set(ents.map((e) => e.name.toLowerCase()));
+  const normOpts: NormalizeRouteOpts = { allowedEntities: allowed, allowWeb: opts.allowWeb };
+  if (!q) return normalizeRoute(null, normOpts);
+
+  // Pre-router heuristic (0 LLM): ca hiển nhiên (chào hỏi/chitchat) → khỏi
+  // tốn lời gọi LLM phân loại.
+  const pre = preRoute(q);
+  if (pre) return pre;
+
+  const entityList = ents.length
+    ? ents.map((e) => `- ${e.name} (${e.label})`).join("\n")
+    : "(không có entity nào được bật cho agent tra cứu)";
+  const user =
+    `CÂU HỎI: ${q}\n\n` +
+    `ENTITY CÓ THỂ TRA (chọn bằng ĐÚNG tên kỹ thuật bên trái):\n${entityList}\n\n` +
+    `Web ${opts.allowWeb ? "ĐƯỢC" : "KHÔNG được"} dùng.`;
+  const raw = await callLlmJson<RawRoute>(db, companyId, {
+    system: ROUTE_SYSTEM,
+    user,
+    maxTokens: 200,
+    userId: opts.userId,
+  });
+  return normalizeRoute(raw, normOpts);
+}
+
+/* ==========================================================
+   STRUCTURED RECORD FILTERS (Phase 5+ / §11.6) — nâng nhánh records từ
+   FTS thô (`q`) lên BỘ LỌC CÓ CẤU TRÚC theo field. 1 lời gọi callLlmJson,
+   chỉ chạy trên nhánh đã route tới records (hiếm) ở chế độ Deep. Output
+   vẫn được searchAgentRecords sanitize lại (RBAC field-level) — đây chỉ là
+   bước "gợi ý"; bảo mật nằm ở cổng searchAgentRecords.
+   ========================================================== */
+
+const RECORD_FILTER_SYSTEM =
+  "Bạn là bộ lập BỘ LỌC cho tìm bản ghi có cấu trúc. Cho CÂU HỎI và DANH SÁCH " +
+  "FIELD (tên kỹ thuật + nhãn + kiểu). Khi câu hỏi nêu điều kiện RÕ (ngày, số " +
+  "tiền, trạng thái, mã...), sinh filter CHÍNH XÁC theo field. Toán tử hợp lệ: " +
+  "=, !=, >, >=, <, <=, contains, in, is-true, is-not-true. Field số/ngày dùng " +
+  "so sánh (>,>=,<,<=,=); field chữ dùng = hoặc contains; field bool dùng " +
+  "is-true/is-not-true. CHỈ dùng field CÓ trong danh sách; KHÔNG chắc thì để " +
+  'trống filters. Phần từ khoá tự do còn lại đưa vào "q". Trả JSON: ' +
+  '{"q":"...","filters":{"<field>":{"op":"...","value":...}}}.';
+
+interface RawRecordFilter {
+  q?: unknown;
+  filters?: unknown;
+}
+
+export interface RecordFilterPlan {
+  /** Từ khoá FTS còn lại (sau khi rút điều kiện cấu trúc ra filters). */
+  q?: string;
+  /** Bộ lọc theo field (chưa sanitize RBAC — searchAgentRecords lọc lại). */
+  filters?: Record<string, { op: FilterOp; value: unknown }>;
+}
+
+/** Sinh bộ lọc CÓ CẤU TRÚC cho records từ câu hỏi (chế độ Deep). 1 lời gọi
+ *  callLlmJson, CHỈ phơi cho LLM field role ĐỌC ĐƯỢC + không mã hoá (giảm
+ *  token + không gợi ý lọc field cấm). Fail-safe: lỗi/null/không field →
+ *  null (caller lùi về FTS recordQuery). Bảo mật thật ở searchAgentRecords
+ *  (sanitizeAgentFilters) — hàm này chỉ là gợi ý. */
+export async function planRecordFilters(
+  db: DB,
+  companyId: string,
+  info: AgentEntityInfo,
+  userQuery: string,
+  role: Role,
+  userId?: string,
+): Promise<RecordFilterPlan | null> {
+  const q = userQuery.trim();
+  if (!q) return null;
+  const usable = info.fields.filter((f) => !f.encrypted && fieldCan(role, "read", f));
+  if (!usable.length) return null;
+  const fieldList = usable.map((f) => `- ${f.name} (${f.label}) [${f.type}]`).join("\n");
+  const user = `CÂU HỎI: ${q}\n\nFIELD CỦA "${info.label}" (chọn ĐÚNG tên kỹ thuật bên trái):\n${fieldList}`;
+  const raw = await callLlmJson<RawRecordFilter>(db, companyId, {
+    system: RECORD_FILTER_SYSTEM,
+    user,
+    maxTokens: 400,
+    userId,
+  });
+  if (!raw) return null;
+  const out: RecordFilterPlan = {};
+  if (typeof raw.q === "string" && raw.q.trim()) out.q = raw.q.trim();
+  if (raw.filters && typeof raw.filters === "object") {
+    const f: Record<string, { op: FilterOp; value: unknown }> = {};
+    for (const [name, cond] of Object.entries(raw.filters as Record<string, unknown>)) {
+      if (cond && typeof cond === "object" && "op" in cond) {
+        f[name] = {
+          op: (cond as { op: FilterOp }).op,
+          value: (cond as { value?: unknown }).value,
+        };
+      }
+    }
+    if (Object.keys(f).length) out.filters = f;
+  }
+  return out.q || out.filters ? out : null;
 }

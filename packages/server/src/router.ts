@@ -28,6 +28,7 @@ import {
   rateLimit,
 } from "./trpc";
 import { logActivity } from "./activity";
+import { chatRouter } from "./chat-router";
 import { companiesRouter } from "./companies-router";
 import { heartbeatsRouter } from "./heartbeats-router";
 import { entitySyncRouter } from "./entity-sync-router";
@@ -605,6 +606,7 @@ export const appRouter = router({
 
   /* ── Đa công ty ── */
   companies: companiesRouter,
+  chat: chatRouter,
 
   /* ── Heartbeat — agent tự thức dậy theo lịch ── */
   heartbeats: heartbeatsRouter,

@@ -50,7 +50,7 @@ import { fieldCan } from "@/lib/permissions";
 import { cn } from "@/lib/utils";
 import { useRbac } from "@/stores/rbac";
 import { useUserObjects } from "@/stores/userObjects";
-import type { ActionConfig, FilterNode } from "@/types/page";
+import type { ActionConfig, BindingValue, FilterNode } from "@/types/page";
 
 /* ── Date/DateTime trong ô grid ──────────────────────────────────────────
    Giá trị lưu = chuỗi ISO (datetime, vd "2020-03-10T12:41:21Z") hoặc YYYY-MM-DD
@@ -407,6 +407,13 @@ interface EditableListWidgetProps {
   onBulkCreate?: (records: Array<Record<string, string>>) => Promise<void>;
   /** Field cố định cho dòng tạo mới (vd masp = sản phẩm đang lọc). */
   createDefaults?: Record<string, string>;
+  /** Nút hành động nhúng trong toolbar (cùng hàng, tương tự read-only mode). */
+  embeddedActions?: ActionBarItem[];
+  /** Override text khi lưới rỗng (vd hint "Chọn bộ lọc..." khi loadGate chưa mở). */
+  emptyText?: string;
+  /** loadGate chưa mở → bỏ qua DataGrid, render hint full-area (tránh text lạc trong
+   *  <td colSpan> bị overflow-x ẩn khi bảng nhiều cột). */
+  gateClosed?: boolean;
   /** Khoá lưu trạng thái (IndexedDB) — dùng làm key nháp pending khi batchEdit. */
   stateKey?: string;
   /** Cột hành động theo dòng (Xem/Sửa/Xoá…) — render ActionWidget cho từng dòng. */
@@ -424,7 +431,6 @@ interface EditableListWidgetProps {
   addRowAtEnd?: boolean;
   /** Vị trí dòng thêm mới: đầu hay cuối lưới (cfg.addRowPos, mặc định "bottom"). */
   addRowPos?: "top" | "bottom";
-  embeddedActions?: ActionBarItem[];
 }
 
 /** Dòng MỚI nháp (chưa lưu): id tạm (`__new_*`) + vị trí chèn trên/dưới lưới.
@@ -500,9 +506,15 @@ function EditableListWidget({
   addRowAtEnd,
   addRowPos,
   embeddedActions,
+  emptyText,
+  gateClosed,
 }: EditableListWidgetProps) {
   const t = useT();
   const pageState = usePageState();
+  // Ref để cell renderer trong columns memo đọc pageState MỚI NHẤT mà không
+  // đưa pageState vào deps (pageState thay identity mỗi khi có set → re-memo không cần thiết).
+  const pageStateRef = useRef(pageState);
+  pageStateRef.current = pageState;
   // Field-level RBAC cho inline edit — role + nhóm của user hiện tại.
   const rbacRole = useRbac((s) => s.role);
   const myGroupIds = useUserObjects((s) => s.myGroupIds);
@@ -677,6 +689,7 @@ function EditableListWidget({
   };
 
   // Cột TanStack: cell = ô sửa inline. Cột số → summary=sum (footer tổng hợp).
+  // pageState KHÔNG đưa vào deps — cell renderer đọc qua pageStateRef.current (ref luôn mới nhất).
   const columns = useMemo<ColumnDef<Record<string, unknown>>[]>(() => {
     const cols: ColumnDef<Record<string, unknown>>[] = visibleFields.map((f) => ({
       id: f.name,
@@ -832,7 +845,13 @@ function EditableListWidget({
                 onClick={(e) => e.stopPropagation()}
               >
                 {bound.map((a) => (
-                  <ActionWidget key={a.label} config={a} pageState={pageState} inline compact />
+                  <ActionWidget
+                    key={a.label}
+                    config={a}
+                    pageState={pageStateRef.current}
+                    inline
+                    compact
+                  />
                 ))}
               </div>
             );
@@ -840,7 +859,7 @@ function EditableListWidget({
           return (
             <RowActionsCell
               actions={bound}
-              pageState={pageState}
+              pageState={pageStateRef.current}
               row={row}
               cols={visibleFields.map((f) => ({
                 key: f.name,
@@ -862,7 +881,6 @@ function EditableListWidget({
     myGroupIds,
     newRows.length,
     rowActions,
-    pageState,
     title,
     rowActionsHidden,
     rowActionsStyle,
@@ -937,6 +955,13 @@ function EditableListWidget({
           <span className="ml-auto">{t("widget.loading")}</span>
         </div>
       )}
+      {embeddedActions && embeddedActions.length > 0 && (
+        <div className="px-2 py-1.5 border-b border-border flex items-center gap-1.5 flex-wrap shrink-0">
+          {embeddedActions.map((item) => (
+            <ActionWidget key={item.id} config={item} pageState={pageState} inline />
+          ))}
+        </div>
+      )}
       {batchEdit &&
         (pending.size > 0 || newRows.length > 0) &&
         (() => {
@@ -996,6 +1021,10 @@ function EditableListWidget({
       )}
       {err ? (
         <div className="p-3 text-xs text-danger">{t("widget.error_load", { err })}</div>
+      ) : gateClosed && filteredRows.length === 0 && !loading ? (
+        <div className="flex-1 flex items-center justify-center">
+          <span className="text-sm text-muted">{emptyText ?? t("widget.gate_hint")}</span>
+        </div>
       ) : (
         <div className="flex-1 min-h-0">
           {/* Lưới đầy đủ chức năng (sort/filter/group/summary/export/resize/
@@ -1004,7 +1033,7 @@ function EditableListWidget({
             columns={columns}
             columnGroups={columnGroups}
             data={displayData}
-            emptyText={t("widget.empty_records")}
+            emptyText={emptyText ?? t("widget.empty_records")}
             label={title}
             onRowClick={onRowClick}
             isRowSelected={isRowSelected}
@@ -1448,17 +1477,61 @@ export function ServerPagedListWidget({
 function bindRowIdToAction(action: ActionConfig, row: Record<string, unknown>): ActionConfig {
   const rowId =
     action.recordIdField != null ? row[action.recordIdField] : (row.id ?? row.ID ?? row._id);
+  // recordIdBinding mặc định = id dòng. NHƯNG nếu cấu hình đã trỏ page-state/template
+  // (vd cập nhật 1 record KHÁC chọn từ popup) thì GIỮ NGUYÊN — chỉ ghi đè khi
+  // chưa cấu hình hoặc đang là const (mặc định "thao tác trên chính dòng này").
+  const keepRid = (rid: BindingValue | undefined): boolean =>
+    rid != null && (rid.source === "state" || rid.source === "template");
+  // Thay sentinel bằng GIÁ TRỊ của dòng: "$rowId" → id dòng; "$row.<field>" →
+  // row[field]. Áp cho cả chuỗi trần (field-map) lẫn const BindingValue (listFilters).
+  // Cho phép gán dữ liệu của dòng (id phiên bản, mã màu...) vào record/khác hoặc
+  // bộ lọc popup.
+  const subSentinel = (v: unknown): unknown => {
+    let raw: unknown = v;
+    if (v != null && typeof v === "object" && (v as BindingValue).source === "const") {
+      raw = (v as { value?: unknown }).value;
+    } else if (typeof v !== "string") {
+      return v;
+    }
+    if (raw === "$rowId") return { source: "const" as const, value: rowId };
+    if (typeof raw === "string" && raw.startsWith("$row.")) {
+      return { source: "const" as const, value: row[raw.slice(5)] };
+    }
+    return v;
+  };
+  const subFields = <T,>(fields: Record<string, T>): Record<string, T> => {
+    const out: Record<string, T> = {};
+    for (const [f, v] of Object.entries(fields)) out[f] = subSentinel(v) as T;
+    return out;
+  };
   return {
     ...action,
     steps: action.steps.map((s) => {
-      if (
-        s.kind === "open-popup" ||
-        s.kind === "delete-record" ||
-        s.kind === "open-wizard" ||
-        s.kind === "update-fields" ||
-        s.kind === "update-record"
-      ) {
-        return { ...s, recordIdBinding: { source: "const" as const, value: rowId } };
+      if (s.kind === "update-fields") {
+        return {
+          ...s,
+          fields: subFields(s.fields),
+          recordIdBinding: keepRid(s.recordIdBinding)
+            ? s.recordIdBinding
+            : { source: "const" as const, value: rowId },
+        };
+      }
+      if (s.kind === "update-many-fields") {
+        // recordIdsBinding luôn từ cấu hình (state popup multiSelect) — không ép id dòng.
+        return { ...s, fields: subFields(s.fields) };
+      }
+      if (s.kind === "update-record") {
+        return keepRid(s.recordIdBinding)
+          ? s
+          : { ...s, recordIdBinding: { source: "const" as const, value: rowId } };
+      }
+      if (s.kind === "open-popup") {
+        // listFilters: thay "$row.<field>" → giá trị màu/khoá của dòng để lọc popup.
+        return {
+          ...s,
+          recordIdBinding: { source: "const" as const, value: rowId },
+          ...(s.listFilters ? { listFilters: subFields(s.listFilters) } : {}),
+        };
       }
       // invoke-module-proc: inject _id (UUID dòng) vào args để proc nhận biết record.
       if (s.kind === "invoke-module-proc") {
@@ -1467,7 +1540,9 @@ function bindRowIdToAction(action: ActionConfig, row: Record<string, unknown>): 
           args: { ...(s.args ?? {}), _id: { source: "const" as const, value: rowId } },
         };
       }
-      return s;
+      return s.kind === "delete-record" || s.kind === "open-wizard"
+        ? { ...s, recordIdBinding: { source: "const" as const, value: rowId } }
+        : s;
     }),
   };
 }
@@ -2229,6 +2304,17 @@ export function ListWidget({
     );
   }
 
+  // Khi loadGate chưa mở → hiện hint thay vì "Chưa có bản ghi nào."
+  const gateKey = loadGate?.trim();
+  const gateVal = gateKey ? pageState.get(gateKey) : undefined;
+  const gateClosed =
+    !!gateKey &&
+    (gateVal === undefined ||
+      gateVal === null ||
+      gateVal === "" ||
+      (Array.isArray(gateVal) && gateVal.length === 0));
+  const emptyTextResolved = gateClosed ? t("widget.gate_hint") : t("widget.empty_records");
+
   // ── Chế độ chỉnh sửa inline ─────────────────────────────────────────
   if (editable || (editableFields && editableFields.length > 0)) {
     return (
@@ -2260,6 +2346,8 @@ export function ListWidget({
         addRowAtEnd={addRowAtEnd}
         addRowPos={addRowPos}
         embeddedActions={embeddedActions}
+        emptyText={emptyTextResolved}
+        gateClosed={gateClosed}
       />
     );
   }
@@ -2318,6 +2406,10 @@ export function ListWidget({
       <div className="flex-1 min-h-0 overflow-auto">
         {err ? (
           <div className="p-3 text-xs text-danger">{t("widget.error_load", { err })}</div>
+        ) : gateClosed && filteredRows.length === 0 && !loading ? (
+          <div className="h-full flex items-center justify-center">
+            <span className="text-sm text-muted">{t("widget.gate_hint")}</span>
+          </div>
         ) : (
           <DataGrid
             toolbar

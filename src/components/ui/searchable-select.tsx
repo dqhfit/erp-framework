@@ -8,11 +8,16 @@
    - Đóng khi click ra ngoài hoặc Esc; trả focus về trigger.
    ========================================================== */
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { I } from "@/components/Icons";
 import { useDropdownPosition } from "@/hooks/useDropdownPosition";
+import { normalizeVi } from "@/lib/text-utils";
 import { cn } from "@/lib/utils";
+
+/** Tối đa option render ra DOM/lần — danh sách lớn cap để không lag.
+ *  Phần dư hiện gợi ý "gõ thêm để thu hẹp". */
+const RENDER_CAP = 150;
 
 export interface SearchableSelectOption {
   value: string;
@@ -53,11 +58,6 @@ interface SearchableSelectProps {
   /** Có → DROPDOWN NHIỀU CỘT: hiện hàng tiêu đề + mỗi option render theo
    *  `option.cells` thẳng hàng (lưới). Dropdown rộng hơn. */
   columnHeaders?: string[];
-}
-
-/** Bỏ dấu tiếng Việt để so khớp tìm kiếm (đ→d, có dấu→không dấu). */
-function normalize(s: string): string {
-  return s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/đ/g, "d");
 }
 
 export function SearchableSelect({
@@ -116,14 +116,27 @@ export function SearchableSelect({
 
   const selected = allOptions.find((o) => o.value === value);
 
+  // Precompute chuỗi bỏ-dấu 1 lần/option (không normalize lại mỗi phím gõ).
+  const normIndex = useMemo(
+    () => allOptions.map((o) => normalizeVi(o.searchText ?? o.label)),
+    [allOptions],
+  );
+
+  // Defer query → lọc+render chạy nền, ô input không bị chặn khi list lớn.
+  const deferredQuery = useDeferredValue(query);
   const filtered = useMemo(() => {
     // Tìm server-side → options đã là kết quả server, không lọc client nữa.
     if (onSearch) return allOptions;
-    const q = normalize(query.trim());
+    const q = normalizeVi(deferredQuery.trim());
     if (!q) return allOptions;
-    // Lọc theo searchText (gộp mọi cột) nếu có, ngược lại theo label.
-    return allOptions.filter((o) => normalize(o.searchText ?? o.label).includes(q));
-  }, [allOptions, query, onSearch]);
+    return allOptions.filter((_, i) => (normIndex[i] ?? "").includes(q));
+  }, [allOptions, normIndex, deferredQuery, onSearch]);
+
+  // Chỉ render tối đa RENDER_CAP mục — danh sách lớn không re-render toàn bộ DOM.
+  const shown = filtered.length > RENDER_CAP ? filtered.slice(0, RENDER_CAP) : filtered;
+  const overflow = filtered.length - shown.length;
+  // List đang "cũ" trong lúc deferred bắt kịp query → làm mờ nhẹ cho biết.
+  const stale = deferredQuery !== query;
 
   // Đóng khi click ra ngoài.
   useEffect(() => {
@@ -140,7 +153,10 @@ export function SearchableSelect({
     return () => document.removeEventListener("mousedown", onDown);
   }, [open]);
 
-  // Mở: focus ô search, đặt active vào item đang chọn.
+  // Mở: focus ô search, đặt active vào item đang chọn. CHỈ chạy khi `open` đổi —
+  // KHÔNG phụ thuộc value/allOptions, vì server-search cập nhật options mỗi lần gõ
+  // sẽ làm effect re-run và setQuery("") → mất chữ đang gõ.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: value/allOptions đọc tại thời điểm mở; thêm vào deps sẽ reset ô tìm khi options đổi (server-search).
   useEffect(() => {
     if (!open) return;
     setQuery("");
@@ -151,7 +167,7 @@ export function SearchableSelect({
     setActiveIdx(idx);
     // Focus sau khi panel render.
     requestAnimationFrame(() => inputRef.current?.focus());
-  }, [open, value, allOptions]);
+  }, [open]);
 
   // Cuộn item active vào tầm nhìn.
   useEffect(() => {
@@ -178,7 +194,7 @@ export function SearchableSelect({
     }
     if (e.key === "ArrowDown") {
       e.preventDefault();
-      setActiveIdx((i) => Math.min(i + 1, filtered.length - 1));
+      setActiveIdx((i) => Math.min(i + 1, shown.length - 1));
       return;
     }
     if (e.key === "ArrowUp") {
@@ -188,7 +204,7 @@ export function SearchableSelect({
     }
     if (e.key === "Enter") {
       e.preventDefault();
-      const opt = filtered[activeIdx];
+      const opt = shown[activeIdx];
       if (opt) pick(opt.value);
     }
   };
@@ -270,12 +286,18 @@ export function SearchableSelect({
                 ))}
               </div>
             )}
-            <ul ref={listRef} className="max-h-60 overflow-y-auto py-1">
+            <ul
+              ref={listRef}
+              className={cn(
+                "max-h-60 overflow-y-auto py-1 transition-opacity",
+                stale && "opacity-60",
+              )}
+            >
               {loading && <li className="px-3 py-1.5 text-xs text-muted italic">Đang tìm…</li>}
               {!loading && filtered.length === 0 ? (
                 <li className="px-3 py-2 text-sm text-muted italic">{emptyText}</li>
               ) : (
-                filtered.map((o, i) => {
+                shown.map((o, i) => {
                   const isSel = o.value === value;
                   const isActive = i === activeIdx;
                   return (
@@ -316,6 +338,11 @@ export function SearchableSelect({
                     </li>
                   );
                 })
+              )}
+              {overflow > 0 && (
+                <li className="px-3 py-1.5 text-xs text-muted/70 italic border-t border-border/50">
+                  Còn {overflow} mục — gõ thêm để thu hẹp…
+                </li>
               )}
             </ul>
           </div>,

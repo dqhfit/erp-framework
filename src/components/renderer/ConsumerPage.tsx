@@ -7,7 +7,7 @@
    ========================================================== */
 
 import { createProceduresClient } from "@erp-framework/client";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { BanVeTypePage } from "@/components/ban-ve/BanVeTypePage";
 import { BangMauTypePage } from "@/components/bang-mau/BangMauTypePage";
@@ -46,6 +46,7 @@ import {
   withEmbeddedActions,
 } from "@/components/renderer/widgets/layout-widgets";
 import { ListWidget, ServerPagedListWidget } from "@/components/renderer/widgets/list-widgets";
+import { ReportWidget } from "@/components/renderer/widgets/report-widget";
 import {
   CalendarWidget,
   ChartWidget,
@@ -63,6 +64,11 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/stores/auth";
 import { useUserObjects } from "@/stores/userObjects";
 import type { ActionConfig, FilterNode } from "@/types/page";
+
+// BangMauTypePage lazy-load — trang đặc biệt (2 pageId cố định), không kéo bundle vào main chunk
+const BangMauTypePage = lazy(() =>
+  import("@/components/bang-mau/BangMauTypePage").then((m) => ({ default: m.BangMauTypePage })),
+);
 
 /** Lọc danh sách nút hành động theo quyền nhóm/tài khoản.
  *  Admin/editor luôn thấy tất cả; viewer thấy nút không hạn chế hoặc
@@ -239,7 +245,11 @@ function Widget({ comp, pageId }: { comp: PageComponent; pageId: string }) {
       pageId === "20d6b1e3-a164-4338-867c-d7992972de52" ||
       pageId === "a71707c3-c690-4212-aeb8-615695b87b2d"
     ) {
-      return <BangMauTypePage />;
+      return (
+        <Suspense fallback={<div className="p-3 text-xs text-muted">Đang tải...</div>}>
+          <BangMauTypePage />
+        </Suspense>
+      );
     }
     return <SplitWidget comp={comp} />;
   }
@@ -252,6 +262,7 @@ function Widget({ comp, pageId }: { comp: PageComponent; pageId: string }) {
   if (comp.kind === "calendar") return <CalendarWidget cfg={cfg} />;
   if (comp.kind === "map") return <MapWidget cfg={cfg} />;
   if (comp.kind === "pivot") return <PivotWidget cfg={cfg} />;
+  if (comp.kind === "report") return <ReportWidget cfg={cfg} />;
   if (comp.kind === "document") return <DocumentWidget cfg={cfg} />;
   if (comp.kind === "banve-type") {
     return <BanVeTypePage phanloai={(cfg.phanloai as string) ?? "Bản vẽ kỹ thuật"} />;

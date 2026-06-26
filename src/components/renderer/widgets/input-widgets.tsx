@@ -1,14 +1,18 @@
 /* Leaf widget nhập (input) cho renderer: Search / Combobox / Listbox / Tagbox.
    Bind nguồn + đẩy/đọc pageState (lọc cha-con). Tách từ ConsumerPage.tsx
    (Phase A3) — chỉ di chuyển code, KHÔNG đổi hành vi. */
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { I } from "@/components/Icons";
 import { usePageState, useWidgetData } from "@/components/renderer/page-data";
 import { SearchableSelect } from "@/components/ui";
 import { TagBox } from "@/components/ui/tagbox";
 import { useT } from "@/hooks/useT";
+import { normalizeVi } from "@/lib/text-utils";
 import { cn } from "@/lib/utils";
+
+/** Tối đa option render ra DOM/lần trong dropdown — cap để không lag. */
+const COMBO_RENDER_CAP = 150;
 
 export function SearchWidget({ cfg }: { cfg: Record<string, unknown> }) {
   const pageState = usePageState();
@@ -57,7 +61,10 @@ export function ComboboxWidget({ cfg }: { cfg: Record<string, unknown> }) {
   const stateKey = (cfg.stateKey as string) || "";
   const label = cfg.label as string | undefined;
   const staticOpts = (cfg.options as string) || "";
-  const optionLabels = (cfg.optionLabels as Record<string, string> | undefined) ?? {};
+  const optionLabels = useMemo(
+    () => (cfg.optionLabels as Record<string, string> | undefined) ?? {},
+    [cfg.optionLabels],
+  );
   const multiSelect = !!(cfg.multiSelect as boolean);
 
   // single-select value
@@ -80,13 +87,17 @@ export function ComboboxWidget({ cfg }: { cfg: Record<string, unknown> }) {
     return out;
   }, [rows, field, labelField]);
 
-  const options = staticOpts
-    ? staticOpts
-        .split(",")
-        .map((s) => s.trim())
-        .filter(Boolean)
-        .map((o) => ({ value: o, label: optionLabels[o] ?? o }))
-    : dynamicOpts;
+  const options = useMemo(
+    () =>
+      staticOpts
+        ? staticOpts
+            .split(",")
+            .map((s) => s.trim())
+            .filter(Boolean)
+            .map((o) => ({ value: o, label: optionLabels[o] ?? o }))
+        : dynamicOpts,
+    [staticOpts, optionLabels, dynamicOpts],
+  );
 
   // multi-select dropdown state (gọi hook unconditional)
   const [open, setOpen] = useState(false);
@@ -96,7 +107,6 @@ export function ComboboxWidget({ cfg }: { cfg: Record<string, unknown> }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [dropPos, setDropPos] = useState<{ top: number; left: number; width: number } | null>(null);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: open change tính pos
   useEffect(() => {
     if (!open || !triggerRef.current) return;
     const r = triggerRef.current.getBoundingClientRect();
@@ -120,14 +130,21 @@ export function ComboboxWidget({ cfg }: { cfg: Record<string, unknown> }) {
     }
   }, [open]);
 
+  // Precompute nhãn bỏ-dấu 1 lần/option + defer query → gõ mượt với list lớn.
+  const normIndex = useMemo(
+    () => options.map((o) => normalizeVi(optionLabels[o.value] ?? o.label)),
+    [options, optionLabels],
+  );
+  const deferredQuery = useDeferredValue(query);
+
   if (!stateKey) return <div className="p-3 text-xs text-muted">Chưa cấu hình state key.</div>;
 
   if (multiSelect) {
-    const filtered = query
-      ? options.filter((o) =>
-          (optionLabels[o.value] ?? o.label).toLowerCase().includes(query.toLowerCase()),
-        )
-      : options;
+    const fq = normalizeVi(deferredQuery.trim());
+    const filtered = fq ? options.filter((_, i) => (normIndex[i] ?? "").includes(fq)) : options;
+    const shown =
+      filtered.length > COMBO_RENDER_CAP ? filtered.slice(0, COMBO_RENDER_CAP) : filtered;
+    const overflow = filtered.length - shown.length;
     const getCur = (): string[] =>
       Array.isArray(pageState.get(stateKey)) ? (pageState.get(stateKey) as string[]) : [];
     const toggle = (v: string) => {
@@ -210,7 +227,7 @@ export function ComboboxWidget({ cfg }: { cfg: Record<string, unknown> }) {
                 {filtered.length === 0 ? (
                   <li className="px-3 py-2 text-sm text-muted italic">Không có kết quả</li>
                 ) : (
-                  filtered.map((o) => {
+                  shown.map((o) => {
                     const lbl = optionLabels[o.value] ?? o.label;
                     const checked = vals.includes(o.value);
                     return (
@@ -236,6 +253,11 @@ export function ComboboxWidget({ cfg }: { cfg: Record<string, unknown> }) {
                       </li>
                     );
                   })
+                )}
+                {overflow > 0 && (
+                  <li className="px-3 py-1.5 text-xs text-muted/70 italic border-t border-border/50">
+                    Còn {overflow} mục — gõ thêm để thu hẹp…
+                  </li>
                 )}
               </ul>
             </div>,

@@ -22,6 +22,7 @@ import { I } from "@/components/Icons";
 import { Button, Modal, SplitPane } from "@/components/ui";
 import { dialog } from "@/lib/dialog";
 import { buildDqhfIndex, resolveFormProcs as resolveFormProcsBrowser } from "@/lib/dqhf-resolver";
+import { normalizeVi } from "@/lib/text-utils";
 
 const api = createLegacyMenuClient("");
 const printApi = createPrintTemplatesClient("");
@@ -282,10 +283,17 @@ export function CockpitPage() {
     fetchJobs();
     // Đọc cờ active từ ref — KHÔNG gọi fetchJobs trong updater setJobs (side
     // effect trong reducer → StrictMode chạy 2× = gấp đôi request).
-    const id = setInterval(() => {
-      if (jobsActiveRef.current) fetchJobs();
-    }, 4_000);
-    return () => clearInterval(id);
+    // Guard: bỏ qua khi tab ẩn; fetch ngay khi tab hiện lại (nếu có job active).
+    const onTick = () => {
+      if (document.hidden || !jobsActiveRef.current) return;
+      fetchJobs();
+    };
+    const id = setInterval(onTick, 4_000);
+    window.addEventListener("visibilitychange", onTick);
+    return () => {
+      clearInterval(id);
+      window.removeEventListener("visibilitychange", onTick);
+    };
   }, [reload]);
 
   const onToggle = useCallback((code: string) => {
@@ -601,16 +609,22 @@ export function CockpitPage() {
 
   const navTree = useMemo(() => pruneNavTree(tree), [tree]);
 
+  // Precompute danh sách node phẳng 1 lần/tree (tree chỉ đổi sau khi import menu)
+  const flatNodes = useMemo(() => flattenTree(tree), [tree]);
+  // Precompute chuỗi bỏ-dấu 1 lần/node — mỗi keystroke chỉ cần N lần .includes()
+  const nodeNormIndex = useMemo(
+    () =>
+      flatNodes.map(({ node }) =>
+        normalizeVi(`${node.name ?? ""} ${node.sourceCode} ${node.winId ?? ""}`),
+      ),
+    [flatNodes],
+  );
+  // Filter trên normIndex precompute; không gọi flattenTree lại mỗi keystroke
   const searchResults = useMemo(() => {
-    const q = searchQuery.trim().toLowerCase();
+    const q = normalizeVi(searchQuery.trim());
     if (!q) return null; // null = không search
-    return flattenTree(tree).filter(
-      ({ node }) =>
-        (node.name ?? "").toLowerCase().includes(q) ||
-        node.sourceCode.toLowerCase().includes(q) ||
-        (node.winId ?? "").toLowerCase().includes(q),
-    );
-  }, [searchQuery, tree]);
+    return flatNodes.filter((_, i) => (nodeNormIndex[i] ?? "").includes(q));
+  }, [searchQuery, flatNodes, nodeNormIndex]);
 
   const pct = useMemo(() => {
     if (!stats) return 0;

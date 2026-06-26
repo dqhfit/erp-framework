@@ -1,6 +1,6 @@
 import { createEmbedClient } from "@erp-framework/client";
 import { createRootRoute, Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
-import { type ReactNode, useEffect, useState } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import { AgentPanel } from "@/components/AgentPanel";
 import { AuthGate } from "@/components/AuthGate";
 import { CommandPalette } from "@/components/CommandPalette";
@@ -89,24 +89,33 @@ function AppShell() {
   const role = useAuth((s) => s.user?.role);
   const navigate = useNavigate();
 
+  // Timestamp lần cuối hydrate — dùng để guard tránh hydrate liên tục.
+  const lastHydrateRef = useRef<number>(0);
+
   /* Nạp store dùng chung (entity/page/workflow/agent) ngay khi vào
      app — và nạp lại mỗi khi quay lại tab. Nhờ vậy sidebar luôn
      phản ánh backend, không cần ghé trang "Dữ liệu Server". */
   useEffect(() => {
-    const hydrate = () => void useUserObjects.getState().hydrate();
+    const hydrate = () => {
+      void useUserObjects.getState().hydrate();
+      lastHydrateRef.current = Date.now();
+    };
     hydrate();
     // Nạp preferences tài khoản (phím tắt tự đặt, yêu thích…) — server là nguồn
     // chân lý, sync giữa thiết bị. Trước đây chỉ portal nạp → đổi phím tắt/yêu
     // thích mất sau reload ở app chính.
     void usePreferences.getState().load();
-    const onFocus = () => {
-      if (document.visibilityState === "visible") hydrate();
+    // Chỉ nghe visibilitychange, bỏ "focus" — gộp cả 2 sự kiện vào 1 listener
+    // tránh hydrate 2× khi người dùng alt-tab về (focus + visibilitychange cùng
+    // nổ một lúc). Guard 5 phút: chuyển tab nhanh không kích hydrate thừa.
+    const onVisibility = () => {
+      if (document.visibilityState !== "visible") return;
+      if (Date.now() - lastHydrateRef.current < 5 * 60_000) return;
+      hydrate();
     };
-    window.addEventListener("visibilitychange", onFocus);
-    window.addEventListener("focus", onFocus);
+    window.addEventListener("visibilitychange", onVisibility);
     return () => {
-      window.removeEventListener("visibilitychange", onFocus);
-      window.removeEventListener("focus", onFocus);
+      window.removeEventListener("visibilitychange", onVisibility);
     };
   }, []);
 

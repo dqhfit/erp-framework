@@ -14,6 +14,7 @@ import websocketPlugin from "@fastify/websocket";
 import { fastifyTRPCPlugin } from "@trpc/server/adapters/fastify";
 import { and, eq, sql } from "drizzle-orm";
 import Fastify, { type FastifyReply, type FastifyRequest } from "fastify";
+import { logActivity } from "./activity";
 import { canActOnAgentLite } from "./agent-acl";
 import { runAgentChat, type ToolDef } from "./agent-chat";
 import {
@@ -23,6 +24,7 @@ import {
   MEMORY_FILES,
   type MemoryFile,
 } from "./agent-memory";
+import { describeAgentEntity, searchAgentRecords } from "./agent-records-search";
 import { SESSION_COOKIE } from "./auth";
 import { assertWithinBudget } from "./budget";
 import { CAD_GENERATE_TOOL, runCadGenerate } from "./cad-tool";
@@ -34,8 +36,15 @@ import { signFileUrl, verifyFileToken } from "./file-token";
 import { registerGraphQL } from "./graphql";
 import { registerIotRoutes } from "./iot";
 import { startIotMqtt, stopIotMqtt } from "./iot-mqtt";
-import { enqueueKbIngest, startJobs, stopJobs } from "./jobs";
-import { agenticRetrieve } from "./knowledge-agentic";
+import { enqueueKbIngest, getJobsStatus, startJobs, stopJobs } from "./jobs";
+import {
+  agenticRetrieve,
+  planRecordFilters,
+  preRoute,
+  type RecordFilterPlan,
+  type RouteDecision,
+  routeQuery,
+} from "./knowledge-agentic";
 import { knowledgeSearch } from "./knowledge-search";
 import { registerBackupMcp } from "./mcp-backup";
 import { registerCadMcp } from "./mcp-cad";
@@ -46,17 +55,13 @@ import { registerMenuMcp } from "./mcp-menu";
 import { registerMigrationMcp } from "./mcp-migration";
 import { registerOAuth } from "./oauth";
 import { registerPrintRoutes } from "./print-routes";
-import { getRecordStore } from "./record-store";
 import { registerRestApi } from "./rest-api";
 import { appRouter } from "./router";
-import {
-  decryptDataOut,
-  loadEntityFields,
-  queryParams,
-  stripUnreadableFields,
-} from "./router-helpers";
+import { queryParams } from "./router-helpers";
+import { recordServerError } from "./server-errors";
 import { resolveSearchConfig, webSearch } from "./web-search";
 import { registerWebhookRoutes } from "./webhook-routes";
+import { isChatMember } from "./chat-router";
 import { isChannelAllowed } from "./ws-channels";
 import { registerConnection, subscribe, unsubscribe } from "./ws-hub";
 import "./plugins"; // Đăng ký plugin server-side vào pluginRegistry
@@ -64,6 +69,34 @@ import { bootstrapTools, shutdownTools } from "./tools";
 
 const PORT = Number(process.env.PORT ?? 8910);
 const HOST = process.env.HOST ?? "127.0.0.1";
+
+/** Cờ sẵn sàng (readiness) — bật sau khi server đã listen (migrations đã chạy
+ *  TRƯỚC listen nên xong). Endpoint /ready đọc cờ này + ping DB sống. Khác
+ *  /health (luôn 200, chỉ báo tiến trình còn sống). */
+let appReady = false;
+
+/** Giới hạn body JSON (chống payload lớn làm cạn RAM). Route /upload dùng
+ *  @fastify/multipart với giới hạn riêng (25MB) nên không bị cờ này chặn. */
+const BODY_LIMIT = Number(process.env.BODY_LIMIT ?? 16 * 1024 * 1024);
+
+/** Fail-fast lúc boot khi thiếu ENV bắt buộc — gom hết rồi báo MỘT lần (DX tốt
+ *  hơn fail rải rác lúc dùng). Mirror pattern fail-fast của crypto.ts
+ *  (ENCRYPTION_KEY). ENCRYPTION_KEY tự kiểm ở crypto.ts; CORS_ORIGIN ở phần
+ *  CORS dưới — ở đây kiểm sớm để không boot nửa vời. */
+function assertRequiredEnv(): void {
+  const missing: string[] = [];
+  if (!process.env.DATABASE_URL) missing.push("DATABASE_URL");
+  if (process.env.NODE_ENV === "production") {
+    if (!process.env.CORS_ORIGIN) missing.push("CORS_ORIGIN (production)");
+    if (!process.env.ENCRYPTION_KEY) missing.push("ENCRYPTION_KEY (production)");
+  }
+  if (missing.length) {
+    throw new Error(
+      `Thiếu biến môi trường bắt buộc: ${missing.join(", ")}. ` +
+        "Khai báo trong .env hoặc cấu hình deploy trước khi khởi động.",
+    );
+  }
+}
 /** Thư mục lưu file tải lên Knowledge Base (volume Docker erp-uploads). */
 const UPLOAD_DIR = process.env.UPLOAD_DIR ?? "/data/uploads";
 
@@ -193,6 +226,9 @@ async function main(): Promise<void> {
   // app đứng lên với DB sai schema sẽ gây lỗi runtime khó debug hơn.
   // Hoạt động cho mọi deploy (Docker, k8s, PM2, native), không phụ
   // thuộc shell command bên ngoài.
+  // Fail-fast: thiếu ENV bắt buộc → dừng ngay với message rõ, không boot nửa vời.
+  assertRequiredEnv();
+
   console.log("[migrate] chạy migrations...");
   try {
     await runMigrations(db);
@@ -231,9 +267,53 @@ async function main(): Promise<void> {
   // của connection peer (= nginx container) → rate-limit sẽ chung 1 IP
   // cho mọi user. Bật trustProxy để req.ip lấy IP client thật.
   const app = Fastify({
-    logger: true,
+    // pino (sẵn của Fastify) — redact header nhạy cảm khỏi log request;
+    // level theo env LOG_LEVEL (mặc định info). Quan sát: log đã có reqId,
+    // method, url, statusCode, responseTime cho mỗi request.
+    logger: {
+      level: process.env.LOG_LEVEL ?? "info",
+      redact: ["req.headers.cookie", "req.headers.authorization", 'req.headers["x-api-key"]'],
+    },
     maxParamLength: 5000,
     trustProxy: true,
+    bodyLimit: BODY_LIMIT,
+  });
+
+  /* Error handler toàn cục — KHÔNG để lỗi route raw rơi vào im lặng. Log có
+     ngữ cảnh (reqId/method/url) qua pino; đồng thời best-effort ghi vào
+     client_errors (source=server) nếu request có phiên → admin thấy ở
+     /settings/errors. Giữ ĐỊNH DẠNG lỗi mặc định của Fastify cho client.
+     (tRPC tự xử lý lỗi của procedure → handler này chủ yếu cho /agent,
+     /upload, /files… và các lỗi chưa bắt.) */
+  app.setErrorHandler((error, request, reply) => {
+    request.log.error(
+      { err: error, reqId: request.id, method: request.method, url: request.url },
+      "request error",
+    );
+    // Fire-and-forget: phân giải company từ phiên rồi ghi (lỗi hiếm nên 1 lookup
+    // chấp nhận được). Không chặn reply; mọi lỗi nuốt trong recordServerError.
+    void (async () => {
+      try {
+        const sid = (request.cookies as Record<string, string | undefined>)?.[SESSION_COOKIE];
+        if (!sid) return;
+        const [s] = await db.select().from(sessions).where(eq(sessions.id, sid));
+        if (!s) return;
+        const active = await resolveActiveCompany(db, s.userId, s.activeCompanyId);
+        if (!active) return;
+        const err = error as Error;
+        await recordServerError(db, {
+          companyId: active.companyId,
+          userId: s.userId,
+          message: err.message,
+          stack: err.stack ?? null,
+          url: request.url,
+          meta: { method: request.method, statusCode: reply.statusCode },
+        });
+      } catch {
+        /* fail-safe: không vỡ đường lỗi */
+      }
+    })();
+    reply.send(error); // giữ định dạng lỗi mặc định Fastify (statusCode + message).
   });
 
   // CORS — cho frontend (origin khác) gọi kèm cookie phiên.
@@ -348,6 +428,33 @@ async function main(): Promise<void> {
   }));
   app.get("/health", async () => ({ ok: true, ts: Date.now() }));
 
+  /* Readiness probe — KHÁC /health (liveness). Trả 200 chỉ khi server đã boot
+     xong (migrations đã chạy trước listen) VÀ DB còn ping được. Lúc đang boot
+     hoặc DB rớt → 503 để load balancer/Coolify KHÔNG route traffic vào. */
+  app.get("/ready", async (_req, reply) => {
+    if (!appReady) return reply.code(503).send({ ready: false, reason: "starting" });
+    try {
+      await db.execute(sql`select 1`);
+    } catch {
+      return reply.code(503).send({ ready: false, reason: "db" });
+    }
+    return { ready: true, ts: Date.now() };
+  });
+
+  /* Giám sát hàng đợi pg-boss (ADMIN-only) — depth từng queue + cờ running.
+     Cho ops/monitoring phát hiện job kẹt (size tăng dồn) hoặc worker chết
+     (running=false). Auth bằng phiên, đồng nhất các route raw khác. */
+  app.get("/jobs/status", async (req, reply) => {
+    const sid = (req.cookies as Record<string, string | undefined>)?.[SESSION_COOKIE];
+    if (!sid) return reply.code(401).send({ error: "Chưa đăng nhập" });
+    const [s] = await db.select().from(sessions).where(eq(sessions.id, sid));
+    if (!s || s.expiresAt < new Date()) return reply.code(401).send({ error: "Phiên hết hạn" });
+    const active = await resolveActiveCompany(db, s.userId, s.activeCompanyId);
+    if (!active) return reply.code(403).send({ error: "Bạn chưa thuộc công ty nào" });
+    if (active.role !== "admin") return reply.code(403).send({ error: "Chỉ admin xem được" });
+    return getJobsStatus();
+  });
+
   /* WebSocket endpoint — realtime push. Client connect kèm cookie phiên;
      server xác thực user qua sessions table, register vào ws-hub. Client
      gửi {action: "subscribe"|"unsubscribe", channel} để quản channels.
@@ -372,19 +479,33 @@ async function main(): Promise<void> {
     const conn = registerConnection(socket as never, s.userId, active.companyId);
     socket.send(JSON.stringify({ channel: "system", payload: { ok: true, userId: s.userId } }));
     socket.on("message", (raw: Buffer) => {
-      try {
-        const m = JSON.parse(raw.toString()) as { action?: string; channel?: string };
-        if (!m.channel) return;
-        // P4.1 — channel allowlist. Mọi channel phải khớp 1 trong các
-        // pattern + scope theo user/company hiện tại. Channel ngoài
-        // whitelist hoặc cross-tenant → silently drop (không reply
-        // error để tránh oracle).
-        if (!isChannelAllowed(m.channel, s.userId, active.companyId)) return;
-        if (m.action === "subscribe") subscribe(conn, m.channel);
-        else if (m.action === "unsubscribe") unsubscribe(conn, m.channel);
-      } catch {
-        /* malformed message — ignore */
-      }
+      void (async () => {
+        try {
+          const m = JSON.parse(raw.toString()) as { action?: string; channel?: string };
+          if (!m.channel) return;
+          // P4.1 — channel allowlist. Mọi channel phải khớp 1 trong các
+          // pattern + scope theo user/company hiện tại. Channel ngoài
+          // whitelist hoặc cross-tenant → silently drop (không reply
+          // error để tránh oracle).
+          if (!isChannelAllowed(m.channel, s.userId, active.companyId)) return;
+          // chat:<conversationId> — allowlist trên chỉ check format UUID;
+          // verify membership (thuộc hội thoại + cùng company) bằng DB
+          // trước khi cho subscribe để không rò tin nhắn chéo hội thoại.
+          if (m.channel.startsWith("chat:")) {
+            const ok = await isChatMember(
+              db,
+              m.channel.slice("chat:".length),
+              s.userId,
+              active.companyId,
+            );
+            if (!ok) return;
+          }
+          if (m.action === "subscribe") subscribe(conn, m.channel);
+          else if (m.action === "unsubscribe") unsubscribe(conn, m.channel);
+        } catch {
+          /* malformed message — ignore */
+        }
+      })();
     });
   });
 
@@ -427,6 +548,11 @@ async function main(): Promise<void> {
       // Bật web fallback (SearXNG) khi KB không đủ kết quả. Chỉ có hiệu lực
       // khi SearXNG đã cấu hình (webSearchCfg?.configured === true).
       webSearch?: boolean;
+      // "Định tuyến thông minh" (Query routing, Phase 5): 1 lời gọi LLM rẻ
+      // phân loại ý định câu hỏi → KB / records (dữ liệu cấu trúc) / web /
+      // direct, chạy cho MỌI adapter. Mặc định false (giữ Fast = 0 LLM thêm).
+      // deepSearch=true cũng bật router. Xem design §11.
+      smartRoute?: boolean;
     };
     reply.hijack();
     const raw = reply.raw;
@@ -511,55 +637,157 @@ async function main(): Promise<void> {
           }
         }
       }
-      // Auto-RAG orchestrated: tra Knowledge Base bằng câu hỏi mới nhất rồi
-      // CHÈN đoạn liên quan + chỉ thị trích nguồn vào system prompt. Đường
-      // dùng chung mọi adapter (gồm claude-cli — bridge tool-call emulation
-      // dễ vỡ nên ưu tiên đường này). Fail-safe: lỗi không vỡ chat.
-      //  - deepSearch=false (Fast, mặc định): tìm thẳng, KHÔNG tốn LLM thêm.
+      // Auto-RAG orchestrated + Query routing: tra dữ liệu liên quan rồi CHÈN
+      // vào system prompt. Đường dùng chung mọi adapter (gồm claude-cli — bridge
+      // tool-call emulation dễ vỡ nên ưu tiên đường này). Fail-safe: lỗi không
+      // vỡ chat.
+      //  - deepSearch=false (Fast, mặc định): tìm thẳng KB, KHÔNG tốn LLM thêm.
       //  - deepSearch=true (Tìm sâu): plan (rewrite) + CRAG grading.
-      // Xem docs/AGENTIC-RAG-DESIGN-2026-05-31.md §1.5.
+      //  - smartRoute (hoặc deepSearch): +1 lời gọi LLM rẻ phân loại ý định →
+      //    KB / records (dữ liệu cấu trúc) / web / direct. Không bật → luôn KB.
+      // Xem docs/AGENTIC-RAG-DESIGN-2026-05-31.md §1.5 + §11.
       let kbContext = "";
+      let recordsContext = "";
       try {
         const lastUser = [...(body.messages ?? [])]
           .reverse()
           .find((m) => m.role === "user")
           ?.content?.trim();
         if (lastUser) {
-          const { hits, gradedOut } = await agenticRetrieve(db, active.companyId, lastUser, {
-            limit: 5,
-            userId: s.userId,
-            plan: body.deepSearch === true,
-            grade: body.deepSearch === true,
-            // Tìm sâu: thêm graph expansion (đoạn lân cận) + nén + re-rank LLM.
-            expand: body.deepSearch === true,
-            rerank: body.deepSearch === true,
-            compress: body.deepSearch === true,
-            webFallback: body.webSearch === true && webSearchCfg?.configured === true,
-            sourceIds: agentSourceIds,
-          });
-          if (hits.length && !gradedOut) {
-            kbContext =
-              "\n\n## Tri thức nội bộ liên quan (Knowledge Base)\n" +
-              "Khi dùng thông tin từ các trích đoạn dưới, TRÍCH NGUỒN dạng " +
-              "[#tên nguồn]. CHỈ trả lời dựa trên nội dung đã truy hồi; nếu " +
-              'không đủ thông tin, nói rõ "Không tìm thấy trong tri thức nội ' +
-              'bộ" — TUYỆT ĐỐI không bịa.\n\n' +
-              hits
-                .map((h, i) => `[${i + 1}] Nguồn: [#${h.sourceTitle}]\n${h.content}`)
-                .join("\n\n");
-          } else if (gradedOut) {
-            // CRAG kết luận lạc đề → KHÔNG chèn rác, nhắc model nói thẳng.
-            kbContext =
-              "\n\n## Tri thức nội bộ\n" +
-              "Không tìm thấy nội dung liên quan trong Knowledge Base. Nếu câu " +
-              'hỏi cần dữ liệu nội bộ, hãy nói rõ "Không tìm thấy trong tri ' +
-              'thức nội bộ" thay vì suy đoán.';
+          const webEnabled = body.webSearch === true && webSearchCfg?.configured === true;
+          // Query routing: bật khi smartRoute HOẶC deepSearch. Không bật →
+          // mặc định ["kb"] (= hành vi auto-RAG cũ, 0 LLM thêm). Fail-safe:
+          // routeQuery lỗi/null tự lùi về ["kb"].
+          const routeEnabled = body.smartRoute === true || body.deepSearch === true;
+          // Pre-router heuristic (0 LLM): ca hiển nhiên (chào hỏi/cảm ơn/hỏi
+          // về trợ lý) → "direct", bỏ qua truy hồi NGAY CẢ ở chế độ Fast mặc
+          // định (tiết kiệm embedding + search KB). Chỉ khi không bắt được
+          // mới cân nhắc LLM router (nếu bật) hoặc lùi về ["kb"].
+          const pre = preRoute(lastUser);
+          let route: RouteDecision = pre ?? { targets: ["kb"] };
+          if (!pre && routeEnabled) {
+            // Entity agent ĐƯỢC tra (deny-by-default meta.agentSearchable) —
+            // feed cho router để chọn đúng + chặn route tới entity cấm.
+            const routableEntities = canViewRecords
+              ? await db
+                  .select({ name: entities.name, label: entities.label })
+                  .from(entities)
+                  .where(
+                    and(
+                      eq(entities.companyId, active.companyId),
+                      sql`${entities.meta} @> '{"agentSearchable": true}'::jsonb`,
+                    ),
+                  )
+                  .limit(100)
+              : [];
+            route = await routeQuery(db, active.companyId, lastUser, {
+              entities: routableEntities,
+              allowWeb: webEnabled,
+              userId: s.userId,
+            });
+          }
+          // Telemetry routing (explainability §11.6): chỉ ghi khi THỰC SỰ có
+          // quyết định (pre-route heuristic hoặc LLM router chạy) — đường kb
+          // mặc định không ghi. Fail-safe + fire-and-forget (logActivity tự
+          // nuốt lỗi). Không lưu retrieval_trace (§10-q4 hoãn — cần migration).
+          if (pre || routeEnabled) {
+            void logActivity(db, {
+              companyId: active.companyId,
+              kind: "route",
+              target: route.targets.join(","),
+              detail:
+                `Định tuyến: [${route.targets.join(", ")}]` +
+                (route.entity ? ` entity=${route.entity}` : "") +
+                (route.reason ? ` — ${route.reason}` : ""),
+              actorUserId: s.userId,
+            });
+          }
+          const wantKb = route.targets.includes("kb") || route.targets.includes("web");
+          const wantRecords = route.targets.includes("records") && canViewRecords && !!route.entity;
+
+          // Nhánh KB — chạy khi mặc định (không router) hoặc router chọn kb/web.
+          // records-only / direct → BỎ QUA (tiết kiệm embedding + search).
+          if (wantKb) {
+            const { hits, gradedOut } = await agenticRetrieve(db, active.companyId, lastUser, {
+              limit: 5,
+              userId: s.userId,
+              plan: body.deepSearch === true,
+              grade: body.deepSearch === true,
+              // Tìm sâu: thêm graph expansion (đoạn lân cận) + nén + re-rank LLM.
+              expand: body.deepSearch === true,
+              rerank: body.deepSearch === true,
+              compress: body.deepSearch === true,
+              // Knowledge-graph hop (đoạn chéo nguồn qua thực thể chung) — chỉ
+              // có tác dụng với nguồn đã trích quan hệ (meta.extractGraph).
+              graph: body.deepSearch === true,
+              webFallback: webEnabled || route.targets.includes("web"),
+              sourceIds: agentSourceIds,
+            });
+            if (hits.length && !gradedOut) {
+              kbContext =
+                "\n\n## Tri thức nội bộ liên quan (Knowledge Base)\n" +
+                "Khi dùng thông tin từ các trích đoạn dưới, TRÍCH NGUỒN dạng " +
+                "[#tên nguồn]. CHỈ trả lời dựa trên nội dung đã truy hồi; nếu " +
+                'không đủ thông tin, nói rõ "Không tìm thấy trong tri thức nội ' +
+                'bộ" — TUYỆT ĐỐI không bịa.\n\n' +
+                hits
+                  .map((h, i) => `[${i + 1}] Nguồn: [#${h.sourceTitle}]\n${h.content}`)
+                  .join("\n\n");
+            } else if (gradedOut) {
+              // CRAG kết luận lạc đề → KHÔNG chèn rác, nhắc model nói thẳng.
+              kbContext =
+                "\n\n## Tri thức nội bộ\n" +
+                "Không tìm thấy nội dung liên quan trong Knowledge Base. Nếu câu " +
+                'hỏi cần dữ liệu nội bộ, hãy nói rõ "Không tìm thấy trong tri ' +
+                'thức nội bộ" thay vì suy đoán.';
+            }
+          }
+
+          // Nhánh records (dữ liệu CÓ CẤU TRÚC) — router chọn "records" + entity
+          // hợp lệ (đã trong allowlist agentSearchable). Helper áp field-level
+          // RBAC strip. Fail-safe: lỗi/entity chưa opt-in → bỏ nhánh, không vỡ.
+          if (wantRecords && route.entity) {
+            try {
+              // Chế độ Deep: nâng records từ FTS thô → bộ lọc CÓ CẤU TRÚC theo
+              // field (+1 lời gọi LLM, chỉ trên nhánh records — hiếm).
+              // describeAgentEntity ném nếu entity chưa opt-in → catch dưới bỏ
+              // nhánh. Output filter vẫn được searchAgentRecords sanitize lại.
+              let plan: RecordFilterPlan | null = null;
+              if (body.deepSearch === true) {
+                const info = await describeAgentEntity(db, active.companyId, route.entity);
+                plan = await planRecordFilters(
+                  db,
+                  active.companyId,
+                  info,
+                  lastUser,
+                  active.role,
+                  s.userId,
+                );
+              }
+              const res = await searchAgentRecords(db, active.companyId, active.role, {
+                entity: route.entity,
+                q: plan?.q ?? route.recordQuery ?? lastUser,
+                filters: plan?.filters,
+                limit: 10,
+              });
+              if (res.rows.length) {
+                recordsContext =
+                  `\n\n## Dữ liệu bản ghi liên quan (${res.label})\n` +
+                  "Các bản ghi dưới đây lấy từ DỮ LIỆU CÓ CẤU TRÚC của hệ thống. " +
+                  "Dùng để trả lời câu hỏi về số liệu; nếu không đủ, nói rõ thay " +
+                  "vì suy đoán.\n\n" +
+                  res.rows.map((r, i) => `[${i + 1}] ${JSON.stringify(r.data)}`).join("\n");
+              }
+            } catch (e) {
+              console.warn("[agent] routing records lỗi:", (e as Error).message);
+            }
           }
         }
       } catch (e) {
-        console.warn("[agent] auto-RAG KB lỗi:", (e as Error).message);
+        console.warn("[agent] auto-RAG/routing lỗi:", (e as Error).message);
       }
-      const finalSystem = memoryPreamble + (body.system ?? "Bạn là trợ lý ERP.") + kbContext;
+      const finalSystem =
+        memoryPreamble + (body.system ?? "Bạn là trợ lý ERP.") + kbContext + recordsContext;
 
       const tools = [
         ...(body.tools ?? []),
@@ -621,34 +849,6 @@ async function main(): Promise<void> {
           // RBAC: kiểm lại tại thời điểm chạy (fail-closed, không tin vào
           // việc tool đã/ chưa được liệt kê).
           if (!canViewRecords) throw new Error('Không có quyền "view:entity".');
-          const entityName = String(args.entity ?? "").trim();
-          if (!entityName) throw new Error("Thiếu tên entity.");
-          // Resolve entity theo tên CASE-INSENSITIVE trong phạm vi công ty.
-          const [ent] = await db
-            .select()
-            .from(entities)
-            .where(
-              and(
-                eq(entities.companyId, active.companyId),
-                sql`lower(${entities.name}) = lower(${entityName})`,
-              ),
-            )
-            .limit(1);
-          if (!ent)
-            throw new Error(
-              `Không tìm thấy entity "${entityName}" trong hệ thống. ` +
-                `Hãy dùng đúng tên kỹ thuật của entity (phân biệt hoa/thường không quan trọng). ` +
-                `Admin có thể xem danh sách entity tại mục Entities trong ứng dụng.`,
-            );
-          // Deny-by-default: chỉ entity được bật cờ opt-in mới cho agent tra.
-          const meta = (ent.meta ?? {}) as { agentSearchable?: boolean };
-          if (meta.agentSearchable !== true) {
-            throw new Error(
-              `Entity "${entityName}" chưa được cấp quyền cho agent tìm kiếm. ` +
-                `Admin cần vào cài đặt entity → bật "Cho phép agent tìm kiếm" (AgentSearchable). ` +
-                `Đây là tính năng opt-in để bảo vệ dữ liệu nhạy cảm.`,
-            );
-          }
           // Validate query của LLM qua zod (queryParams) — bỏ field rác.
           const parsed = queryParams.safeParse({
             q: typeof args.q === "string" ? args.q : undefined,
@@ -659,23 +859,15 @@ async function main(): Promise<void> {
             limit: Math.min(50, Math.max(1, Number(args.limit) || 10)),
           });
           const query = parsed.success ? parsed.data : { limit: 10 };
-          // Qua RecordStore — HYBRID-aware (entity tier='table' đọc bảng thật).
-          const { rows } = await getRecordStore(db).list(active.companyId, ent.id, {
+          // Helper dùng chung với Query routing — 1 cổng bảo mật (resolve +
+          // agentSearchable deny-by-default + field-level RBAC strip).
+          const { rows } = await searchAgentRecords(db, active.companyId, active.role, {
+            entity: String(args.entity ?? ""),
             q: query?.q,
             filters: query?.filters,
             limit: query?.limit ?? 10,
-            withTotal: false,
           });
-          // Decrypt + field-level RBAC strip (đồng nhất records.get).
-          const fields = await loadEntityFields(db, active.companyId, ent.id);
-          return rows.map((r) => ({
-            id: r.id,
-            data: stripUnreadableFields(
-              fields,
-              decryptDataOut(fields, r.data as Record<string, unknown>),
-              active.role,
-            ),
-          }));
+          return rows;
         }
         if (name === "cad_generate") {
           // RBAC kiểm lại tại runtime (fail-closed).
@@ -1397,6 +1589,7 @@ async function main(): Promise<void> {
   });
 
   await app.listen({ host: HOST, port: PORT });
+  appReady = true; // server đã listen + migrations xong → readiness OK.
   console.log(`ERP Framework server → http://${HOST}:${PORT}`);
 
   // Scheduler — KHÔNG chặn boot nếu DB chưa sẵn sàng.
