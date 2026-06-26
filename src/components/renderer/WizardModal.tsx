@@ -5,9 +5,9 @@
    qua saveOutputTo của từng bước.
    ========================================================== */
 import { createApiDataSource } from "@erp-framework/client";
+import type { FilterOp } from "@erp-framework/core";
 import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import type { FilterOp } from "@erp-framework/core";
 import { I } from "@/components/Icons";
 import { fileDisplayName } from "@/components/renderer/FilePreviewModal";
 import { LookupPicker } from "@/components/renderer/LookupPicker";
@@ -964,7 +964,6 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
       : entFields
   ).filter((f) => !stepHidden.has(f.name));
   // 1-entity → form dùng chung 1 khoá cho mọi bước; else → form riêng theo step.id.
-  const formKey = wizardEntityId ? SINGLE_FORM_KEY : current.id;
   const form = forms[formKey] ?? {};
   const isLast = activeIdx === wizardSteps.length - 1;
   const relatedImageCfg = current.relatedImage;

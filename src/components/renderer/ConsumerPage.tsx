@@ -10,7 +10,6 @@ import { createProceduresClient } from "@erp-framework/client";
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { BanVeTypePage } from "@/components/ban-ve/BanVeTypePage";
-import { BangMauTypePage } from "@/components/bang-mau/BangMauTypePage";
 import { I } from "@/components/Icons";
 import { ActionWidget } from "@/components/renderer/ActionWidget";
 import {

@@ -14,7 +14,7 @@ import {
 import { lazy, type ReactNode, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { I } from "@/components/Icons";
 import { canScanBarcode, QrScanner } from "@/components/QrScanner";
-import { Button, SearchableSelect, Select } from "@/components/ui";
+import { Button, SearchableSelect } from "@/components/ui";
 import { useNavTree } from "@/hooks/useNavTree";
 import { normalizeVi } from "@/lib/text-utils";
 import { useAuth } from "@/stores/auth";
