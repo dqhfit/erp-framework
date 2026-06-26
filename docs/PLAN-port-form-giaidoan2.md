@@ -211,13 +211,23 @@ SELECT từ **bảng tồn lưu sẵn** `tr_tonkho_thanhpham` (join sanpham+orde
 này **CHƯA migrate** vào ERP → blocked như 7 form Phase 4. Cần full-import
 `tr_tonkho_thanhpham` rồi wire **DS list** (không cần proc/report widget).
 
-**CÒN LẠI Phase 3 (cần user):**
-1. **Coolify redeploy** (code widget + 2 proc) — bắt buộc trước.
-2. Sau redeploy: đẩy `docs/phase3-report-pages.json` lên prod (page_create_draft theo id,
-   overwrite) → smoke-test render R46/R62 (chọn kho/đơn → proc trả lưới) → publish +
-   link menu (R46→? , R62→?).
-3. R50: import bảng `tr_tonkho_thanhpham` (MSSQL sống) → DS list.
-4. R62 nice-to-have: thay ô maddh text bằng order-picker (LookupPicker) thay vì gõ tay.
+**HOÀN TẤT Phase 3 trên prod (2026-06-26):**
+1. ✅ Coolify redeploy XONG — verify 2 proc chạy thật (migration_invoke_module_proc):
+   `materialInout` NKI/11 → 96 dòng; `dqtTonghopChitiet` DQHF12/0620 → 603 dòng.
+2. ✅ Đẩy config 2 trang (page_create_draft theo id, overwrite). ⚠ overwrite-by-id
+   CHUẨN HOÁ tên theo `<base>_<6hex id>` khi trùng tên → R46 đổi `_b7f3c1`→`_fd09fa`.
+3. ✅ Smoke-test render R46 (DOM): widget `report` deploy + nhận diện; filter bar (Kho
+   7 lựa chọn + 2 date + nút Xem) + DataGrid 15 cột + export + phân trang đầy đủ.
+   (Screenshot freeze do browser-extension, không phải lỗi trang.)
+4. ✅ **PUBLISH + LINK MENU**: R46 → **I95** "Thống kê nhập xuất" (frmListMaterialInOut);
+   R62 → **I1059** "Tổng hợp chi tiết" (frmINV137). `menu_link_pages publish=true`,
+   linkedNodes=2. **2 trang LIVE trên prod.**
+
+**CÒN LẠI (ngoài Phase 3):**
+- R50 Tồn kho TP: import bảng `tr_tonkho_thanhpham` (MSSQL sống) table-tier → DS list.
+- R61/R66: chờ user làm rõ ý định.
+- R62 nice-to-have: thay ô maddh text bằng order-picker (LookupPicker) thay vì gõ tay.
+- Anh Thiện (4 gap config) + cutover các entity mirror để nút GHI ghi thật.
 
 ### WIRING proc Tier D (phase "wire trước, viết sau" — 2026-06-25)
 
