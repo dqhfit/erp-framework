@@ -6,10 +6,11 @@
    ========================================================== */
 import { createObjectsClient } from "@erp-framework/client";
 import { useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { I } from "@/components/Icons";
 import { Button, Chip, Drawer } from "@/components/ui";
 import { dialog } from "@/lib/dialog";
+import { normalizeVi } from "@/lib/text-utils";
 import { useUserObjects } from "@/stores/userObjects";
 
 const api = createObjectsClient("");
@@ -64,31 +65,51 @@ export function WorkflowGalleryPage() {
     loadInstalled();
   }, []);
 
-  // templateId → danh sách workflow đã clone từ nó.
-  const installedMap = new Map<string, { id: string; name: string }[]>();
-  for (const w of installed) {
-    if (w.sourceTemplateId) {
-      const list = installedMap.get(w.sourceTemplateId) ?? [];
-      list.push({ id: w.id, name: w.name });
-      installedMap.set(w.sourceTemplateId, list);
+  // templateId → danh sách workflow đã clone từ nó — memo tránh rebuild map mỗi render.
+  const installedMap = useMemo(() => {
+    const map = new Map<string, { id: string; name: string }[]>();
+    for (const w of installed) {
+      if (w.sourceTemplateId) {
+        const list = map.get(w.sourceTemplateId) ?? [];
+        list.push({ id: w.id, name: w.name });
+        map.set(w.sourceTemplateId, list);
+      }
     }
-  }
+    return map;
+  }, [installed]);
 
-  // Danh sách category (theo categoryKey + nhãn category) từ template.
-  const categories = Array.from(
-    new Map((templates ?? []).map((t) => [t.categoryKey, t.category])).entries(),
+  // Danh sách category (theo categoryKey + nhãn) — memo tránh xây lại khi search/tab đổi.
+  const categories = useMemo(
+    () => Array.from(new Map((templates ?? []).map((t) => [t.categoryKey, t.category])).entries()),
+    [templates],
   );
 
-  const filtered = (templates ?? []).filter((tpl) => {
-    const matchCat = activeTab === "all" || tpl.categoryKey === activeTab;
-    const q = search.trim().toLowerCase();
-    const matchSearch =
-      !q ||
-      tpl.name.toLowerCase().includes(q) ||
-      tpl.description.toLowerCase().includes(q) ||
-      tpl.tags.some((tag) => tag.includes(q));
-    return matchCat && matchSearch;
-  });
+  // Map số lượng template mỗi category — dùng trong tab tabs thay vì filter inline JSX.
+  const catCounts = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const tpl of templates ?? []) {
+      map.set(tpl.categoryKey, (map.get(tpl.categoryKey) ?? 0) + 1);
+    }
+    return map;
+  }, [templates]);
+
+  // Precompute text bỏ-dấu 1 lần/template — không normalize lại mỗi phím gõ.
+  const normIndex = useMemo(
+    () =>
+      (templates ?? []).map((tpl) =>
+        normalizeVi(`${tpl.name} ${tpl.description} ${tpl.tags.join(" ")}`),
+      ),
+    [templates],
+  );
+
+  const filtered = useMemo(() => {
+    const qn = normalizeVi(search.trim());
+    return (templates ?? []).filter((tpl, i) => {
+      const matchCat = activeTab === "all" || tpl.categoryKey === activeTab;
+      const matchSearch = !qn || (normIndex[i] ?? "").includes(qn);
+      return matchCat && matchSearch;
+    });
+  }, [templates, normIndex, search, activeTab]);
 
   const handleActivate = async (tpl: WorkflowTemplate) => {
     setBusy(tpl.id);
@@ -158,14 +179,11 @@ export function WorkflowGalleryPage() {
         <TabBtn active={activeTab === "all"} onClick={() => setActiveTab("all")}>
           Tất cả ({(templates ?? []).length})
         </TabBtn>
-        {categories.map(([key, label]) => {
-          const count = (templates ?? []).filter((t) => t.categoryKey === key).length;
-          return (
-            <TabBtn key={key} active={activeTab === key} onClick={() => setActiveTab(key)}>
-              {label} ({count})
-            </TabBtn>
-          );
-        })}
+        {categories.map(([key, label]) => (
+          <TabBtn key={key} active={activeTab === key} onClick={() => setActiveTab(key)}>
+            {label} ({catCounts.get(key) ?? 0})
+          </TabBtn>
+        ))}
       </div>
 
       {/* Grid */}

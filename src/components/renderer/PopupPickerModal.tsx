@@ -8,13 +8,16 @@
    - form   : Form trống, người dùng nhập, "Xác nhận" → trả về object
    ========================================================== */
 import { createApiDataSource } from "@erp-framework/client";
-import { type ReactNode, useEffect, useState } from "react";
+import { type ReactNode, useDeferredValue, useEffect, useMemo, useState } from "react";
 import { I } from "@/components/Icons";
 import { FileCell, ImageCell } from "@/components/renderer/FilePreviewModal";
 import { Button, Input, Modal, SearchableSelect } from "@/components/ui";
-
+import { normalizeVi } from "@/lib/text-utils";
 import { useUserObjects } from "@/stores/userObjects";
 import type { ActionStepOpenPopup } from "@/types/page";
+
+/** Tối đa dòng render trong bảng list — cap để DOM không lag khi tập kết quả lớn. */
+const LIST_ROW_CAP = 200;
 
 const api = createApiDataSource("");
 
@@ -255,15 +258,22 @@ export function PopupPickerModal({ step, recordId, filters, onSelect, onCancel }
         : `Nhập ${entity?.name ?? ""}`;
   const title = step.title || defaultTitle;
 
-  const filteredRows = search
-    ? rows.filter((r) =>
-        visibleFields.some((f) =>
-          String(r[f.name] ?? "")
-            .toLowerCase()
-            .includes(search.toLowerCase()),
-        ),
-      )
-    : rows;
+  // Precompute text bỏ-dấu 1 lần/row (gộp mọi visible field) — không normalize lại mỗi phím gõ.
+  const rowNormIndex = useMemo(
+    () => rows.map((r) => normalizeVi(visibleFields.map((f) => String(r[f.name] ?? "")).join(" "))),
+    [rows, visibleFields],
+  );
+  // Defer search → lọc+render chạy nền, ô tìm không bị chặn khi table lớn.
+  const deferredSearch = useDeferredValue(search);
+  const filteredRows = useMemo(() => {
+    if (!deferredSearch) return rows;
+    const q = normalizeVi(deferredSearch);
+    return rows.filter((_, i) => (rowNormIndex[i] ?? "").includes(q));
+  }, [rows, rowNormIndex, deferredSearch]);
+  // Chỉ render tối đa LIST_ROW_CAP dòng — bảng lớn không vẽ hết vào DOM.
+  const shownRows =
+    filteredRows.length > LIST_ROW_CAP ? filteredRows.slice(0, LIST_ROW_CAP) : filteredRows;
+  const tableOverflow = filteredRows.length - shownRows.length;
 
   // Form rộng hơn để chứa 2 cột trên màn lớn; list 760; detail 520.
   // Modal cap theo viewport (w-full + maxWidth) nên màn nhỏ tự co lại.
@@ -367,7 +377,7 @@ export function PopupPickerModal({ step, recordId, filters, onSelect, onCancel }
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredRows.map((row, i) => {
+                    {shownRows.map((row, i) => {
                       const rid = String(row.id);
                       const isSel = multi && selected.has(rid);
                       return (
@@ -411,6 +421,16 @@ export function PopupPickerModal({ step, recordId, filters, onSelect, onCancel }
                         </tr>
                       );
                     })}
+                    {tableOverflow > 0 && (
+                      <tr>
+                        <td
+                          colSpan={visibleFields.length + (multi ? 1 : 0) + (!multi ? 1 : 0)}
+                          className="px-3 py-1.5 text-xs text-muted/70 italic border-t border-border/50"
+                        >
+                          Còn {tableOverflow} dòng — gõ thêm để thu hẹp…
+                        </td>
+                      </tr>
+                    )}
                   </tbody>
                 </table>
               </div>
