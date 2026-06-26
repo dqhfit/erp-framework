@@ -251,6 +251,25 @@ các trang "Kế hoạch hàng trắng" đã publish (I72/I1360/I1084) → bỏ,
 R46 (I95), R50 (I22), R62 (I1059), R66 (I1202/I1203) LIVE; R61 đóng-trùng. Cộng 32
 trang publish trước đó + 7 form bg_* (Phase 4) → **Group B hoàn tất**.
 
+### COPY / TẠO định mức theo SP (thay "Phát hành định mức" — user chốt 2026-06-26)
+User: bỏ nút "Phát hành định mức", thay bằng **copy + tạo mới** định mức cho từng SP,
+cho **cả 3** loại (gỗ ván/ngũ kim/đóng gói).
+- **Nguồn DQHF**: `frmBOMCopy` → `MES_DINHMUC_COPY` dispatch → `MES_DINHMUC_{GOVAN,
+  NGUKIM,DONGGOI}_COPY` (THAY THẾ định mức SP đích = xoá đích + copy nguồn). DQHF ghi
+  bảng MES mới `mes_dinhmuc_*`; NHƯNG trang ERP đọc `tr_dinhmuc_*` (legacy, khác bảng:
+  tr 126k vs mes 91k dòng — tr là bản đã "phát hành"/bung theo màu).
+- **Chốt: GHI THẲNG `tr_dinhmuc_*`** (bảng trang đang đọc) → copy xong hiện ngay
+  (user chọn, lệch DQHF nhưng đơn giản + hữu dụng).
+- ✅ **Proc** `packages/plugins/module-ui_procs/tr_dinhmuc_copy.ts` →
+  `trDinhmucGovanCopy/trDinhmucNgukimCopy/trDinhmucDonggoiCopy(masp_nguon,masp_dich,
+  nguoitao)`: listWhere(masp=nguồn) → hardDelete(masp=đích) → insertRow từng dòng (bỏ
+  _id/id, set masp=đích + audit). Khoá `masp`=tr_sanpham.masp (verify 100%). typecheck+lint xanh.
+- ⚠ **Blocker**: (1) cần commit+push+**Coolify redeploy** mới load proc; (2) tr_dinhmuc_*
+  đang **mirror** → proc-table chặn ghi tới khi **cutover** module định mức.
+- **CÒN LẠI (config, sau redeploy)**: wire nút "Copy định mức" (picker SP nguồn+đích qua
+  LookupPicker tr_sanpham → invoke-module-proc) trên 3 trang định mức + "Tạo mới" (thêm
+  dòng BOM / list editable). Thiết kế UI nút chờ chốt sau redeploy.
+
 **CÒN LẠI (polish/cutover — không phải port mới):**
 - Anh Thiện: 4 gap config (phần lớn đã fix; còn nút Phát hành định mức cần state binding).
 - Cutover các entity mirror (tr_order/dondathang/phieunhap/xuat/baocao/denghi_thanhtoan/
