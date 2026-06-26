@@ -130,9 +130,18 @@ function normCfg(raw: unknown): DataSourceConfig {
 /* ─── Router ──────────────────────────────────────────────── */
 
 export const dataSourcesRouter = router({
-  /* ── Metadata (mirror entities) ── */
+  /* ── Metadata (mirror entities) — chi tra id/name/label/icon, khong config JSONB lon.
+       Frontend can config day du -> goi endpoint `get`. */
   list: rbacProcedure("view", "datasource").query(({ ctx }) =>
-    ctx.db.select().from(dataSources).where(eq(dataSources.companyId, ctx.user.companyId)),
+    ctx.db
+      .select({
+        id: dataSources.id,
+        name: dataSources.name,
+        label: dataSources.label,
+        icon: dataSources.icon,
+      })
+      .from(dataSources)
+      .where(eq(dataSources.companyId, ctx.user.companyId)),
   ),
 
   get: rbacProcedure("view", "datasource")

@@ -98,6 +98,153 @@ async function computeRollup(
   return (row?.v as number | null) ?? 0;
 }
 
+/** Helper: raw SQL cho ham agg (sum/avg/min/max). */
+function aggRaw(agg: "sum" | "avg" | "min" | "max") {
+  return agg === "sum"
+    ? sql.raw("sum")
+    : agg === "avg"
+      ? sql.raw("avg")
+      : agg === "min"
+        ? sql.raw("min")
+        : sql.raw("max");
+}
+
+/** Batch compute rollup values cho nhieu matchValues cung luc (1 query/field).
+ *  Tra Map<matchValue, aggregatedValue>. Dung cho records.list batch thay vi
+ *  N lan computeRollup don le (N x M queries -> 1 query/rollup-field). */
+async function computeRollupBatch(
+  db: DB,
+  companyId: string,
+  matchValues: string[],
+  cfg: RollupConfig,
+): Promise<Map<string, number>> {
+  if (matchValues.length === 0) return new Map();
+
+  const [from] = await db
+    .select({ id: entities.id, meta: entities.meta })
+    .from(entities)
+    .where(and(eq(entities.companyId, companyId), eq(entities.name, cfg.fromEntityName)));
+  if (!from) return new Map();
+
+  const result = new Map<string, number>();
+  const storage = storageOf(from.meta);
+
+  if (storage) {
+    // Bảng thật: GROUP BY FK field, filter = ANY(matchValues).
+    const tbl = sql.raw(`"${assertIdent(storage.tableName)}"`);
+    const fkExpr = tableFieldExpr(storage, cfg.fkField);
+    const valExpr = cfg.valueField ? tableFieldExpr(storage, cfg.valueField) : null;
+    const aggExpr =
+      cfg.agg === "count"
+        ? sql`count(*)::float`
+        : valExpr
+          ? sql`${aggRaw(cfg.agg as "sum" | "avg" | "min" | "max")}((${valExpr})::numeric)::float`
+          : sql`0::float`;
+    type TblRow = { mv: string; v: number | null };
+    const rawRes = await db.execute(sql`
+      SELECT (${fkExpr})::text AS mv, ${aggExpr} AS v
+      FROM ${tbl}
+      WHERE company_id = ${companyId}::uuid
+        AND deleted_at IS NULL
+        AND (${fkExpr})::text = ANY(${matchValues}::text[])
+      GROUP BY (${fkExpr})::text
+    `);
+    const rows: TblRow[] = Array.isArray(rawRes)
+      ? (rawRes as unknown as TblRow[])
+      : ((rawRes as unknown as { rows?: TblRow[] }).rows ?? []);
+    for (const r of rows) result.set(r.mv, r.v ?? 0);
+    return result;
+  }
+
+  // EAV: GROUP BY fkField trong entity_records.
+  const fkTextExpr = sql`${entityRecords.data}->>${cfg.fkField}`;
+  const aggEavExpr =
+    cfg.agg === "count"
+      ? sql`count(*)::float`
+      : cfg.valueField
+        ? sql`${aggRaw(cfg.agg as "sum" | "avg" | "min" | "max")}((${entityRecords.data}->>${cfg.valueField})::numeric)::float`
+        : sql`0::float`;
+  const dbRows = await db
+    .select({ mv: fkTextExpr, v: aggEavExpr })
+    .from(entityRecords)
+    .where(
+      and(
+        eq(entityRecords.companyId, companyId),
+        eq(entityRecords.entityId, from.id),
+        sql`${entityRecords.deletedAt} IS NULL`,
+        sql`${entityRecords.data}->>${cfg.fkField} = ANY(${matchValues}::text[])`,
+      ),
+    )
+    .groupBy(fkTextExpr);
+  for (const r of dbRows) {
+    if (r.mv != null) result.set(r.mv as string, (r.v as number | null) ?? 0);
+  }
+  return result;
+}
+
+/** Batch apply rollup cho toan page records (1 query/field thay vi N x M).
+ *  - Row co cache hop le (rollupInvalidated=false, tat ca field co gia tri) -> dung cache.
+ *  - Cac row con lai gom matchValues -> 1 computeRollupBatch/field.
+ *  Tra mang data[] tuong ung moi input row. */
+export async function applyRollupsBatch(
+  db: DB,
+  companyId: string,
+  fields: EntityFieldDef[],
+  rows: Array<{
+    id: string;
+    data: Record<string, unknown>;
+    rollupCache: unknown;
+    rollupInvalidated: boolean | null | undefined;
+  }>,
+): Promise<Array<Record<string, unknown>>> {
+  const rollupFields = fields.filter((f) => f.type === "rollup" && f.rollup);
+  if (rollupFields.length === 0) return rows.map((r) => r.data);
+
+  type CacheMap = Record<string, { v: unknown; computedAt: string }>;
+  const rowCaches: CacheMap[] = rows.map((r) => (r.rollupCache ?? {}) as CacheMap);
+
+  // Phan loai: row can recompute (invalidated hoac thieu cache bat ky field nao).
+  const needCompute: boolean[] = rows.map(
+    (r, i) => !!r.rollupInvalidated || rollupFields.some((f) => rowCaches[i]![f.name] == null),
+  );
+
+  // Gom matchValues (unique) cho moi field, chi cho cac row can compute.
+  const toComputeByField = new Map<string, string[]>();
+  for (const f of rollupFields) {
+    const vals = new Set<string>();
+    for (let i = 0; i < rows.length; i++) {
+      if (!needCompute[i]) continue;
+      const r = rows[i]!;
+      const mv = f.rollup!.parentKeyField ? String(r.data[f.rollup!.parentKeyField] ?? "") : r.id;
+      vals.add(mv);
+    }
+    toComputeByField.set(f.name, [...vals]);
+  }
+
+  // 1 query/rollup-field cho tat ca matchValues cua page.
+  const computedByField = new Map<string, Map<string, number>>();
+  for (const f of rollupFields) {
+    const matchValues = toComputeByField.get(f.name) ?? [];
+    computedByField.set(f.name, await computeRollupBatch(db, companyId, matchValues, f.rollup!));
+  }
+
+  // Ap ket qua vao tung row.
+  return rows.map((r, i) => {
+    const out = { ...r.data };
+    const cache = rowCaches[i]!;
+    for (const f of rollupFields) {
+      if (!needCompute[i] && cache[f.name] != null) {
+        // Cache hit: dung gia tri da luu.
+        out[f.name] = cache[f.name]!.v;
+      } else {
+        const mv = f.rollup!.parentKeyField ? String(r.data[f.rollup!.parentKeyField] ?? "") : r.id;
+        out[f.name] = computedByField.get(f.name)?.get(mv) ?? 0;
+      }
+    }
+    return out;
+  });
+}
+
 /** Tên bảng thật chứa recordId (qua record_locator), hoặc null nếu record EAV. */
 async function tableNameOfRecord(
   db: DB,

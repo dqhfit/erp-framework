@@ -5,7 +5,7 @@
    ========================================================== */
 
 import { companyMembers, notifications, users } from "@erp-framework/db";
-import { and, desc, eq, inArray, isNull } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull, sql } from "drizzle-orm";
 import { z } from "zod";
 import type { DB } from "./db";
 import { protectedProcedure, rbacProcedure, router } from "./trpc";
@@ -35,11 +35,12 @@ export const notificationsRouter = router({
     }),
 
   unreadCount: protectedProcedure.query(async ({ ctx }) => {
-    const rows = await ctx.db
-      .select()
+    // Dung count(*)::int thay vi select().length de tranh load toan bo row ve JS.
+    const [row] = await ctx.db
+      .select({ count: sql<number>`count(*)::int` })
       .from(notifications)
       .where(and(eq(notifications.userId, ctx.user.id), isNull(notifications.readAt)));
-    return { count: rows.length };
+    return { count: row?.count ?? 0 };
   }),
 
   markRead: rbacProcedure("edit", "notification")
@@ -80,24 +81,26 @@ export async function notifyMentions(
       new Set(Array.from(args.body.matchAll(/@([a-zA-Z0-9_.-]+)/g)).map((m) => m[1])),
     ).filter((u): u is string => !!u);
     if (usernames.length === 0) return;
-    // Resolve username via email prefix hoặc users.name. Đơn giản: match
-    // case-insensitive trên prefix email hoặc name. (Schema users không
-    // có field username nên dùng email prefix làm proxy.)
-    const allUsers = await db
-      .select({ id: users.id, email: users.email, name: users.name })
-      .from(users);
-    const matched: { id: string; name: string }[] = [];
-    for (const u of usernames) {
-      const lo = u.toLowerCase();
-      const found = allUsers.find(
-        (x) =>
-          x.email.toLowerCase().split("@")[0] === lo ||
-          x.name.toLowerCase().replace(/\s+/g, "") === lo,
+    // Day filter xuong SQL: join company_members de scope cong ty + loc
+    // theo email prefix (split_part) hoac ten khong dau cach (regexp_replace).
+    // Tranh full-scan bang users (cu load toan bo roi loc JS).
+    const lowUsernames = usernames.map((u) => u.toLowerCase());
+    const matchedRows = await db
+      .select({ id: users.id, name: users.name })
+      .from(users)
+      .innerJoin(companyMembers, eq(companyMembers.userId, users.id))
+      .where(
+        and(
+          eq(companyMembers.companyId, args.companyId),
+          sql`(
+            split_part(lower(${users.email}), '@', 1) = ANY(${lowUsernames}::text[])
+            OR lower(regexp_replace(${users.name}, '\\s+', '', 'g')) = ANY(${lowUsernames}::text[])
+          )`,
+        ),
       );
-      if (found) matched.push({ id: found.id, name: found.name });
-    }
-    if (matched.length === 0) return;
-    const dedupe = new Map(matched.map((m) => [m.id, m]));
+    if (matchedRows.length === 0) return;
+    // Dedupe theo userId (phong truong hop companyMembers co nhieu row cho 1 user).
+    const dedupe = new Map(matchedRows.map((m) => [m.id, m]));
     const inserted = await db
       .insert(notifications)
       .values(
