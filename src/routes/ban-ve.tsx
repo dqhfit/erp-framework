@@ -15,51 +15,8 @@ import { lazy, type ReactNode, Suspense, useCallback, useEffect, useRef, useStat
 import { I } from "@/components/Icons";
 import { canScanBarcode, QrScanner } from "@/components/QrScanner";
 import { Button, SearchableSelect } from "@/components/ui";
-import { useNavTree } from "@/hooks/useNavTree";
 import { normalizeVi } from "@/lib/text-utils";
 import { useAuth } from "@/stores/auth";
-import { useUserObjects } from "@/stores/userObjects";
-
-function matchesPage(p: { name?: string; techName?: string }, type: string) {
-  const tech = (p.techName || "").toLowerCase();
-  const label = (p.name || "").toLowerCase();
-
-  if (type === "ky-thuat" || type === "ky_thuat") {
-    return (
-      tech.includes("ban_ve_ky_thuat") ||
-      tech.includes("ban_ve_kt") ||
-      (label.includes("bản vẽ") && label.includes("kỹ thuật"))
-    );
-  }
-  if (type === "dong-goi" || type === "dong_goi") {
-    return (
-      tech.includes("ban_ve_dong_goi") ||
-      tech.includes("ban_ve_dgo") ||
-      (label.includes("bản vẽ") && label.includes("đóng gói"))
-    );
-  }
-  if (type === "ai") {
-    return (
-      tech.includes("ban_ve_ai") ||
-      tech.includes("dinh_muc_ban_ve_ai") ||
-      (label.includes("bản vẽ") && label.includes("ai")) ||
-      label.includes("định mức - bản vẽ - ai")
-    );
-  }
-  if (type === "dao") {
-    return tech.includes("ban_ve_dao") || (label.includes("bản vẽ") && label.includes("dao"));
-  }
-  if (type === "mau") {
-    return tech.includes("ban_ve_mau") || (label.includes("bản vẽ") && label.includes("mẫu"));
-  }
-  if (type === "phat-trien" || type === "phat_trien") {
-    return (
-      tech.includes("ban_ve_phat_trien") ||
-      (label.includes("bản vẽ") && label.includes("phát triển"))
-    );
-  }
-  return false;
-}
 
 export const Route = createFileRoute("/ban-ve")({ component: BanVeLayout });
 
@@ -161,44 +118,10 @@ function BanVePage() {
   const navigate = useNavigate();
   const router = useRouter();
   const role = useAuth((s) => s.user?.role);
-  const { data: navNodes } = useNavTree();
-  const pages = useUserObjects((s) => s.pages);
   // Về ĐÚNG trang trước nếu có lịch sử; vào thẳng (QR/refresh) → cổng/trang chủ.
   const goBack = () => {
     if (router.history.canGoBack()) router.history.back();
     else void navigate({ to: role === "viewer" ? "/portal" : "/" });
-  };
-
-  const getPageIdForType = (type: string) => {
-    let menuCodes: string[] = [];
-    let matchType = "";
-    if (type === "ky-thuat") {
-      menuCodes = ["bbiBanVe", "I1", "CUST-97ae4fcc-5194-40a0-b34a-28d340f68079"];
-      matchType = "ky-thuat";
-    } else if (type === "dong-goi") {
-      menuCodes = ["bbiBanVeDongGoi", "D1"];
-      matchType = "dong-goi";
-    } else if (type === "phat-trien") {
-      menuCodes = ["bbiBanVePhatTrien"];
-      matchType = "phat-trien";
-    } else if (type === "ai") {
-      menuCodes = ["bbiBanVeAI", "I1217", "I1013"];
-      matchType = "ai";
-    } else if (type === "mau") {
-      menuCodes = ["bbiBanVeMau", "I1227", "I1193"];
-      matchType = "mau";
-    } else if (type === "dao") {
-      menuCodes = ["bbiBanVeDao", "I1141"];
-      matchType = "dao";
-    }
-
-    // 1. Tìm pageId liên kết trong menu
-    const menuNode = navNodes?.find((n) => n.code && menuCodes.includes(n.code));
-    if (menuNode?.pageId) return menuNode.pageId;
-
-    // 2. Tìm trang khớp thông minh
-    const fallbackPage = pages.find((p) => matchesPage(p, matchType));
-    return fallbackPage?.id;
   };
   const [masp, setMasp] = useState("");
   const [product, setProduct] = useState<Product | null>(null);
@@ -346,39 +269,6 @@ function BanVePage() {
         )}
       </div>
 
-      {/* Quick links quản lý — chỉ hiện với non-viewer */}
-      {role !== "viewer" && (
-        <div className="shrink-0 border-b border-border bg-panel/60 px-3 py-1.5 flex flex-wrap gap-1.5 items-center">
-          <span className="text-xs text-muted">Quản lý:</span>
-          {(
-            [
-              { label: "Kỹ thuật", type: "ky-thuat" },
-              { label: "Đóng gói", type: "dong-goi" },
-              { label: "Phát triển", type: "phat-trien" },
-              { label: "AI", type: "ai" },
-              { label: "Mẫu", type: "mau" },
-              { label: "Dao", type: "dao" },
-            ] as const
-          ).map(({ label, type: t }) => {
-            const pageId = getPageIdForType(t);
-            return (
-              <button
-                key={t}
-                type="button"
-                onClick={() => {
-                  if (pageId) {
-                    void navigate({ to: `/pages/${pageId}` });
-                  }
-                }}
-                className="chip chip-default text-xs"
-                disabled={!pageId}
-              >
-                {label}
-              </button>
-            );
-          })}
-        </div>
-      )}
       <div className="p-3 space-y-2.5 max-w-2xl w-full mx-auto">
         {/* Tìm sản phẩm + Quét phiếu — cùng dòng */}
         <div className="flex gap-2">
