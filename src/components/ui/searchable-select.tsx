@@ -140,7 +140,10 @@ export function SearchableSelect({
     return () => document.removeEventListener("mousedown", onDown);
   }, [open]);
 
-  // Mở: focus ô search, đặt active vào item đang chọn.
+  // Mở: focus ô search, đặt active vào item đang chọn. CHỈ chạy khi `open` đổi —
+  // KHÔNG phụ thuộc value/allOptions, vì server-search cập nhật options mỗi lần gõ
+  // sẽ làm effect re-run và setQuery("") → mất chữ đang gõ.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: value/allOptions đọc tại thời điểm mở; thêm vào deps sẽ reset ô tìm khi options đổi (server-search).
   useEffect(() => {
     if (!open) return;
     setQuery("");
@@ -151,7 +154,7 @@ export function SearchableSelect({
     setActiveIdx(idx);
     // Focus sau khi panel render.
     requestAnimationFrame(() => inputRef.current?.focus());
-  }, [open, value, allOptions]);
+  }, [open]);
 
   // Cuộn item active vào tầm nhìn.
   useEffect(() => {

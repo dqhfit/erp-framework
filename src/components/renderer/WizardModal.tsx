@@ -5,6 +5,7 @@
    qua saveOutputTo của từng bước.
    ========================================================== */
 import { createApiDataSource } from "@erp-framework/client";
+import type { FilterOp } from "@erp-framework/core";
 import { type ReactNode, useEffect, useState } from "react";
 import { I } from "@/components/Icons";
 import { fileDisplayName } from "@/components/renderer/FilePreviewModal";
@@ -15,6 +16,7 @@ import type { EntityField } from "@/lib/object-types";
 import type { PageStateLike } from "@/lib/run-action";
 import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/stores/auth";
 import { useUserObjects } from "@/stores/userObjects";
 import type {
   ActionConfig,
@@ -44,12 +46,65 @@ function WizardLookupField({
   const [open, setOpen] = useState(false);
   const [vals, setVals] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
+  // Tìm SERVER-SIDE cho entity lớn (vd tr_material 36k): gõ → query contains.
+  const [q, setQ] = useState("");
+  const [remote, setRemote] = useState<Record<string, unknown>[]>([]);
+  const [searching, setSearching] = useState(false);
 
   const labels = lk.labelFields ?? [lk.valueField];
+  // biome-ignore lint/correctness/useExhaustiveDependencies: chỉ chạy lại khi đổi q (debounce); lk ổn định theo cấu hình.
+  useEffect(() => {
+    if (!lk.serverSearch) return;
+    const term = q.trim();
+    if (!term) {
+      setRemote([]);
+      return;
+    }
+    let alive = true;
+    // CHỈ query khi người dùng NGỪNG gõ ~500ms (gõ tiếp → huỷ timer, chưa gọi API).
+    // setSearching đặt TRONG timer để lúc đang gõ không hiện "Đang tìm…".
+    const handle = setTimeout(() => {
+      setSearching(true);
+      const sf = lk.searchFields ?? lk.labelFields ?? [lk.valueField];
+      Promise.all(
+        sf.map((f) =>
+          api
+            .getRecords(lk.entity, {
+              // Gộp filter cố định (vd xoa='N') với điều kiện contains theo field.
+              filters: { ...(lk.filters ?? {}), [f]: { op: "contains", value: term } },
+              limit: 50,
+            })
+            .then((res) => res.rows.map((r) => r.data))
+            .catch(() => [] as Record<string, unknown>[]),
+        ),
+      ).then((groups) => {
+        if (!alive) return;
+        const seen = new Set<string>();
+        const merged: Record<string, unknown>[] = [];
+        for (const g of groups)
+          for (const r of g) {
+            const k = String(r[lk.valueField] ?? "");
+            if (k && !seen.has(k)) {
+              seen.add(k);
+              merged.push(r);
+            }
+          }
+        setRemote(merged);
+        setSearching(false);
+      });
+    }, 500);
+    return () => {
+      alive = false;
+      clearTimeout(handle);
+    };
+  }, [q]);
+
+  // Nguồn option: serverSearch → kết quả query; ngược lại → danh sách preload.
+  const pool = lk.serverSearch ? remote : src;
   // >=2 label field → hiển thị lookup NHIỀU CỘT (cells + headers) thay vì gộp
   // một chuỗi — khôi phục tính năng lookup đa cột của bản main.
   const multiCol = labels.length >= 2;
-  const opts = src.map((r) => {
+  const opts = pool.map((r) => {
     const val = String(r[lk.valueField] ?? "");
     const lbl = labels
       .map((x) => r[x])
@@ -120,13 +175,15 @@ function WizardLookupField({
           onChange={(v) =>
             onPick(
               v,
-              src.find((r) => String(r[lk.valueField] ?? "") === v),
+              pool.find((r) => String(r[lk.valueField] ?? "") === v),
             )
           }
           options={opts}
           emptyOption={`— chọn ${srcLabel} —`}
           searchPlaceholder={`Tìm ${srcLabel}…`}
           columnHeaders={headers}
+          onSearch={lk.serverSearch ? setQ : undefined}
+          loading={lk.serverSearch ? searching : undefined}
         />
       </div>
       {lk.allowCreate && (
@@ -361,6 +418,8 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
   const wizardEntityId = step.entity;
   const editId = recordId == null || recordId === "" ? null : String(recordId);
   const readOnly = step.readOnly === true;
+  // User đăng nhập — cho token $currentUser trong defaults (vd nguoitao).
+  const authUser = useAuth((s) => s.user);
 
   const [activeIdx, setActiveIdx] = useState(0);
   // Tạo mới (không recordId) + có defaults → điền sẵn giá trị mặc định.
@@ -369,15 +428,22 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
     if (wizardEntityId && !editId && step.defaults) {
       // Nội suy {{stateKey}} trong defaults từ pageState — cho phép set khoá cha
       // động khi tạo bản ghi con (vd id_phienban = {{selPhienBan}} của dòng đang chọn).
+      // Hỗ trợ token: $now = giờ hiện tại (ISO), $currentUser = tên/email user.
       const resolved: Record<string, string> = {};
       for (const [k, v] of Object.entries(step.defaults)) {
-        resolved[k] =
-          typeof v === "string"
-            ? v.replace(/\{\{\s*(\w+)\s*\}\}/g, (_m, key) => {
-                const got = pageState.get(key);
-                return got == null ? "" : String(got);
-              })
-            : v;
+        if (v === "$now") {
+          resolved[k] = new Date().toISOString();
+        } else if (v === "$currentUser") {
+          resolved[k] = authUser?.name ?? authUser?.email ?? "";
+        } else {
+          resolved[k] =
+            typeof v === "string"
+              ? v.replace(/\{\{\s*(\w+)\s*\}\}/g, (_m, key) => {
+                  const got = pageState.get(key);
+                  return got == null ? "" : String(got);
+                })
+              : v;
+        }
       }
       init[SINGLE_FORM_KEY] = resolved;
     }
@@ -410,32 +476,78 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
   const [lookupTick, setLookupTick] = useState(0);
 
   // Nạp record nguồn cho mọi field-lookup: field master (combobox) + lưới detail.
-  const lookupKey = [
-    ...new Set(
-      wizardSteps.flatMap((s) => [
-        ...(s.fieldLookups ? Object.values(s.fieldLookups).map((l) => l.entity) : []),
-        ...(s.detail?.fieldLookups
-          ? Object.values(s.detail.fieldLookups).map((l) => l.entity)
-          : []),
-      ]),
-    ),
-  ].join(",");
-  const lookupRequestKey = lookupKey ? `${lookupKey}|${lookupReloadKey}` : "";
+  // Mỗi entity preload theo `filters` + `preloadLimit` riêng (vd tr_material chỉ
+  // lấy xoa='N', limit cao để hiện hết) — dedupe theo entity (ref đầu tiên thắng).
+  const lookupSpec = (() => {
+    const byEntity = new Map<
+      string,
+      { entity: string; filters: unknown; limit: number; pageSize: number }
+    >();
+    for (const s of wizardSteps)
+      for (const l of [
+        ...(s.fieldLookups ? Object.values(s.fieldLookups) : []),
+        ...(s.detail?.fieldLookups ? Object.values(s.detail.fieldLookups) : []),
+      ]) {
+        // serverSearch → KHÔNG preload (combobox tự query khi gõ) — tránh tải thừa.
+        if (l.serverSearch) continue;
+        if (!byEntity.has(l.entity))
+          byEntity.set(l.entity, {
+            entity: l.entity,
+            filters: l.filters ?? null,
+            limit: l.preloadLimit ?? 2000,
+            pageSize: l.preloadPageSize ?? 500,
+          });
+      }
+    return [...byEntity.values()];
+  })();
+  const lookupRequestKey = lookupSpec.length
+    ? `${JSON.stringify(lookupSpec)}|${lookupReloadKey}`
+    : "";
   // biome-ignore lint/correctness/useExhaustiveDependencies: lookupTick là TRIGGER chủ ý — nút "+" tạo nhanh gọi setLookupTick để nạp lại danh sách lookup; effect body không tham chiếu trực tiếp.
   useEffect(() => {
     if (!lookupRequestKey) return;
-    const ids = lookupRequestKey.split("|")[0] ?? "";
+    const spec = JSON.parse(lookupRequestKey.split("|")[0] ?? "[]") as Array<{
+      entity: string;
+      filters: Record<string, { op: FilterOp; value: unknown }> | null;
+      limit: number;
+      pageSize: number;
+    }>;
     let alive = true;
-    Promise.all(
-      ids.split(",").map((id) =>
-        api
-          .getRecords(id, { limit: 2000 })
-          .then((res) => [id, res.rows.map((r) => r.data)] as const)
-          .catch(() => [id, [] as Record<string, unknown>[]] as const),
-      ),
-    ).then((pairs) => {
-      if (alive) setDetailLookupData(Object.fromEntries(pairs));
-    });
+    // Preload LŨY TIẾN: nạp từng trang `pageSize` (mặc định 500, trần records.list
+    // 10.000/req) rồi APPEND ngay vào state → combobox dùng được sau trang đầu, các
+    // trang sau chạy nền cho tới khi đủ `limit` hoặc hết dữ liệu.
+    const loadProgressive = async (
+      entity: string,
+      filters: Record<string, { op: FilterOp; value: unknown }> | undefined,
+      total: number,
+      pageSize: number,
+    ): Promise<void> => {
+      const PAGE = Math.min(Math.max(pageSize, 1), 10_000);
+      const acc: Record<string, unknown>[] = [];
+      let offset = 0;
+      while (acc.length < total) {
+        const size = Math.min(PAGE, total - acc.length);
+        let rows: Record<string, unknown>[];
+        try {
+          const res = await api.getRecords(entity, { filters, limit: size, offset });
+          rows = res.rows.map((r) => r.data);
+        } catch {
+          break;
+        }
+        if (!alive) return;
+        acc.push(...rows);
+        // Append vào state (copy mảng để React nhận thay đổi).
+        const snapshot = [...acc];
+        setDetailLookupData((prev) => ({ ...prev, [entity]: snapshot }));
+        if (rows.length < size) break;
+        offset += size;
+      }
+    };
+    for (const le of spec) {
+      // Khởi tạo rỗng để combobox không kẹt giá trị cũ khi đổi cấu hình.
+      setDetailLookupData((prev) => (prev[le.entity] ? prev : { ...prev, [le.entity]: [] }));
+      void loadProgressive(le.entity, le.filters ?? undefined, le.limit, le.pageSize);
+    }
     return () => {
       alive = false;
     };
@@ -565,11 +677,15 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
   // Map theo current.fields để GIỮ ĐÚNG THỨ TỰ cấu hình (filter sẽ giữ thứ tự
   // entity gốc → sai vị trí ô nhập). Không có → toàn bộ field entity.
   const entFields = applyFieldOverrides(ent?.fields ?? [], fieldOv);
-  const visibleFields = current.fields?.length
-    ? (current.fields
-        .map((n) => entFields.find((f) => f.name === n))
-        .filter(Boolean) as EntityField[])
-    : entFields;
+  // hiddenFields: vẫn trong `fields` (để lưu qua defaults) nhưng ẩn khỏi form.
+  const stepHidden = new Set(current.hiddenFields ?? []);
+  const visibleFields = (
+    current.fields?.length
+      ? (current.fields
+          .map((n) => entFields.find((f) => f.name === n))
+          .filter(Boolean) as EntityField[])
+      : entFields
+  ).filter((f) => !stepHidden.has(f.name));
   // 1-entity → form dùng chung 1 khoá cho mọi bước; else → form riêng theo step.id.
   const formKey = wizardEntityId ? SINGLE_FORM_KEY : current.id;
   const form = forms[formKey] ?? {};
@@ -592,10 +708,14 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
   // ── Bước lưới chi tiết (master-detail) ──
   const detailCfg = current.detail;
   const detailEnt = detailCfg ? entities.find((e) => e.id === detailCfg.entity) : undefined;
+  // Cột HIỂN THỊ của lưới: loại field trong hiddenFields (vd soluong mặc định 1 —
+  // vẫn LƯU qua dc.fields ở bước save, chỉ ẩn khỏi lưới).
+  const detailHidden = new Set(detailCfg?.hiddenFields ?? []);
   const detailFields: EntityField[] = detailCfg
-    ? detailCfg.fields?.length
-      ? (detailEnt?.fields ?? []).filter((f) => detailCfg.fields?.includes(f.name))
-      : (detailEnt?.fields ?? []).filter((f) => f.type !== "formula" && f.type !== "collection")
+    ? (detailCfg.fields?.length
+        ? (detailEnt?.fields ?? []).filter((f) => detailCfg.fields?.includes(f.name))
+        : (detailEnt?.fields ?? []).filter((f) => f.type !== "formula" && f.type !== "collection")
+      ).filter((f) => !detailHidden.has(f.name))
     : [];
   // Dòng chi tiết MỚI: nạp sẵn rowDefaults (vd is_active="true", donhot lấy theo quy trình).
   const emptyRow = (): Record<string, string> =>
