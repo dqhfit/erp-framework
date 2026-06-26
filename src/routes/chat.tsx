@@ -15,7 +15,7 @@ import {
   type ChatSearchHit,
   createChatClient,
 } from "@erp-framework/client";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { I } from "@/components/Icons";
 import { Button } from "@/components/ui";
@@ -272,7 +272,11 @@ function MessageItem({
 
 function ChatPage() {
   const me = useAuth((s) => s.user?.id) ?? "";
+  const role = useAuth((s) => s.user?.role);
+  const navigate = useNavigate();
   const isMobile = useIsMobile();
+  // Viewer truy cập /chat không có AppShell → tự dựng layout full-screen.
+  const isViewer = role === "viewer";
 
   const [convs, setConvs] = useState<ChatConversationRow[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -611,332 +615,358 @@ function ChatPage() {
   const showThread = !isMobile || !!selectedId;
 
   return (
-    <div className="flex-1 flex min-h-0 overflow-hidden">
-      {/* ── Danh sach hoi thoai ── */}
-      {showList && (
-        <div
-          className={cn(
-            "flex flex-col border-r border-border bg-panel/40 min-h-0",
-            isMobile ? "w-full" : "w-72 shrink-0",
-          )}
-        >
-          <div className="h-11 px-3 flex items-center gap-2 border-b border-border shrink-0">
-            <span className="font-semibold text-sm flex-1">Tin nhắn</span>
-            <Button size="sm" onClick={() => void openNewChat()} icon={<I.Plus size={14} />}>
-              <span className="hidden sm:inline">Mới</span>
-            </Button>
-          </div>
-          {/* O tim kiem */}
-          <div className="px-2 py-1.5 border-b border-border shrink-0">
-            <div className="flex items-center gap-1.5 input h-8 px-2">
-              <I.Search size={13} className="text-muted shrink-0" />
-              <input
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Tìm tin nhắn…"
-                className="bg-transparent outline-none text-sm flex-1 min-w-0"
-              />
-              {search && (
-                <button type="button" onClick={() => setSearch("")} className="text-muted">
-                  <I.X size={13} />
-                </button>
-              )}
-            </div>
-          </div>
-          <div className="flex-1 overflow-y-auto">
-            {searchHits !== null ? (
-              searchHits.length === 0 ? (
-                <div className="px-3 py-8 text-center text-xs text-muted">
-                  Không tìm thấy tin nhắn.
-                </div>
-              ) : (
-                searchHits.map((h) => {
-                  const c = convs.find((x) => x.id === h.conversationId);
-                  return (
-                    <button
-                      key={h.id}
-                      type="button"
-                      onClick={() => {
-                        setSelectedId(h.conversationId);
-                        setSearch("");
-                      }}
-                      className="w-full text-left px-3 py-2.5 flex flex-col gap-0.5 hover:bg-hover/40 transition-colors border-b border-border/50"
-                    >
-                      <span className="text-xs font-medium truncate">
-                        {c ? convName(c, me) : "Hội thoại"}
-                      </span>
-                      <span className="text-xs text-muted truncate">{h.body}</span>
-                      <span className="text-[10px] text-muted">{timeShort(h.createdAt)}</span>
-                    </button>
-                  );
-                })
-              )
-            ) : convs.length === 0 ? (
-              <div className="px-3 py-8 text-center text-xs text-muted">
-                Chưa có cuộc trò chuyện. Bấm “Mới” để bắt đầu.
-              </div>
-            ) : (
-              convs.map((c) => {
-                const name = convName(c, me);
-                const peerId = dmPeerId(c, me);
-                return (
-                  <button
-                    key={c.id}
-                    type="button"
-                    onClick={() => setSelectedId(c.id)}
-                    className={cn(
-                      "w-full text-left px-3 py-2.5 flex gap-2.5 items-center hover:bg-hover/40 transition-colors border-b border-border/50",
-                      c.id === selectedId && "bg-accent/10",
-                    )}
-                  >
-                    <Avatar name={name} online={peerId ? online.has(peerId) : undefined} />
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-1">
-                        <span className="text-sm font-medium truncate flex-1">{name}</span>
-                        {c.lastMessage && (
-                          <span className="text-[10px] text-muted shrink-0">
-                            {timeShort(c.lastMessage.createdAt)}
-                          </span>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <span className="text-xs text-muted truncate flex-1">
-                          {c.lastMessage
-                            ? c.lastMessage.body || "📎 Tệp đính kèm"
-                            : "Chưa có tin nhắn"}
-                        </span>
-                        {c.unread > 0 && (
-                          <span className="min-w-[16px] h-4 px-1 rounded-full bg-accent text-white text-[10px] font-bold flex items-center justify-center shrink-0">
-                            {c.unread > 99 ? "99+" : c.unread}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </button>
-                );
-              })
+    <div
+      className={cn(
+        isViewer
+          ? "h-screen flex flex-col bg-bg text-text"
+          : "flex-1 flex flex-col min-h-0 overflow-hidden",
+      )}
+    >
+      {/* Nút quay về Portal — chỉ hiện cho viewer (không có AppShell nav) */}
+      {isViewer && (
+        <div className="h-10 shrink-0 flex items-center gap-2 px-3 border-b border-border bg-panel">
+          <button
+            type="button"
+            onClick={() => void navigate({ to: "/portal", search: { page: undefined } })}
+            className="flex items-center gap-1.5 text-sm text-muted hover:text-text transition-colors"
+          >
+            <I.ChevronLeft size={16} />
+            Quay về Portal
+          </button>
+          <span className="ml-2 font-semibold text-sm">Tin nhắn nội bộ</span>
+        </div>
+      )}
+      <div className="flex-1 flex min-h-0 overflow-hidden">
+        {/* ── Danh sach hoi thoai ── */}
+        {showList && (
+          <div
+            className={cn(
+              "flex flex-col border-r border-border bg-panel/40 min-h-0",
+              isMobile ? "w-full" : "w-72 shrink-0",
             )}
-          </div>
-        </div>
-      )}
-
-      {/* ── Thread + composer ── */}
-      {showThread && (
-        <div className="flex-1 flex flex-col min-h-0 min-w-0">
-          {selected ? (
-            <>
-              <div className="h-11 px-3 flex items-center gap-2 border-b border-border shrink-0">
-                {isMobile && (
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => setSelectedId(null)}
-                    icon={<I.ChevronLeft size={16} />}
-                  />
-                )}
-                <Avatar
-                  name={convName(selected, me)}
-                  size={28}
-                  online={(() => {
-                    const pid = dmPeerId(selected, me);
-                    return pid ? online.has(pid) : undefined;
-                  })()}
-                />
-                <div className="min-w-0">
-                  <div className="text-sm font-semibold truncate">{convName(selected, me)}</div>
-                  {selected.kind === "group" && (
-                    <div className="text-[11px] text-muted">
-                      {(selected.members ?? []).length} thành viên
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <div
-                ref={scrollRef}
-                className="flex-1 overflow-y-auto px-3 py-3 flex flex-col gap-1.5"
-              >
-                {messages.map((m, i) => {
-                  const mine = m.senderUserId === me;
-                  const prev = messages[i - 1];
-                  const showName =
-                    selected.kind === "group" && !mine && prev?.senderUserId !== m.senderUserId;
-                  return (
-                    <MessageItem
-                      key={m.id}
-                      msg={m}
-                      mine={mine}
-                      showName={showName}
-                      displayName={m.senderName ?? nameOf(m.senderUserId)}
-                      onReact={(e) => react(m.id, e)}
-                      onEdit={() => void editMsg(m)}
-                      onDelete={() => void deleteMsg(m)}
-                    />
-                  );
-                })}
-                {messages.length === 0 && (
-                  <div className="m-auto text-xs text-muted">Hãy gửi tin nhắn đầu tiên 👋</div>
-                )}
-              </div>
-
-              {/* Dang go */}
-              <div className="h-5 px-3 shrink-0 text-[11px] text-muted italic">
-                {typerNames.length > 0 && `${typerNames.slice(0, 3).join(", ")} đang gõ…`}
-              </div>
-
-              <div className="border-t border-border shrink-0">
-                {/* Chip dinh kem cho cho gui */}
-                {(pending.length > 0 || uploading) && (
-                  <div className="px-2 pt-2 flex flex-wrap gap-1.5">
-                    {pending.map((a, i) => (
-                      <span
-                        key={a.url}
-                        className="flex items-center gap-1 px-2 py-1 rounded-md bg-panel-2 border border-border text-xs max-w-[180px]"
-                      >
-                        <I.FileText size={12} className="text-muted shrink-0" />
-                        <span className="truncate flex-1">{a.name}</span>
-                        <button
-                          type="button"
-                          onClick={() => setPending((p) => p.filter((_, j) => j !== i))}
-                          className="text-muted hover:text-danger shrink-0"
-                        >
-                          <I.X size={12} />
-                        </button>
-                      </span>
-                    ))}
-                    {uploading && <span className="text-xs text-muted px-1 py-1">Đang tải…</span>}
-                  </div>
-                )}
-                <div className="p-2 flex items-end gap-2">
-                  <input
-                    ref={fileRef}
-                    type="file"
-                    multiple
-                    className="hidden"
-                    onChange={(e) => void handleFiles(e.target.files)}
-                  />
-                  <Button
-                    variant="ghost"
-                    onClick={() => fileRef.current?.click()}
-                    disabled={uploading}
-                    title="Đính kèm tệp"
-                  >
-                    <span className="text-base leading-none">📎</span>
-                  </Button>
-                  <textarea
-                    value={draft}
-                    onChange={(e) => onDraftChange(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" && !e.shiftKey) {
-                        e.preventDefault();
-                        void send();
-                      }
-                    }}
-                    rows={1}
-                    placeholder="Nhập tin nhắn… (Enter để gửi, Shift+Enter xuống dòng)"
-                    className="flex-1 resize-none max-h-32 input py-2"
-                  />
-                  <Button
-                    onClick={() => void send()}
-                    disabled={sending || (!draft.trim() && pending.length === 0)}
-                    icon={<I.Send size={15} />}
-                  >
-                    <span className="hidden sm:inline">Gửi</span>
-                  </Button>
-                </div>
-              </div>
-            </>
-          ) : (
-            <div className="flex-1 flex flex-col items-center justify-center text-muted gap-3">
-              <I.MessageSquare size={40} className="opacity-30" />
-              <div className="text-sm">Chọn một cuộc trò chuyện hoặc bắt đầu cuộc mới.</div>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* ── Panel "chat mới" ── */}
-      {newChatOpen && (
-        <div className="fixed inset-0 z-[600] flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-md rounded-lg border border-border bg-panel shadow-xl flex flex-col max-h-[80vh]">
-            <div className="px-4 py-3 border-b border-border flex items-center gap-2">
-              <span className="font-semibold text-sm flex-1">
-                {groupMode ? "Tạo nhóm" : "Cuộc trò chuyện mới"}
-              </span>
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => {
-                  setGroupMode((g) => !g);
-                  setGroupPick(new Set());
-                }}
-                icon={<I.Users size={14} />}
-              >
-                {groupMode ? "DM" : "Nhóm"}
+          >
+            <div className="h-11 px-3 flex items-center gap-2 border-b border-border shrink-0">
+              <span className="font-semibold text-sm flex-1">Tin nhắn</span>
+              <Button size="sm" onClick={() => void openNewChat()} icon={<I.Plus size={14} />}>
+                <span className="hidden sm:inline">Mới</span>
               </Button>
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => setNewChatOpen(false)}
-                icon={<I.X size={15} />}
-              />
             </div>
-            <div className="flex-1 overflow-y-auto divide-y divide-border/50">
-              {directory.filter((d) => d.userId !== me).length === 0 ? (
-                <div className="px-4 py-8 text-center text-xs text-muted">
-                  Chưa có nhân viên nào khác trong công ty.
-                </div>
-              ) : (
-                directory
-                  .filter((d) => d.userId !== me)
-                  .map((d) => {
-                    const picked = groupPick.has(d.userId);
+            {/* O tim kiem */}
+            <div className="px-2 py-1.5 border-b border-border shrink-0">
+              <div className="flex items-center gap-1.5 input h-8 px-2">
+                <I.Search size={13} className="text-muted shrink-0" />
+                <input
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Tìm tin nhắn…"
+                  className="bg-transparent outline-none text-sm flex-1 min-w-0"
+                />
+                {search && (
+                  <button type="button" onClick={() => setSearch("")} className="text-muted">
+                    <I.X size={13} />
+                  </button>
+                )}
+              </div>
+            </div>
+            <div className="flex-1 overflow-y-auto">
+              {searchHits !== null ? (
+                searchHits.length === 0 ? (
+                  <div className="px-3 py-8 text-center text-xs text-muted">
+                    Không tìm thấy tin nhắn.
+                  </div>
+                ) : (
+                  searchHits.map((h) => {
+                    const c = convs.find((x) => x.id === h.conversationId);
                     return (
                       <button
-                        key={d.userId}
+                        key={h.id}
                         type="button"
                         onClick={() => {
-                          if (groupMode) {
-                            setGroupPick((s) => {
-                              const n = new Set(s);
-                              if (n.has(d.userId)) {
-                                n.delete(d.userId);
-                              } else {
-                                n.add(d.userId);
-                              }
-                              return n;
-                            });
-                          } else {
-                            void startDm(d.userId);
-                          }
+                          setSelectedId(h.conversationId);
+                          setSearch("");
                         }}
-                        className={cn(
-                          "w-full text-left px-4 py-2.5 flex items-center gap-2.5 hover:bg-hover/40 transition-colors",
-                          picked && "bg-accent/10",
-                        )}
+                        className="w-full text-left px-3 py-2.5 flex flex-col gap-0.5 hover:bg-hover/40 transition-colors border-b border-border/50"
                       >
-                        <Avatar name={d.name || d.email} size={32} online={online.has(d.userId)} />
-                        <div className="min-w-0 flex-1">
-                          <div className="text-sm font-medium truncate">{d.name || d.email}</div>
-                          <div className="text-[11px] text-muted truncate">{d.email}</div>
-                        </div>
-                        {groupMode && picked && <I.Check size={16} className="text-accent" />}
+                        <span className="text-xs font-medium truncate">
+                          {c ? convName(c, me) : "Hội thoại"}
+                        </span>
+                        <span className="text-xs text-muted truncate">{h.body}</span>
+                        <span className="text-[10px] text-muted">{timeShort(h.createdAt)}</span>
                       </button>
                     );
                   })
+                )
+              ) : convs.length === 0 ? (
+                <div className="px-3 py-8 text-center text-xs text-muted">
+                  Chưa có cuộc trò chuyện. Bấm “Mới” để bắt đầu.
+                </div>
+              ) : (
+                convs.map((c) => {
+                  const name = convName(c, me);
+                  const peerId = dmPeerId(c, me);
+                  return (
+                    <button
+                      key={c.id}
+                      type="button"
+                      onClick={() => setSelectedId(c.id)}
+                      className={cn(
+                        "w-full text-left px-3 py-2.5 flex gap-2.5 items-center hover:bg-hover/40 transition-colors border-b border-border/50",
+                        c.id === selectedId && "bg-accent/10",
+                      )}
+                    >
+                      <Avatar name={name} online={peerId ? online.has(peerId) : undefined} />
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1">
+                          <span className="text-sm font-medium truncate flex-1">{name}</span>
+                          {c.lastMessage && (
+                            <span className="text-[10px] text-muted shrink-0">
+                              {timeShort(c.lastMessage.createdAt)}
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <span className="text-xs text-muted truncate flex-1">
+                            {c.lastMessage
+                              ? c.lastMessage.body || "📎 Tệp đính kèm"
+                              : "Chưa có tin nhắn"}
+                          </span>
+                          {c.unread > 0 && (
+                            <span className="min-w-[16px] h-4 px-1 rounded-full bg-accent text-white text-[10px] font-bold flex items-center justify-center shrink-0">
+                              {c.unread > 99 ? "99+" : c.unread}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })
               )}
             </div>
-            {groupMode && (
-              <div className="px-4 py-3 border-t border-border flex items-center gap-2">
-                <span className="text-xs text-muted flex-1">{groupPick.size} đã chọn</span>
-                <Button onClick={() => void createGroup()} disabled={groupPick.size === 0}>
-                  Tạo nhóm
-                </Button>
+          </div>
+        )}
+
+        {/* ── Thread + composer ── */}
+        {showThread && (
+          <div className="flex-1 flex flex-col min-h-0 min-w-0">
+            {selected ? (
+              <>
+                <div className="h-11 px-3 flex items-center gap-2 border-b border-border shrink-0">
+                  {isMobile && (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => setSelectedId(null)}
+                      icon={<I.ChevronLeft size={16} />}
+                    />
+                  )}
+                  <Avatar
+                    name={convName(selected, me)}
+                    size={28}
+                    online={(() => {
+                      const pid = dmPeerId(selected, me);
+                      return pid ? online.has(pid) : undefined;
+                    })()}
+                  />
+                  <div className="min-w-0">
+                    <div className="text-sm font-semibold truncate">{convName(selected, me)}</div>
+                    {selected.kind === "group" && (
+                      <div className="text-[11px] text-muted">
+                        {(selected.members ?? []).length} thành viên
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div
+                  ref={scrollRef}
+                  className="flex-1 overflow-y-auto px-3 py-3 flex flex-col gap-1.5"
+                >
+                  {messages.map((m, i) => {
+                    const mine = m.senderUserId === me;
+                    const prev = messages[i - 1];
+                    const showName =
+                      selected.kind === "group" && !mine && prev?.senderUserId !== m.senderUserId;
+                    return (
+                      <MessageItem
+                        key={m.id}
+                        msg={m}
+                        mine={mine}
+                        showName={showName}
+                        displayName={m.senderName ?? nameOf(m.senderUserId)}
+                        onReact={(e) => react(m.id, e)}
+                        onEdit={() => void editMsg(m)}
+                        onDelete={() => void deleteMsg(m)}
+                      />
+                    );
+                  })}
+                  {messages.length === 0 && (
+                    <div className="m-auto text-xs text-muted">Hãy gửi tin nhắn đầu tiên 👋</div>
+                  )}
+                </div>
+
+                {/* Dang go */}
+                <div className="h-5 px-3 shrink-0 text-[11px] text-muted italic">
+                  {typerNames.length > 0 && `${typerNames.slice(0, 3).join(", ")} đang gõ…`}
+                </div>
+
+                <div className="border-t border-border shrink-0">
+                  {/* Chip dinh kem cho cho gui */}
+                  {(pending.length > 0 || uploading) && (
+                    <div className="px-2 pt-2 flex flex-wrap gap-1.5">
+                      {pending.map((a, i) => (
+                        <span
+                          key={a.url}
+                          className="flex items-center gap-1 px-2 py-1 rounded-md bg-panel-2 border border-border text-xs max-w-[180px]"
+                        >
+                          <I.FileText size={12} className="text-muted shrink-0" />
+                          <span className="truncate flex-1">{a.name}</span>
+                          <button
+                            type="button"
+                            onClick={() => setPending((p) => p.filter((_, j) => j !== i))}
+                            className="text-muted hover:text-danger shrink-0"
+                          >
+                            <I.X size={12} />
+                          </button>
+                        </span>
+                      ))}
+                      {uploading && <span className="text-xs text-muted px-1 py-1">Đang tải…</span>}
+                    </div>
+                  )}
+                  <div className="p-2 flex items-end gap-2">
+                    <input
+                      ref={fileRef}
+                      type="file"
+                      multiple
+                      className="hidden"
+                      onChange={(e) => void handleFiles(e.target.files)}
+                    />
+                    <Button
+                      variant="ghost"
+                      onClick={() => fileRef.current?.click()}
+                      disabled={uploading}
+                      title="Đính kèm tệp"
+                    >
+                      <span className="text-base leading-none">📎</span>
+                    </Button>
+                    <textarea
+                      value={draft}
+                      onChange={(e) => onDraftChange(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && !e.shiftKey) {
+                          e.preventDefault();
+                          void send();
+                        }
+                      }}
+                      rows={1}
+                      placeholder="Nhập tin nhắn… (Enter để gửi, Shift+Enter xuống dòng)"
+                      className="flex-1 resize-none max-h-32 input py-2"
+                    />
+                    <Button
+                      onClick={() => void send()}
+                      disabled={sending || (!draft.trim() && pending.length === 0)}
+                      icon={<I.Send size={15} />}
+                    >
+                      <span className="hidden sm:inline">Gửi</span>
+                    </Button>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div className="flex-1 flex flex-col items-center justify-center text-muted gap-3">
+                <I.MessageSquare size={40} className="opacity-30" />
+                <div className="text-sm">Chọn một cuộc trò chuyện hoặc bắt đầu cuộc mới.</div>
               </div>
             )}
           </div>
-        </div>
-      )}
+        )}
+
+        {/* ── Panel "chat mới" ── */}
+        {newChatOpen && (
+          <div className="fixed inset-0 z-[600] flex items-center justify-center bg-black/40 p-4">
+            <div className="w-full max-w-md rounded-lg border border-border bg-panel shadow-xl flex flex-col max-h-[80vh]">
+              <div className="px-4 py-3 border-b border-border flex items-center gap-2">
+                <span className="font-semibold text-sm flex-1">
+                  {groupMode ? "Tạo nhóm" : "Cuộc trò chuyện mới"}
+                </span>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => {
+                    setGroupMode((g) => !g);
+                    setGroupPick(new Set());
+                  }}
+                  icon={<I.Users size={14} />}
+                >
+                  {groupMode ? "DM" : "Nhóm"}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => setNewChatOpen(false)}
+                  icon={<I.X size={15} />}
+                />
+              </div>
+              <div className="flex-1 overflow-y-auto divide-y divide-border/50">
+                {directory.filter((d) => d.userId !== me).length === 0 ? (
+                  <div className="px-4 py-8 text-center text-xs text-muted">
+                    Chưa có nhân viên nào khác trong công ty.
+                  </div>
+                ) : (
+                  directory
+                    .filter((d) => d.userId !== me)
+                    .map((d) => {
+                      const picked = groupPick.has(d.userId);
+                      return (
+                        <button
+                          key={d.userId}
+                          type="button"
+                          onClick={() => {
+                            if (groupMode) {
+                              setGroupPick((s) => {
+                                const n = new Set(s);
+                                if (n.has(d.userId)) {
+                                  n.delete(d.userId);
+                                } else {
+                                  n.add(d.userId);
+                                }
+                                return n;
+                              });
+                            } else {
+                              void startDm(d.userId);
+                            }
+                          }}
+                          className={cn(
+                            "w-full text-left px-4 py-2.5 flex items-center gap-2.5 hover:bg-hover/40 transition-colors",
+                            picked && "bg-accent/10",
+                          )}
+                        >
+                          <Avatar
+                            name={d.name || d.email}
+                            size={32}
+                            online={online.has(d.userId)}
+                          />
+                          <div className="min-w-0 flex-1">
+                            <div className="text-sm font-medium truncate">{d.name || d.email}</div>
+                            <div className="text-[11px] text-muted truncate">{d.email}</div>
+                          </div>
+                          {groupMode && picked && <I.Check size={16} className="text-accent" />}
+                        </button>
+                      );
+                    })
+                )}
+              </div>
+              {groupMode && (
+                <div className="px-4 py-3 border-t border-border flex items-center gap-2">
+                  <span className="text-xs text-muted flex-1">{groupPick.size} đã chọn</span>
+                  <Button onClick={() => void createGroup()} disabled={groupPick.size === 0}>
+                    Tạo nhóm
+                  </Button>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

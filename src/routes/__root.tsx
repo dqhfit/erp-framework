@@ -119,12 +119,13 @@ function AppShell() {
     };
   }, []);
 
-  // Viewer được vào /portal, /view + trang xưởng standalone (bản vẽ, sản
-  // lượng) — route khác redirect sang portal.
+  // Viewer được vào /portal, /view, /chat + trang xưởng standalone (bản vẽ,
+  // sản lượng) — route khác redirect sang portal.
   useEffect(() => {
     const allowed =
       pathname.startsWith("/portal") ||
       pathname.startsWith("/view") ||
+      pathname === "/chat" ||
       STANDALONE_PREFIXES.some((p) => pathname.startsWith(p));
     if (role === "viewer" && !allowed) {
       void navigate({ to: "/portal", search: { page: undefined } });
@@ -133,10 +134,14 @@ function AppShell() {
 
   // /view/*, /portal + trang xưởng standalone tự render full-screen layout —
   // bỏ qua AppShell chrome (Topbar/Sidebar) cho gọn trên mobile.
+  // Viewer vào /chat cũng bỏ chrome admin — ChatPage tự quản lý layout
+  // và hiển thị nút "Quay về Portal".
+  const isViewerChat = role === "viewer" && pathname === "/chat";
   if (
     pathname.startsWith("/view/") ||
     pathname.startsWith("/portal") ||
-    STANDALONE_PREFIXES.some((p) => pathname.startsWith(p))
+    STANDALONE_PREFIXES.some((p) => pathname.startsWith(p)) ||
+    isViewerChat
   )
     // Standalone/portal/view bỏ AppShell chrome — NHƯNG vẫn cần DialogHost +
     // ToastHost, nếu không confirm/alert/toast (vd nút Thêm/Sửa/Xóa) không có
