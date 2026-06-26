@@ -46,16 +46,25 @@ function WizardLookupField({
   const [saving, setSaving] = useState(false);
 
   const labels = lk.labelFields ?? [lk.valueField];
+  // >=2 label field → hiển thị lookup NHIỀU CỘT (cells + headers) thay vì gộp
+  // một chuỗi — khôi phục tính năng lookup đa cột của bản main.
+  const multiCol = labels.length >= 2;
   const opts = src.map((r) => {
     const val = String(r[lk.valueField] ?? "");
     const lbl = labels
       .map((x) => r[x])
       .filter((x) => x != null && String(x) !== "")
       .join(" — ");
-    return { value: val, label: lbl || val };
+    const cells = multiCol ? labels.map((x) => String(r[x] ?? "")) : undefined;
+    return cells
+      ? { value: val, label: lbl || val, cells, searchText: cells.join(" ") }
+      : { value: val, label: lbl || val };
   });
   const ent = entities.find((e) => e.id === lk.entity);
   const srcLabel = ent?.name ?? "mục";
+  const headers = multiCol
+    ? labels.map((x) => ent?.fields.find((field) => field.name === x)?.label ?? x)
+    : undefined;
   const createNames = lk.createFields ?? [...new Set([lk.valueField, ...labels])];
   const createDefs = createNames
     .map((n) => ent?.fields.find((f) => f.name === n))
@@ -117,6 +126,7 @@ function WizardLookupField({
           options={opts}
           emptyOption={`— chọn ${srcLabel} —`}
           searchPlaceholder={`Tìm ${srcLabel}…`}
+          columnHeaders={headers}
         />
       </div>
       {lk.allowCreate && (
