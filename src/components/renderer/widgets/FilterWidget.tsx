@@ -5,7 +5,12 @@
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { I } from "@/components/Icons";
-import { usePageState, useWidgetData } from "@/components/renderer/page-data";
+import {
+  usePageDispatch,
+  usePageState,
+  usePageStateKey,
+  useWidgetData,
+} from "@/components/renderer/page-data";
 import type { FItemCfg } from "@/components/renderer/page-types";
 import { SearchableSelect } from "@/components/ui";
 import { TagBox } from "@/components/ui/tagbox";
@@ -17,7 +22,8 @@ import { cn } from "@/lib/utils";
 const FILTER_RENDER_CAP = 150;
 
 /** Combobox ĐA CHỌN cho filter: dropdown checkbox + search, nhãn theo optionLabels,
- *  ghi string[] vào pageState (list lọc op "in"). */
+ *  ghi string[] vào pageState (list lọc op "in").
+ *  usePageStateKey → chỉ re-render khi stateKey này thay đổi. */
 function MultiCombo({
   stateKey,
   label,
@@ -29,14 +35,14 @@ function MultiCombo({
   options: { value: string; label: string }[];
   width?: number;
 }) {
-  const pageState = usePageState();
+  const raw = usePageStateKey(stateKey);
+  const dispatch = usePageDispatch();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const triggerRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const pos = useDropdownPosition(triggerRef, open);
 
-  const raw = pageState.get(stateKey);
   const selected: string[] = Array.isArray(raw) ? (raw as string[]) : [];
 
   useEffect(() => {
@@ -61,7 +67,7 @@ function MultiCombo({
     filtered.length > FILTER_RENDER_CAP ? filtered.slice(0, FILTER_RENDER_CAP) : filtered;
   const overflow = filtered.length - shown.length;
   const toggle = (v: string) =>
-    pageState.set(
+    dispatch.set(
       stateKey,
       selected.includes(v) ? selected.filter((x) => x !== v) : [...selected, v],
     );
@@ -114,7 +120,7 @@ function MultiCombo({
               {selected.length > 0 && (
                 <button
                   type="button"
-                  onClick={() => pageState.set(stateKey, [])}
+                  onClick={() => dispatch.set(stateKey, [])}
                   className="shrink-0 text-xs text-muted hover:text-danger"
                   title="Bỏ chọn hết"
                 >
@@ -343,9 +349,9 @@ export function FilterWidget({ cfg }: { cfg: Record<string, unknown> }) {
   return items ? <MultiItemFilter cfg={cfg} items={items} /> : <LegacyCascadeFilter cfg={cfg} />;
 }
 
-/** Legacy cascade filter: Hệ hàng → Sản phẩm + Nạp lại. */
+/** Legacy cascade filter: Hệ hàng → Sản phẩm + Nạp lại.
+ *  usePageStateKey → chỉ re-render khi emitStateKey (SP đã chọn) thay đổi. */
 function LegacyCascadeFilter({ cfg }: { cfg: Record<string, unknown> }) {
-  const pageState = usePageState();
   const { rows, loading } = useWidgetData(cfg);
   const familyField = (cfg.familyField as string) || "hehang";
   const valueField = (cfg.valueField as string) || "masp";
@@ -353,7 +359,9 @@ function LegacyCascadeFilter({ cfg }: { cfg: Record<string, unknown> }) {
   const emitStateKey = (cfg.emitStateKey as string) || "selMasp";
   const refreshDsId = cfg.refreshDataSourceId as string | undefined;
   const [hehang, setHehang] = useState("");
-  const masp = (pageState.get(emitStateKey) as string) ?? "";
+  // Chỉ subscribe key này — không re-render khi key khác trong trang đổi
+  const masp = (usePageStateKey(emitStateKey) as string) ?? "";
+  const dispatch = usePageDispatch();
 
   const families = useMemo(() => {
     const s = new Set<string>();
@@ -385,7 +393,7 @@ function LegacyCascadeFilter({ cfg }: { cfg: Record<string, unknown> }) {
       if (r) {
         const saved = JSON.parse(r) as { hehang?: string; masp?: string };
         if (saved.hehang) setHehang(saved.hehang);
-        if (saved.masp) pageState.set(emitStateKey, saved.masp);
+        if (saved.masp) dispatch.set(emitStateKey, saved.masp);
       }
     } catch {}
   }, [persistKey]);
@@ -483,7 +491,7 @@ function LegacyCascadeFilter({ cfg }: { cfg: Record<string, unknown> }) {
                     type="button"
                     onClick={() => {
                       setHehang("");
-                      pageState.set(emitStateKey, "");
+                      dispatch.set(emitStateKey, "");
                     }}
                     className={cn(
                       "px-2 h-5 rounded-full text-[10px] border whitespace-nowrap transition-colors",
@@ -500,7 +508,7 @@ function LegacyCascadeFilter({ cfg }: { cfg: Record<string, unknown> }) {
                       type="button"
                       onClick={() => {
                         setHehang(f.value);
-                        pageState.set(emitStateKey, "");
+                        dispatch.set(emitStateKey, "");
                       }}
                       className={cn(
                         "px-2 h-5 rounded-full text-[10px] border whitespace-nowrap transition-colors",
@@ -527,7 +535,7 @@ function LegacyCascadeFilter({ cfg }: { cfg: Record<string, unknown> }) {
                   onKeyDown={(e) => {
                     if (e.key === "Escape") setDropOpen(false);
                     if (e.key === "Enter" && filteredProducts[0]) {
-                      pageState.set(emitStateKey, filteredProducts[0].value);
+                      dispatch.set(emitStateKey, filteredProducts[0].value);
                       setDropOpen(false);
                     }
                   }}
@@ -543,7 +551,7 @@ function LegacyCascadeFilter({ cfg }: { cfg: Record<string, unknown> }) {
                       <button
                         type="button"
                         onClick={() => {
-                          pageState.set(emitStateKey, o.value);
+                          dispatch.set(emitStateKey, o.value);
                           setDropOpen(false);
                         }}
                         className={cn(
@@ -573,7 +581,7 @@ function LegacyCascadeFilter({ cfg }: { cfg: Record<string, unknown> }) {
       <button
         type="button"
         onClick={() => {
-          if (refreshDsId) pageState.set(`__refresh:ds:${refreshDsId}`, Date.now());
+          if (refreshDsId) dispatch.set(`__refresh:ds:${refreshDsId}`, Date.now());
         }}
         className="shrink-0 w-7 h-7 flex items-center justify-center rounded border border-border text-muted hover:text-text hover:bg-hover/50 transition-colors"
         title="Nạp lại"

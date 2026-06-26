@@ -11,6 +11,7 @@ import {
   useMemo,
   useRef,
   useState,
+  useSyncExternalStore,
 } from "react";
 import type { ServerGridQuery } from "@/components/renderer/DataGrid";
 import type {
@@ -42,7 +43,85 @@ function cachedGetDataSourceMeta(dsId: string) {
   return _dsMetaCache.get(dsId)!;
 }
 
-const PageStateContext = createContext<PageStateCtx | null>(null);
+/* ── External store cho page state ─────────────────────────────────────────
+ * Tách khỏi React state để tránh re-render dây chuyền:
+ *   - Context value = store object STABLE (không đổi identity theo state).
+ *   - useSyncExternalStore cho subscriber chọn đúng granularity.
+ *   - usePageStateKey(key): chỉ re-render khi ĐỦ key đó đổi.
+ *   - usePageState(): subscribe ALL — backward-compat, không gây context cascade.
+ *   - usePageDispatch(): stable get/set, không subscribe → không gây re-render.
+ * ─────────────────────────────────────────────────────────────────────────── */
+
+type Listener = () => void;
+
+interface PageStore {
+  /** Đọc giá trị theo key (không subscribe, luôn trả giá trị mới nhất). */
+  get: (key: string) => PageStateValue;
+  /** Ghi giá trị; no-op nếu giá trị không đổi; notify listener theo key + all. */
+  set: (key: string, value: PageStateValue) => void;
+  /** Subscribe MỌI thay đổi → trả hàm unsubscribe. */
+  subscribe: (fn: Listener) => Listener;
+  /** Subscribe 1 key cụ thể → trả hàm unsubscribe. */
+  subscribeKey: (key: string, fn: Listener) => Listener;
+  /** Snapshot toàn bộ values (immutable ref mới mỗi lần set). */
+  getSnapshot: () => Record<string, PageStateValue>;
+  /** Nạp batch initial values — dùng cho restore từ IDB. */
+  init: (vals: Record<string, PageStateValue>) => void;
+}
+
+function createPageStore(): PageStore {
+  let snap: Record<string, PageStateValue> = {};
+  const all = new Set<Listener>();
+  const byKey = new Map<string, Set<Listener>>();
+
+  const notifyKey = (key: string) =>
+    byKey.get(key)?.forEach((f) => {
+      f();
+    });
+  const notifyAll = () =>
+    all.forEach((f) => {
+      f();
+    });
+
+  return {
+    get: (key) => snap[key],
+    getSnapshot: () => snap,
+    set: (key, value) => {
+      if (snap[key] === value) return;
+      snap = { ...snap, [key]: value };
+      notifyKey(key);
+      notifyAll();
+    },
+    subscribe: (fn) => {
+      all.add(fn);
+      return () => void all.delete(fn);
+    },
+    subscribeKey: (key, fn) => {
+      if (!byKey.has(key)) byKey.set(key, new Set());
+      // biome-ignore lint/style/noNonNullAssertion: vừa set nên chắc chắn có
+      byKey.get(key)!.add(fn);
+      return () => void byKey.get(key)?.delete(fn);
+    },
+    init: (vals) => {
+      snap = { ...snap, ...vals };
+      for (const k of Object.keys(vals)) notifyKey(k);
+      notifyAll();
+    },
+  };
+}
+
+/** Singleton fallback khi component render ngoài PageStateProvider (vd editor preview). */
+const _nullStore: PageStore = {
+  get: () => undefined,
+  set: () => {},
+  subscribe: () => () => {},
+  subscribeKey: () => () => {},
+  getSnapshot: () => ({}),
+  init: () => {},
+};
+
+/** Context chứa PageStore ổn định — identity KHÔNG đổi theo state, tránh context cascade. */
+const PageStateStoreCtx = createContext<PageStore>(_nullStore);
 
 export function PageStateProvider({
   children,
@@ -51,7 +130,11 @@ export function PageStateProvider({
   children: React.ReactNode;
   pageId?: string;
 }) {
-  const [values, setValues] = useState<Record<string, PageStateValue>>({});
+  // Tạo store 1 lần (stable ref) — không đặt trong useState để không trigger re-render cha
+  const storeRef = useRef<PageStore | null>(null);
+  if (!storeRef.current) storeRef.current = createPageStore();
+  const store = storeRef.current;
+
   const idbKey = pageId ? `pageState:${pageId}` : null;
 
   // Restore từ IDB 1 lần khi mount (chỉ các key không phải refresh signal).
@@ -66,50 +149,70 @@ export function PageStateProvider({
       for (const [k, v] of Object.entries(saved)) {
         if (!k.startsWith("__refresh:")) clean[k] = v;
       }
-      if (Object.keys(clean).length > 0) setValues(clean);
+      if (Object.keys(clean).length > 0) store.init(clean);
     });
-  }, [idbKey]);
+  }, [idbKey, store]);
 
-  // Debounce save — bỏ __refresh:* để không lưu tín hiệu tạm thời.
-  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Debounce save khi store thay đổi — bỏ __refresh:* để không lưu tín hiệu tạm thời.
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
     if (!idbKey) return;
-    if (saveTimer.current) clearTimeout(saveTimer.current);
-    saveTimer.current = setTimeout(() => {
-      const clean: Record<string, PageStateValue> = {};
-      for (const [k, v] of Object.entries(values)) {
-        if (!k.startsWith("__refresh:")) clean[k] = v;
-      }
-      void idbSet(idbKey, clean);
-    }, 400);
+    const unsub = store.subscribe(() => {
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = setTimeout(() => {
+        const s = store.getSnapshot();
+        const clean: Record<string, PageStateValue> = {};
+        for (const [k, v] of Object.entries(s)) {
+          if (!k.startsWith("__refresh:")) clean[k] = v;
+        }
+        void idbSet(idbKey, clean);
+      }, 400);
+    });
     return () => {
-      if (saveTimer.current) clearTimeout(saveTimer.current);
+      unsub();
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     };
-  }, [idbKey, values]);
+  }, [idbKey, store]);
 
-  const ctx = useMemo<PageStateCtx>(
-    () => ({
-      values,
-      get: (key) => values[key],
-      set: (key, value) =>
-        setValues((prev) => (prev[key] === value ? prev : { ...prev, [key]: value })),
-    }),
-    [values],
-  );
-  return <PageStateContext.Provider value={ctx}>{children}</PageStateContext.Provider>;
+  return <PageStateStoreCtx.Provider value={store}>{children}</PageStateStoreCtx.Provider>;
 }
 
+/** Subscribe MỌI thay đổi — backward-compat, re-render khi BẤT KỲ key đổi.
+ *  Dùng cho widget đọc nhiều key động (useDataOpts, FilterItem, viz widgets…).
+ *  KHÔNG gây context cascade (store context stable; subscription qua useSyncExternalStore). */
 export function usePageState(): PageStateCtx {
-  const ctx = useContext(PageStateContext);
-  if (!ctx) {
-    // Fallback no-op khi component render ngoài provider (vd editor preview).
-    return {
-      values: {},
-      get: () => undefined,
-      set: () => undefined,
-    };
-  }
-  return ctx;
+  const store = useContext(PageStateStoreCtx);
+  const values = useSyncExternalStore(store.subscribe, store.getSnapshot);
+  // get/set stable từ store — memo chỉ tạo object mới khi values (snapshot) đổi
+  return useMemo<PageStateCtx>(() => ({ values, get: store.get, set: store.set }), [values, store]);
+}
+
+/** Subscribe CHỈ 1 key — chỉ re-render khi KEY ĐÓ thay đổi.
+ *  Dùng cho consumer nóng: VisibilityGate, input widgets, filter dropdowns.
+ *  Key rỗng ("") → subscribe key không-tồn-tại, không gây re-render phụ. */
+export function usePageStateKey(key: string): PageStateValue {
+  const store = useContext(PageStateStoreCtx);
+  const subscribe = useCallback((fn: () => void) => store.subscribeKey(key, fn), [store, key]);
+  const getSnapshot = useCallback(() => store.get(key), [store, key]);
+  return useSyncExternalStore(subscribe, getSnapshot);
+}
+
+/** Trả về stable dispatch {get, set, values} — KHÔNG subscribe, KHÔNG gây re-render.
+ *  values là getter đọc snapshot tức thì (dùng trong event handler, không reactive).
+ *  Dùng cho component chỉ ghi state trong event handler (Widget, PageLeaveHandler…). */
+export function usePageDispatch(): import("@/lib/run-action").PageStateLike {
+  const store = useContext(PageStateStoreCtx);
+  // store stable (ref trong provider) → useMemo chỉ tạo object 1 lần/page
+  return useMemo(
+    () => ({
+      get: store.get,
+      set: store.set,
+      get values() {
+        return store.getSnapshot();
+      },
+    }),
+    [store],
+  );
 }
 
 /* ── Tùy chọn tải dữ liệu (số dòng + điều kiện + cổng) ────────────────────── */
@@ -213,10 +316,8 @@ function useRecords(entityId?: string, opts?: UseRecordsOpts) {
   const [rows, setRows] = useState<Record<string, unknown>[]>([]);
   const [loading, setLoading] = useState<boolean>(!!entityId && enabled);
   const [err, setErr] = useState("");
-  const pageState = usePageState();
-  const refreshTag = entityId
-    ? (pageState.get(`__refresh:${entityId}`) as number | undefined)
-    : undefined;
+  // Subscribe CHỈ refresh tag của entity này — không re-render khi key khác đổi
+  const refreshTag = usePageStateKey(entityId ? `__refresh:${entityId}` : "") as number | undefined;
   // biome-ignore lint/correctness/useExhaustiveDependencies: deps cố ý dùng filtersKey/sortKey (chuỗi ổn định) thay cho object; refreshTag là tín hiệu reload thủ công
   useEffect(() => {
     if (!entityId || !enabled) {
@@ -277,10 +378,10 @@ function useDataSourceRecords(dataSourceId: string | undefined, opts: UseRecords
   // Giữ meta thô (fields có sourceField/sourceRelationId + relations) để map
   // field ref → cột projection khi đổi giá trị (auto điền Tên vật tư…).
   const metaRef = useRef<Awaited<ReturnType<typeof api.getDataSourceMeta>> | null>(null);
-  const pageState = usePageState();
-  const refreshTag = dataSourceId
-    ? (pageState.get(`__refresh:ds:${dataSourceId}`) as number | undefined)
-    : undefined;
+  // Subscribe CHỈ refresh tag của datasource này — không re-render khi key khác đổi
+  const refreshTag = usePageStateKey(dataSourceId ? `__refresh:ds:${dataSourceId}` : "") as
+    | number
+    | undefined;
   // Meta effect: chỉ chạy khi dataSourceId đổi — dùng cache để tránh fetch lặp.
   useEffect(() => {
     if (!dataSourceId) {
@@ -572,7 +673,8 @@ export function useWidgetData(cfg: Record<string, unknown>): WidgetData {
   const ent = useEntity(entityId);
   const entRecs = useRecords(entityId, opts);
   const ds = useDataSourceRecords(dataSourceId, opts);
-  const pageState = usePageState();
+  // Chỉ cần ghi refresh tag (event handler) → dispatch stable, không gây re-render
+  const dispatch = usePageDispatch();
 
   if (dataSourceId) {
     return {
@@ -592,8 +694,8 @@ export function useWidgetData(cfg: Record<string, unknown>): WidgetData {
           );
           if (touchedRef) {
             const key = `__refresh:ds:${dataSourceId}`;
-            const tag = (pageState.get(key) as number | undefined) ?? 0;
-            pageState.set(key, tag + 1);
+            const tag = (dispatch.get(key) as number | undefined) ?? 0;
+            dispatch.set(key, tag + 1);
           }
         }),
       remove: (id) => api.deleteDataSourceRecord(dataSourceId, id),

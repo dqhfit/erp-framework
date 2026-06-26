@@ -4,7 +4,7 @@
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { I } from "@/components/Icons";
-import { usePageState, useWidgetData } from "@/components/renderer/page-data";
+import { usePageDispatch, usePageStateKey, useWidgetData } from "@/components/renderer/page-data";
 import { SearchableSelect } from "@/components/ui";
 import { TagBox } from "@/components/ui/tagbox";
 import { useT } from "@/hooks/useT";
@@ -15,11 +15,12 @@ import { cn } from "@/lib/utils";
 const COMBO_RENDER_CAP = 150;
 
 export function SearchWidget({ cfg }: { cfg: Record<string, unknown> }) {
-  const pageState = usePageState();
   const stateKey = (cfg.stateKey as string) || "";
   const label = cfg.label as string | undefined;
   const placeholder = (cfg.placeholder as string) || "Tìm kiếm…";
-  const val = (pageState.get(stateKey) as string) ?? "";
+  // Chỉ re-render khi stateKey này thay đổi
+  const val = (usePageStateKey(stateKey) as string) ?? "";
+  const dispatch = usePageDispatch();
 
   if (!stateKey) return <div className="p-3 text-xs text-muted">Chưa cấu hình state key.</div>;
 
@@ -34,14 +35,14 @@ export function SearchWidget({ cfg }: { cfg: Record<string, unknown> }) {
         <input
           type="text"
           value={val}
-          onChange={(e) => pageState.set(stateKey, e.target.value)}
+          onChange={(e) => dispatch.set(stateKey, e.target.value)}
           placeholder={placeholder}
           className="w-full h-8 pl-8 pr-7 border border-border rounded bg-bg text-sm outline-none focus:border-accent"
         />
         {val && (
           <button
             type="button"
-            onClick={() => pageState.set(stateKey, "")}
+            onClick={() => dispatch.set(stateKey, "")}
             className="absolute right-2 top-1/2 -translate-y-1/2 text-muted hover:text-text"
           >
             <I.X size={12} />
@@ -53,7 +54,6 @@ export function SearchWidget({ cfg }: { cfg: Record<string, unknown> }) {
 }
 
 export function ComboboxWidget({ cfg }: { cfg: Record<string, unknown> }) {
-  const pageState = usePageState();
   const field = cfg.field as string | undefined;
   /** Field phụ hiển thị kèm trong nhãn: "${field} — ${labelField}". */
   const labelField = cfg.labelField as string | undefined;
@@ -67,10 +67,12 @@ export function ComboboxWidget({ cfg }: { cfg: Record<string, unknown> }) {
   );
   const multiSelect = !!(cfg.multiSelect as boolean);
 
-  // single-select value
-  const val = (pageState.get(stateKey) as string) ?? "";
-  // multi-select values — đọc trực tiếp từ pageState (reactive)
-  const vals = (multiSelect ? (pageState.get(stateKey) as string[]) : null) ?? [];
+  const dispatch = usePageDispatch();
+  // single-select value — subscribe chỉ key này
+  const raw = usePageStateKey(stateKey);
+  const val = (raw as string) ?? "";
+  // multi-select values — cùng key, đọc từ raw
+  const vals = (multiSelect ? (raw as string[]) : null) ?? [];
 
   const dynamicOpts = useMemo(() => {
     if (!field || !rows.length) return [];
@@ -145,20 +147,23 @@ export function ComboboxWidget({ cfg }: { cfg: Record<string, unknown> }) {
     const shown =
       filtered.length > COMBO_RENDER_CAP ? filtered.slice(0, COMBO_RENDER_CAP) : filtered;
     const overflow = filtered.length - shown.length;
-    const getCur = (): string[] =>
-      Array.isArray(pageState.get(stateKey)) ? (pageState.get(stateKey) as string[]) : [];
+    // dispatch.get() đọc latest value TRONG handler — không gây re-render (không reactive)
+    const getCur = (): string[] => {
+      const g = dispatch.get(stateKey);
+      return Array.isArray(g) ? (g as string[]) : [];
+    };
     const toggle = (v: string) => {
       const cur = getCur();
-      pageState.set(stateKey, cur.includes(v) ? cur.filter((x) => x !== v) : [...cur, v]);
+      dispatch.set(stateKey, cur.includes(v) ? cur.filter((x) => x !== v) : [...cur, v]);
     };
     const selectFiltered = () => {
       const cur = new Set(getCur());
       for (const o of filtered) cur.add(o.value);
-      pageState.set(stateKey, [...cur]);
+      dispatch.set(stateKey, [...cur]);
     };
     const deselectFiltered = () => {
       const remove = new Set(filtered.map((o) => o.value));
-      pageState.set(
+      dispatch.set(
         stateKey,
         getCur().filter((v) => !remove.has(v)),
       );
@@ -202,7 +207,7 @@ export function ComboboxWidget({ cfg }: { cfg: Record<string, unknown> }) {
                 {vals.length > 0 && (
                   <button
                     type="button"
-                    onClick={() => pageState.set(stateKey, [])}
+                    onClick={() => dispatch.set(stateKey, [])}
                     className="shrink-0 text-xs text-muted hover:text-danger"
                   >
                     <I.X size={12} />
@@ -278,7 +283,7 @@ export function ComboboxWidget({ cfg }: { cfg: Record<string, unknown> }) {
         <SearchableSelect
           className="w-full"
           value={val}
-          onChange={(v) => pageState.set(stateKey, v)}
+          onChange={(v) => dispatch.set(stateKey, v)}
           options={options}
           emptyOption="— tất cả —"
         />
@@ -289,15 +294,20 @@ export function ComboboxWidget({ cfg }: { cfg: Record<string, unknown> }) {
 
 export function ListboxWidget({ cfg }: { cfg: Record<string, unknown> }) {
   const t = useT();
-  const pageState = usePageState();
   const field = cfg.field as string | undefined;
   const { rows } = useWidgetData(cfg);
   const stateKey = (cfg.stateKey as string) || "";
   const label = cfg.label as string | undefined;
   const staticOpts = (cfg.options as string) || "";
   const multiSelect = cfg.multiSelect !== false;
-  const raw = pageState.get(stateKey);
-  const selected: string[] = Array.isArray(raw) ? (raw as string[]) : raw ? [String(raw)] : [];
+  // Chỉ re-render khi stateKey này thay đổi
+  const rawKey = usePageStateKey(stateKey);
+  const dispatch = usePageDispatch();
+  const selected: string[] = Array.isArray(rawKey)
+    ? (rawKey as string[])
+    : rawKey
+      ? [String(rawKey)]
+      : [];
 
   const dynamicOpts = useMemo(() => {
     if (!field || !rows.length) return [];
@@ -315,11 +325,11 @@ export function ListboxWidget({ cfg }: { cfg: Record<string, unknown> }) {
 
   const toggle = (opt: string) => {
     if (!multiSelect) {
-      pageState.set(stateKey, selected[0] === opt ? "" : opt);
+      dispatch.set(stateKey, selected[0] === opt ? "" : opt);
       return;
     }
     const next = selected.includes(opt) ? selected.filter((s) => s !== opt) : [...selected, opt];
-    pageState.set(stateKey, next);
+    dispatch.set(stateKey, next);
   };
 
   return (
@@ -332,7 +342,7 @@ export function ListboxWidget({ cfg }: { cfg: Record<string, unknown> }) {
       <div className="flex-1 overflow-y-auto">
         <button
           type="button"
-          onClick={() => pageState.set(stateKey, multiSelect ? [] : "")}
+          onClick={() => dispatch.set(stateKey, multiSelect ? [] : "")}
           className={`w-full text-left px-3 py-1.5 text-sm hover:bg-surface flex items-center gap-2 border-b border-border/40 ${selected.length === 0 ? "text-accent font-medium" : "text-muted"}`}
         >
           <I.Filter size={12} className="shrink-0" />
@@ -371,14 +381,15 @@ export function ListboxWidget({ cfg }: { cfg: Record<string, unknown> }) {
 }
 
 export function TagboxWidget({ cfg }: { cfg: Record<string, unknown> }) {
-  const pageState = usePageState();
   const field = cfg.field as string | undefined;
   const { rows } = useWidgetData(cfg);
   const stateKey = (cfg.stateKey as string) || "";
   const label = cfg.label as string | undefined;
   const staticOpts = (cfg.options as string) || "";
   const placeholder = (cfg.placeholder as string) || undefined;
-  const raw = pageState.get(stateKey);
+  // Chỉ re-render khi stateKey này thay đổi
+  const raw = usePageStateKey(stateKey);
+  const dispatch = usePageDispatch();
   const selected: string[] = Array.isArray(raw) ? (raw as string[]) : [];
 
   const dynamicOpts = useMemo(() => {
@@ -405,7 +416,7 @@ export function TagboxWidget({ cfg }: { cfg: Record<string, unknown> }) {
         )}
         <TagBox
           value={selected}
-          onChange={(next) => pageState.set(stateKey, next)}
+          onChange={(next) => dispatch.set(stateKey, next)}
           suggestions={suggestions}
           placeholder={placeholder}
           strict={suggestions.length > 0}

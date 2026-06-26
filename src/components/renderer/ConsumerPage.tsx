@@ -7,7 +7,7 @@
    ========================================================== */
 
 import { createProceduresClient } from "@erp-framework/client";
-import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { lazy, memo, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { BanVeTypePage } from "@/components/ban-ve/BanVeTypePage";
 import { I } from "@/components/Icons";
@@ -21,7 +21,11 @@ import {
 import type { ColumnGroupNode } from "@/components/renderer/DataGrid";
 import { DocumentWidget } from "@/components/renderer/DocumentWidget";
 import type { CreateFormCfg } from "@/components/renderer/MasterDetailCreateModal";
-import { PageStateProvider, usePageState } from "@/components/renderer/page-data";
+import {
+  PageStateProvider,
+  usePageDispatch,
+  usePageStateKey,
+} from "@/components/renderer/page-data";
 import type {
   ActionBarItem,
   EmbeddedFilter,
@@ -112,9 +116,9 @@ function PageLeaveHandler({
   proc: string;
   refreshEntities: string[];
 }) {
-  const pageState = usePageState();
-  const psRef = useRef(pageState);
-  psRef.current = pageState;
+  // dispatch stable (không subscribe) → không gây re-render khi state thay đổi
+  const dispatch = usePageDispatch();
+  // ref để cleanup effect đọc giá trị mới nhất của refreshEntities mà không cần trong deps
   const refRef = useRef(refreshEntities);
   refRef.current = refreshEntities;
   useEffect(() => {
@@ -122,17 +126,22 @@ function PageLeaveHandler({
     return () => {
       procClient.invokeModule(proc, {}).catch(() => {});
       const stamp = Date.now();
-      for (const eid of refRef.current) psRef.current.set(`__refresh:${eid}`, stamp);
+      for (const eid of refRef.current) dispatch.set(`__refresh:${eid}`, stamp);
     };
-  }, [active, proc]);
+  }, [active, proc, dispatch]);
   return null;
 }
 
-/** Render một widget theo kind. */
-function Widget({ comp, pageId }: { comp: PageComponent; pageId: string }) {
+/** Render một widget theo kind.
+ *  - Dùng usePageDispatch() (stable, không subscribe) thay vì usePageState():
+ *    Widget không cần đọc state reactive; chỉ truyền ctx xuống ActionWidget/
+ *    ActionBarWidget để chúng ghi state trong event handler.
+ *  - React.memo: tránh re-render khi ConsumerPage re-render vì lý do khác.
+ *    Widget chỉ re-render khi comp/pageId đổi hoặc hook con (useActionFilter) fire. */
+const Widget = memo(function Widget({ comp, pageId }: { comp: PageComponent; pageId: string }) {
   const cfg = comp.config ?? {};
   const stateKey = `${pageId}:${comp.id}`;
-  const pageState = usePageState();
+  const pageState = usePageDispatch();
   const filterActs = useActionFilter();
   if (comp.kind === "action") {
     return <ActionWidget config={cfg as unknown as ActionConfig} pageState={pageState} />;
@@ -286,7 +295,7 @@ function Widget({ comp, pageId }: { comp: PageComponent; pageId: string }) {
       Widget "{comp.kind}" — chưa hỗ trợ ở chế độ người dùng.
     </div>
   );
-}
+});
 
 const ROW_H = 76;
 const GAP = 12; // gap-3
@@ -295,30 +304,10 @@ const GAP = 12; // gap-3
    Logged-in  : key = erp_layout_{userId}_{pageId}
    Anonymous  : key = erp_layout_{pageId}
    ─────────────────────────────────────────────────────────── */
-/** Quy tắc ẩn/hiện widget theo 1 state key (vd selKetcau). Đặt ở cfg.visibleWhen. */
-function evalVisible(rule: VisibleRule, pageState: ReturnType<typeof usePageState>): boolean {
-  const raw = pageState.get(rule.stateKey);
-  const sv = raw == null ? "" : String(raw);
-  const arr = Array.isArray(rule.value) ? rule.value.map(String) : [];
-  switch (rule.op) {
-    case "eq":
-      return sv === String(rule.value ?? "");
-    case "neq":
-      return sv !== String(rule.value ?? "");
-    case "in":
-      return arr.includes(sv);
-    case "nin":
-      return !arr.includes(sv);
-    case "set":
-      return sv !== "";
-    case "notset":
-      return sv === "";
-    default:
-      return true;
-  }
-}
 /** Bọc 1 widget: ẩn hẳn (không render ô) khi visibleWhen không thỏa. Chế độ sửa
- *  bố cục (editing) luôn hiện để còn sắp xếp được. */
+ *  bố cục (editing) luôn hiện để còn sắp xếp được.
+ *  Dùng usePageStateKey(rule.stateKey) thay vì usePageState() — chỉ re-render
+ *  khi ĐÚNG KEY đó thay đổi, không phải mọi state change. */
 function VisibilityGate({
   rule,
   editing,
@@ -328,9 +317,36 @@ function VisibilityGate({
   editing: boolean;
   children: React.ReactNode;
 }) {
-  const pageState = usePageState();
-  if (editing || !rule) return <>{children}</>;
-  return evalVisible(rule, pageState) ? children : null;
+  // Hook PHẢI gọi vô điều kiện trước early-return (React rules).
+  // key "" khi rule undefined → subscribe key rỗng = no-op harmless.
+  const raw = usePageStateKey(rule?.stateKey ?? "");
+  if (editing || !rule) return children;
+  const sv = raw == null ? "" : String(raw);
+  const arr = Array.isArray(rule.value) ? rule.value.map(String) : [];
+  let visible: boolean;
+  switch (rule.op) {
+    case "eq":
+      visible = sv === String(rule.value ?? "");
+      break;
+    case "neq":
+      visible = sv !== String(rule.value ?? "");
+      break;
+    case "in":
+      visible = arr.includes(sv);
+      break;
+    case "nin":
+      visible = !arr.includes(sv);
+      break;
+    case "set":
+      visible = sv !== "";
+      break;
+    case "notset":
+      visible = sv === "";
+      break;
+    default:
+      visible = true;
+  }
+  return visible ? children : null;
 }
 
 export function ConsumerPage({
