@@ -264,21 +264,32 @@ function Widget({ comp, pageId }: { comp: PageComponent; pageId: string }) {
   if (comp.kind === "report") return <ReportWidget cfg={cfg} />;
   if (comp.kind === "document") return <DocumentWidget cfg={cfg} />;
   if (comp.kind === "banve-type") {
-    return <BanVeTypePage phanloai={(cfg.phanloai as string) ?? "Bản vẽ kỹ thuật"} />;
+    const rawActs = (cfg.embeddedActions ?? []) as ActionBarItem[];
+    const embActs = filterActs(rawActs);
+    return (
+      <BanVeTypePage
+        phanloai={(cfg.phanloai as string) ?? "Bản vẽ kỹ thuật"}
+        actions={embActs}
+        allActions={rawActs}
+      />
+    );
   }
 
   if (comp.kind === "html") {
+    const embActs = filterActs((cfg.embeddedActions ?? []) as ActionBarItem[]);
     // sandbox="allow-scripts" không có allow-same-origin: frame bị coi
     // là cross-origin nên script bên trong không thể truy cập cookie/
     // localStorage/DOM của app cha — ngăn XSS exfil token.
-    return (
+    return withEmbeddedActions(
       <iframe
         sandbox="allow-scripts"
         srcDoc={(cfg.html as string) ?? ""}
         className="w-full border-0 block"
         title="HTML widget"
         style={{ minHeight: "120px", height: "100%" }}
-      />
+      />,
+      embActs,
+      pageState,
     );
   }
   return (

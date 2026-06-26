@@ -99,7 +99,11 @@ export function HanhDongInspector({
       )}
 
       {/* ── Thanh hành động nhúng — list / form / detail ── */}
-      {(sel.kind === "list" || sel.kind === "form" || sel.kind === "detail") && (
+      {(sel.kind === "list" ||
+        sel.kind === "form" ||
+        sel.kind === "detail" ||
+        sel.kind === "banve-type" ||
+        sel.kind === "html") && (
         <div className="space-y-2 pt-1 border-t border-border/40">
           <ActionBarInspector
             items={(sel.config.embeddedActions as ActionBarItem[] | undefined) ?? []}

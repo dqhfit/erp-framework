@@ -558,6 +558,11 @@ export function tabsForKind(kind: ComponentKind) {
   const dataKinds: ComponentKind[] = ["list", "detail", "form", "chart", "kanban"];
   const inputKinds: ComponentKind[] = ["search", "combobox", "listbox", "tagbox"];
   const base = [{ key: "chung", label: "Chung" }];
+
+  if (kind === "banve-type" || kind === "html") {
+    return [...base, { key: "hanhDong", label: "Hành động" }];
+  }
+
   if (dataKinds.includes(kind)) {
     const tabs = [...base, { key: "dulieu", label: "Dữ liệu" }];
     // Dải cột (banded header) — chỉ lưới/bảng (list).

@@ -23,6 +23,7 @@ export interface PageStateLike {
 export interface ActionContext {
   pageState: PageStateLike;
   procClient: ProceduresClient;
+  preloadedFile?: File | null;
   /** Xoá 1 bản ghi theo recordId (records.deleteRecord). Optional — context
    *  không cung cấp thì step delete-record báo lỗi nhẹ. */
   deleteRecord?: (recordId: string) => Promise<void>;
@@ -430,6 +431,58 @@ export async function runActionSteps(
         });
         throw e;
       }
+      continue;
+    }
+    if (step.kind === "upload-file") {
+      let file: { url: string; name: string } | null = null;
+      let f = ctx.preloadedFile;
+
+      if (f) {
+        ctx.preloadedFile = null; // consume it
+      } else {
+        f = await new Promise<File | null>((resolve) => {
+          const input = document.createElement("input");
+          input.type = "file";
+          if (step.accept) input.accept = step.accept;
+          input.onchange = () => resolve(input.files?.[0] || null);
+          input.onerror = () => resolve(null);
+          input.oncancel = () => resolve(null);
+          input.click();
+        });
+      }
+
+      if (!f) {
+        return { completed: false, procedureRuns };
+      }
+
+      const fd = new FormData();
+      fd.append("file", f);
+      const sub = step.subfolder ? interpolate(step.subfolder, rs.get) : "doc";
+      try {
+        const res = await fetch(`/upload/file?subfolder=${encodeURIComponent(sub)}`, {
+          method: "POST",
+          credentials: "include",
+          body: fd,
+        });
+        if (!res.ok) {
+          const body = (await res.json().catch(() => ({}))) as { error?: string };
+          ctx.toast.error(body.error || "Lỗi tải file lên");
+          return { completed: false, procedureRuns };
+        }
+        const data = (await res.json()) as { url: string; name: string };
+        file = data;
+      } catch (err) {
+        ctx.toast.error(`Lỗi: ${(err as Error).message}`);
+        return { completed: false, procedureRuns };
+      }
+
+      if (!file) {
+        return { completed: false, procedureRuns };
+      }
+      if (step.saveUrlTo) rs.set(step.saveUrlTo, file.url);
+      if (step.saveNameTo) rs.set(step.saveNameTo, file.name);
+      rs.set("uploadedFileSubfolder", step.subfolder ? interpolate(step.subfolder, rs.get) : "doc");
+      lastResult = file;
       continue;
     }
     if (step.kind === "procedure") {

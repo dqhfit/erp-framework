@@ -120,6 +120,24 @@ export function ActionWidget({
 
   const onClick = async () => {
     if (busy || !canRun) return;
+
+    let preloadedFile: File | null = null;
+    const hasUploadStep = (config.steps ?? []).some((s) => s.kind === "upload-file");
+    if (hasUploadStep) {
+      const uploadStep = (config.steps ?? []).find((s) => s.kind === "upload-file");
+      const filePromise = new Promise<File | null>((resolve) => {
+        const input = document.createElement("input");
+        input.type = "file";
+        if (uploadStep?.accept) input.accept = uploadStep.accept;
+        input.onchange = () => resolve(input.files?.[0] || null);
+        input.onerror = () => resolve(null);
+        input.oncancel = () => resolve(null);
+        input.click();
+      });
+      preloadedFile = await filePromise;
+      if (!preloadedFile) return; // Cancelled or closed
+    }
+
     // Hỏi xác nhận top-level (config.requireConfirm) trước khi vào chain.
     if (config.requireConfirm) {
       const ok = await dialog.confirm(config.confirmMessage || "Bạn có chắc chắn?", {
@@ -133,6 +151,7 @@ export function ActionWidget({
       const ctx = {
         pageState,
         procClient,
+        preloadedFile,
         currentUser: user ? { name: user.name, email: user.email } : undefined,
         deleteRecord: (recordId: string) => recordsApi.deleteRecord(recordId).then(() => undefined),
         createRecord: (entityId: string, data: Record<string, unknown>) =>

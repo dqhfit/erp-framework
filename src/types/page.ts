@@ -417,6 +417,15 @@ export interface ActionStepOpenWizard {
   defaults?: Record<string, string>;
 }
 
+export interface ActionStepUploadFile {
+  id: string;
+  kind: "upload-file";
+  subfolder?: string;
+  accept?: string;
+  saveUrlTo?: string;
+  saveNameTo?: string;
+}
+
 export type ActionStep =
   | ActionStepConfirm
   | ActionStepProcedure
@@ -431,7 +440,8 @@ export type ActionStep =
   | ActionStepRefresh
   | ActionStepOpenPopup
   | ActionStepOpenCreateForm
-  | ActionStepOpenWizard;
+  | ActionStepOpenWizard
+  | ActionStepUploadFile;
 
 export type ActionVariant = "primary" | "default" | "danger" | "ghost";
 

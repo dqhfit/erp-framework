@@ -17,6 +17,7 @@ import type {
   ActionStepOpenWizard,
   ActionStepProcedure,
   ActionStepSetState,
+  ActionStepUploadFile,
   ActionVariant,
   BindingValue,
   WizardStepDef,
@@ -98,6 +99,15 @@ export function ActionInspector({ config, onChange }: Props) {
         procedureName: "",
         args: {},
       } satisfies ActionStepProcedure;
+    } else if (kind === "upload-file") {
+      step = {
+        id,
+        kind,
+        subfolder: "doc",
+        accept: "",
+        saveUrlTo: "",
+        saveNameTo: "",
+      } satisfies ActionStepUploadFile;
     } else if (kind === "navigate") {
       step = { id, kind, href: "" } satisfies ActionStepNavigate;
     } else if (kind === "open-popup") {
@@ -306,6 +316,7 @@ function StepAddMenu({ onAdd }: { onAdd: (kind: ActionStep["kind"]) => void }) {
                 { k: "set-state", label: "Đặt page state" },
                 { k: "open-popup", label: "Mở popup" },
                 { k: "open-wizard", label: "Mở wizard" },
+                { k: "upload-file", label: "Tải lên file" },
               ] as const
             ).map((o) => (
               <button
@@ -362,6 +373,7 @@ function StepRow({
     "open-popup": "Mở popup",
     "open-create-form": "Mở form tạo mới (list)",
     "open-wizard": "Mở wizard",
+    "upload-file": "Tải lên file",
   };
   return (
     <div className="border border-border rounded-md bg-panel">
@@ -405,6 +417,7 @@ function StepRow({
         {step.kind === "set-state" && <SetStateEditor step={step} onChange={onChange} />}
         {step.kind === "open-popup" && <PopupEditor step={step} onChange={onChange} />}
         {step.kind === "open-wizard" && <WizardEditor step={step} onChange={onChange} />}
+        {step.kind === "upload-file" && <UploadFileEditor step={step} onChange={onChange} />}
       </div>
     </div>
   );
@@ -1150,6 +1163,47 @@ function BindingValueRow({
         <option value="template">template ({"{{state.x}}"})</option>
       </Select>
       <BindingValueInput binding={binding} onChange={onChange} />
+    </div>
+  );
+}
+
+function UploadFileEditor({
+  step,
+  onChange,
+}: {
+  step: ActionStepUploadFile;
+  onChange: (next: ActionStepUploadFile) => void;
+}) {
+  return (
+    <div className="space-y-2">
+      <FormField label="Thư mục con (subfolder)">
+        <Input
+          value={step.subfolder ?? ""}
+          onChange={(e) => onChange({ ...step, subfolder: e.target.value || undefined })}
+          placeholder="vd: banve, tailieu"
+        />
+      </FormField>
+      <FormField label="Định dạng cho phép (accept)">
+        <Input
+          value={step.accept ?? ""}
+          onChange={(e) => onChange({ ...step, accept: e.target.value || undefined })}
+          placeholder="vd: .pdf,.png,.jpg (để trống = tất cả)"
+        />
+      </FormField>
+      <FormField label="Lưu URL file vào state key">
+        <Input
+          value={step.saveUrlTo ?? ""}
+          onChange={(e) => onChange({ ...step, saveUrlTo: e.target.value || undefined })}
+          placeholder="vd: fileUrl"
+        />
+      </FormField>
+      <FormField label="Lưu tên file vào state key">
+        <Input
+          value={step.saveNameTo ?? ""}
+          onChange={(e) => onChange({ ...step, saveNameTo: e.target.value || undefined })}
+          placeholder="vd: fileName"
+        />
+      </FormField>
     </div>
   );
 }

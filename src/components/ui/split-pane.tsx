@@ -18,6 +18,7 @@ interface SplitPaneProps {
   onLeftCollapseChange?: (collapsed: boolean) => void;
   isRightCollapsed?: boolean;
   onRightCollapseChange?: (collapsed: boolean) => void;
+  collapsible?: boolean;
 }
 
 export function SplitPane({
@@ -28,10 +29,11 @@ export function SplitPane({
   minRight = 240,
   storageKey,
   className = "",
-  isLeftCollapsed = false,
+  isLeftCollapsed,
   onLeftCollapseChange,
-  isRightCollapsed = false,
+  isRightCollapsed,
   onRightCollapseChange,
+  collapsible = false,
 }: SplitPaneProps) {
   const isMobile = useIsMobile();
   const [leftWidth, setLeftWidth] = useState<number>(() => {
@@ -44,30 +46,43 @@ export function SplitPane({
   const [isDragging, setIsDragging] = useState(false);
   const [containerWidth, setContainerWidth] = useState(1200);
 
+  const enableCollapse =
+    collapsible || isLeftCollapsed !== undefined || isRightCollapsed !== undefined;
+
   const [internalLeftCollapsed, setInternalLeftCollapsed] = useState(false);
   const [internalRightCollapsed, setInternalRightCollapsed] = useState(false);
 
-  const leftCollapsed = isLeftCollapsed !== undefined ? isLeftCollapsed : internalLeftCollapsed;
-  const rightCollapsed = isRightCollapsed !== undefined ? isRightCollapsed : internalRightCollapsed;
+  const leftCollapsed = enableCollapse
+    ? isLeftCollapsed !== undefined
+      ? isLeftCollapsed
+      : internalLeftCollapsed
+    : false;
+  const rightCollapsed = enableCollapse
+    ? isRightCollapsed !== undefined
+      ? isRightCollapsed
+      : internalRightCollapsed
+    : false;
 
   const handleLeftCollapse = useCallback(
     (val: boolean) => {
+      if (!enableCollapse) return;
       onLeftCollapseChange?.(val);
       if (isLeftCollapsed === undefined) {
         setInternalLeftCollapsed(val);
       }
     },
-    [onLeftCollapseChange, isLeftCollapsed],
+    [onLeftCollapseChange, isLeftCollapsed, enableCollapse],
   );
 
   const handleRightCollapse = useCallback(
     (val: boolean) => {
+      if (!enableCollapse) return;
       onRightCollapseChange?.(val);
       if (isRightCollapsed === undefined) {
         setInternalRightCollapsed(val);
       }
     },
-    [onRightCollapseChange, isRightCollapsed],
+    [onRightCollapseChange, isRightCollapsed, enableCollapse],
   );
 
   const containerRef = useRef<HTMLDivElement>(null);
@@ -77,7 +92,7 @@ export function SplitPane({
 
   // Measure container width for pixel-perfect slide transitions
   useEffect(() => {
-    if (!containerRef.current) return;
+    if (!enableCollapse || !containerRef.current) return;
     setContainerWidth(containerRef.current.offsetWidth);
 
     const observer = new ResizeObserver((entries) => {
@@ -87,7 +102,7 @@ export function SplitPane({
     });
     observer.observe(containerRef.current);
     return () => observer.disconnect();
-  }, []);
+  }, [enableCollapse]);
 
   const onMouseDown = useCallback(
     (e: React.MouseEvent) => {
@@ -157,15 +172,22 @@ export function SplitPane({
       {/* Left panel */}
       <div
         className="flex min-h-0 flex-col overflow-hidden"
-        style={{
-          width: leftCollapsed ? 0 : rightCollapsed ? containerWidth : leftWidth,
-          minWidth: leftCollapsed ? 0 : rightCollapsed ? containerWidth : minLeft,
-          flex: "none",
-          visibility: leftCollapsed ? "hidden" : "visible",
-          transition: isDragging
-            ? "none"
-            : "width 300ms cubic-bezier(0.4, 0, 0.2, 1), min-width 300ms cubic-bezier(0.4, 0, 0.2, 1), visibility 300ms",
-        }}
+        style={
+          enableCollapse
+            ? {
+                width: leftCollapsed ? 0 : rightCollapsed ? containerWidth : leftWidth,
+                minWidth: leftCollapsed ? 0 : rightCollapsed ? containerWidth : minLeft,
+                flex: "none",
+                visibility: leftCollapsed ? "hidden" : "visible",
+                transition: isDragging
+                  ? "none"
+                  : "width 300ms cubic-bezier(0.4, 0, 0.2, 1), min-width 300ms cubic-bezier(0.4, 0, 0.2, 1), visibility 300ms",
+              }
+            : {
+                width: leftWidth,
+                minWidth: minLeft,
+              }
+        }
       >
         {left}
       </div>
@@ -180,10 +202,14 @@ export function SplitPane({
         aria-valuemax={9999}
         tabIndex={0}
         onMouseDown={onMouseDown}
-        onDoubleClick={(e) => {
-          e.preventDefault();
-          handleLeftCollapse(!leftCollapsed);
-        }}
+        onDoubleClick={
+          enableCollapse
+            ? (e) => {
+                e.preventDefault();
+                handleLeftCollapse(!leftCollapsed);
+              }
+            : undefined
+        }
         onKeyDown={(e) => {
           if (leftCollapsed || rightCollapsed) return;
           const step = e.shiftKey ? 50 : 10;
@@ -204,7 +230,7 @@ export function SplitPane({
         )}
 
         {/* Collapse Left Button (Floating) */}
-        {!rightCollapsed && (
+        {enableCollapse && !rightCollapsed && (
           <button
             type="button"
             onClick={(e) => {
@@ -233,7 +259,7 @@ export function SplitPane({
         )}
 
         {/* Collapse Right Button (Floating) */}
-        {!leftCollapsed && (
+        {enableCollapse && !leftCollapsed && (
           <button
             type="button"
             onClick={(e) => {
@@ -265,16 +291,24 @@ export function SplitPane({
 
       {/* Right panel */}
       <div
-        className="flex min-h-0 flex-col overflow-hidden"
-        style={{
-          width: rightCollapsed ? 0 : leftCollapsed ? containerWidth : containerWidth - leftWidth,
-          minWidth: rightCollapsed ? 0 : leftCollapsed ? containerWidth : minRight,
-          flex: "none",
-          visibility: rightCollapsed ? "hidden" : "visible",
-          transition: isDragging
-            ? "none"
-            : "width 300ms cubic-bezier(0.4, 0, 0.2, 1), min-width 300ms cubic-bezier(0.4, 0, 0.2, 1), visibility 300ms",
-        }}
+        className="flex min-h-0 flex-1 flex-col overflow-hidden"
+        style={
+          enableCollapse
+            ? {
+                width: rightCollapsed
+                  ? 0
+                  : leftCollapsed
+                    ? containerWidth
+                    : containerWidth - leftWidth,
+                minWidth: rightCollapsed ? 0 : leftCollapsed ? containerWidth : minRight,
+                flex: "none",
+                visibility: rightCollapsed ? "hidden" : "visible",
+                transition: isDragging
+                  ? "none"
+                  : "width 300ms cubic-bezier(0.4, 0, 0.2, 1), min-width 300ms cubic-bezier(0.4, 0, 0.2, 1), visibility 300ms",
+              }
+            : undefined
+        }
       >
         {right}
       </div>
