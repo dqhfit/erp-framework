@@ -1,6 +1,10 @@
-import { useMemo, useState } from "react";
+import { useDeferredValue, useMemo, useState } from "react";
 import { I } from "@/components/Icons";
 import { Button, Input, Modal } from "@/components/ui";
+import { normalizeVi } from "@/lib/text-utils";
+
+/** Tối đa option render ra DOM/lần — danh sách lớn cap để không lag. */
+const RENDER_CAP = 150;
 
 type Option = { value: string; label: string };
 
@@ -31,13 +35,19 @@ export function MultiLookupPicker({
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [draft, setDraft] = useState<string[]>([]);
+  // Precompute chuỗi bỏ-dấu 1 lần/option (không normalize lại mỗi phím gõ).
+  const normIndex = useMemo(
+    () => options.map((o) => normalizeVi(`${o.value} ${o.label}`)),
+    [options],
+  );
+  const deferredQuery = useDeferredValue(query);
   const filtered = useMemo(() => {
-    const q = query.trim().toLocaleLowerCase("vi");
+    const q = normalizeVi(deferredQuery.trim());
     if (!q) return options;
-    return options.filter((option) =>
-      `${option.value} ${option.label}`.toLocaleLowerCase("vi").includes(q),
-    );
-  }, [options, query]);
+    return options.filter((_, i) => (normIndex[i] ?? "").includes(q));
+  }, [options, normIndex, deferredQuery]);
+  const shown = filtered.length > RENDER_CAP ? filtered.slice(0, RENDER_CAP) : filtered;
+  const overflow = filtered.length - shown.length;
 
   const show = () => {
     setDraft(splitValue(value, separator));
@@ -107,20 +117,27 @@ export function MultiLookupPicker({
               {filtered.length === 0 ? (
                 <div className="p-6 text-center text-sm text-muted">Không có kết quả</div>
               ) : (
-                filtered.map((option) => (
-                  <label
-                    key={option.value}
-                    className="flex cursor-pointer items-center gap-3 border-b border-border px-3 py-2 last:border-b-0 hover:bg-hover"
-                  >
-                    <input
-                      type="checkbox"
-                      className="accent-accent"
-                      checked={draft.includes(option.value)}
-                      onChange={() => toggle(option.value)}
-                    />
-                    <span className="min-w-0 flex-1 truncate">{option.label}</span>
-                  </label>
-                ))
+                <>
+                  {shown.map((option) => (
+                    <label
+                      key={option.value}
+                      className="flex cursor-pointer items-center gap-3 border-b border-border px-3 py-2 last:border-b-0 hover:bg-hover"
+                    >
+                      <input
+                        type="checkbox"
+                        className="accent-accent"
+                        checked={draft.includes(option.value)}
+                        onChange={() => toggle(option.value)}
+                      />
+                      <span className="min-w-0 flex-1 truncate">{option.label}</span>
+                    </label>
+                  ))}
+                  {overflow > 0 && (
+                    <div className="px-3 py-2 text-xs text-muted/70 italic">
+                      Còn {overflow} mục — gõ thêm để thu hẹp…
+                    </div>
+                  )}
+                </>
               )}
             </div>
           </div>

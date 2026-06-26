@@ -2,7 +2,7 @@
    riêng) + MultiItemFilter (nhiều item, lọc cha-con + visibleWhen) + FilterWidget
    (dispatcher) + LegacyCascadeFilter (bộ lọc tầng cũ). Đẩy/đọc pageState. Tách
    từ ConsumerPage.tsx (Phase A4) — chỉ di chuyển code, KHÔNG đổi hành vi. */
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { I } from "@/components/Icons";
 import { usePageState, useWidgetData } from "@/components/renderer/page-data";
@@ -10,7 +10,11 @@ import type { FItemCfg } from "@/components/renderer/page-types";
 import { SearchableSelect } from "@/components/ui";
 import { TagBox } from "@/components/ui/tagbox";
 import { useDropdownPosition } from "@/hooks/useDropdownPosition";
+import { normalizeVi } from "@/lib/text-utils";
 import { cn } from "@/lib/utils";
+
+/** Tối đa option render ra DOM/lần trong dropdown lọc — cap để không lag. */
+const FILTER_RENDER_CAP = 150;
 
 /** Combobox ĐA CHỌN cho filter: dropdown checkbox + search, nhãn theo optionLabels,
  *  ghi string[] vào pageState (list lọc op "in"). */
@@ -45,9 +49,17 @@ function MultiCombo({
     return () => document.removeEventListener("mousedown", handler);
   }, [open]);
 
-  const filtered = query
-    ? options.filter((o) => o.label.toLowerCase().includes(query.toLowerCase()))
-    : options;
+  // Precompute nhãn bỏ-dấu 1 lần/option + defer để gõ mượt với list lớn.
+  const normIndex = useMemo(() => options.map((o) => normalizeVi(o.label)), [options]);
+  const deferredQuery = useDeferredValue(query);
+  const filtered = useMemo(() => {
+    const q = normalizeVi(deferredQuery.trim());
+    if (!q) return options;
+    return options.filter((_, i) => (normIndex[i] ?? "").includes(q));
+  }, [options, normIndex, deferredQuery]);
+  const shown =
+    filtered.length > FILTER_RENDER_CAP ? filtered.slice(0, FILTER_RENDER_CAP) : filtered;
+  const overflow = filtered.length - shown.length;
   const toggle = (v: string) =>
     pageState.set(
       stateKey,
@@ -114,7 +126,7 @@ function MultiCombo({
               {filtered.length === 0 ? (
                 <li className="px-3 py-2 text-sm text-muted italic">Không có kết quả</li>
               ) : (
-                filtered.map((o) => {
+                shown.map((o) => {
                   const checked = selected.includes(o.value);
                   return (
                     <li key={o.value}>
@@ -136,6 +148,11 @@ function MultiCombo({
                     </li>
                   );
                 })
+              )}
+              {overflow > 0 && (
+                <li className="px-3 py-1.5 text-xs text-muted/70 italic border-t border-border/50">
+                  Còn {overflow} mục — gõ thêm để thu hẹp…
+                </li>
               )}
             </ul>
           </div>,
@@ -391,7 +408,6 @@ function LegacyCascadeFilter({ cfg }: { cfg: Record<string, unknown> }) {
   const dropPos = useDropdownPosition(triggerRef, dropOpen);
 
   // Đóng dropdown khi click ngoài.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: chỉ gắn/gỡ listener khi dropOpen đổi
   useEffect(() => {
     if (!dropOpen) return;
     const handler = (e: MouseEvent) => {
@@ -403,18 +419,22 @@ function LegacyCascadeFilter({ cfg }: { cfg: Record<string, unknown> }) {
     return () => document.removeEventListener("mousedown", handler);
   }, [dropOpen]);
 
+  // Precompute chuỗi bỏ-dấu 1 lần/option (không normalize lại mỗi phím gõ).
+  const productNormIndex = useMemo(
+    () => productOptions.map((o) => normalizeVi(`${o.label} ${o.value ?? ""}`)),
+    [productOptions],
+  );
+  const deferredSearchQ = useDeferredValue(searchQ);
   const filteredProducts = useMemo(() => {
-    const q = searchQ.trim().toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/đ/g, "d");
-    return productOptions.filter((o) => {
-      if (!q) return true;
-      const norm = (o.label + " " + (o.value ?? ""))
-        .toLowerCase()
-        .normalize("NFD")
-        .replace(/[̀-ͯ]/g, "")
-        .replace(/đ/g, "d");
-      return norm.includes(q);
-    });
-  }, [productOptions, searchQ]);
+    const q = normalizeVi(deferredSearchQ.trim());
+    if (!q) return productOptions;
+    return productOptions.filter((_, i) => (productNormIndex[i] ?? "").includes(q));
+  }, [productOptions, productNormIndex, deferredSearchQ]);
+  const shownProducts =
+    filteredProducts.length > FILTER_RENDER_CAP
+      ? filteredProducts.slice(0, FILTER_RENDER_CAP)
+      : filteredProducts;
+  const productOverflow = filteredProducts.length - shownProducts.length;
 
   const selectedLabel = productOptions.find((o) => o.value === masp)?.label ?? masp;
   const title = (cfg.title as string) || "Sản phẩm";
@@ -518,7 +538,7 @@ function LegacyCascadeFilter({ cfg }: { cfg: Record<string, unknown> }) {
                 {filteredProducts.length === 0 ? (
                   <li className="px-3 py-2 text-sm text-muted italic">Không có kết quả</li>
                 ) : (
-                  filteredProducts.map((o) => (
+                  shownProducts.map((o) => (
                     <li key={o.value}>
                       <button
                         type="button"
@@ -537,6 +557,11 @@ function LegacyCascadeFilter({ cfg }: { cfg: Record<string, unknown> }) {
                       </button>
                     </li>
                   ))
+                )}
+                {productOverflow > 0 && (
+                  <li className="px-3 py-1.5 text-xs text-muted/70 italic border-t border-border/50">
+                    Còn {productOverflow} mục — gõ thêm để thu hẹp…
+                  </li>
                 )}
               </ul>
             </div>,

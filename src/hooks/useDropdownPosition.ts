@@ -29,13 +29,24 @@ export function useDropdownPosition<T extends HTMLElement>(
       const r = el.getBoundingClientRect();
       setPos({ top: r.bottom + 4, left: r.left, width: r.width });
     };
+    // Gộp nhiều event scroll/resize trong 1 frame → 1 lần đo layout, tránh
+    // getBoundingClientRect + setState dồn dập gây giật khi cuộn nhanh.
+    let raf = 0;
+    const onMove = () => {
+      if (raf) return;
+      raf = requestAnimationFrame(() => {
+        raf = 0;
+        update();
+      });
+    };
     update();
     // capture=true để bắt cả cuộn ở container lồng bên trong, không chỉ window.
-    window.addEventListener("scroll", update, true);
-    window.addEventListener("resize", update);
+    window.addEventListener("scroll", onMove, true);
+    window.addEventListener("resize", onMove);
     return () => {
-      window.removeEventListener("scroll", update, true);
-      window.removeEventListener("resize", update);
+      if (raf) cancelAnimationFrame(raf);
+      window.removeEventListener("scroll", onMove, true);
+      window.removeEventListener("resize", onMove);
     };
   }, [open, anchorRef]);
   return pos;
