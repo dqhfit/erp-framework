@@ -223,8 +223,19 @@ này **CHƯA migrate** vào ERP → blocked như 7 form Phase 4. Cần full-impo
    R62 → **I1059** "Tổng hợp chi tiết" (frmINV137). `menu_link_pages publish=true`,
    linkedNodes=2. **2 trang LIVE trên prod.**
 
-**CÒN LẠI (ngoài Phase 3):**
-- R50 Tồn kho TP: import bảng `tr_tonkho_thanhpham` (MSSQL sống) table-tier → DS list.
+**R50 Tồn kho TP — DONE LIVE (2026-06-26, DataSource-first, KHÔNG redeploy):**
+- ✅ full_import table-tier bảng `tr_tonkho_thanhpham` (job 019f015a, **6625 dòng, reconcile ok**;
+  PK=id int, 13 cột). Schema dump bằng `dump-columns.ts`. ⚠ worker queued lâu → `migration_resume_full_job` kích.
+- ✅ DataSource `ds_tonkho_thanhpham` (019f015f): base tồn + LEFT join `tr_sanpham`
+  (product_code→masp: tensp/tensp_vn/masp_khachhang/sothung_carton) + LEFT join `tr_order`
+  (order_number→order_number: f_cancelled/finished). `datasource_preview` xác nhận 6625 dòng, 0 null.
+- ✅ Trang `ton_kho_thanh_pham_ef3c73` (4193111d) list widget + DS, cột Việt + filter đơn/mã SP/tên SP.
+- ✅ PUBLISH + LINK MENU node **I22** "Tồn kho thành phẩm" (frmGWHSOnhand).
+- ⚠ **Lệch chủ ý**: proc gốc lọc cứng `cancelled='N' AND Finished=0`, nhưng TẤT CẢ 6625 dòng tồn
+  map order finished=true → áp filter cứng = báo cáo RỖNG. Đổi cancelled/finished thành CỘT hiển thị
+  (không lọc cứng) để báo cáo hữu dụng.
+
+**CÒN LẠI (ngoài Phase 3 + R50):**
 - R61/R66: chờ user làm rõ ý định.
 - R62 nice-to-have: thay ô maddh text bằng order-picker (LookupPicker) thay vì gõ tay.
 - Anh Thiện (4 gap config) + cutover các entity mirror để nút GHI ghi thật.
