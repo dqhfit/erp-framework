@@ -8,7 +8,7 @@
    - form   : Form trống, người dùng nhập, "Xác nhận" → trả về object
    ========================================================== */
 import { createApiDataSource } from "@erp-framework/client";
-import { type ReactNode, useDeferredValue, useEffect, useMemo, useState } from "react";
+import { type ReactNode, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { I } from "@/components/Icons";
 import { FileCell, ImageCell } from "@/components/renderer/FilePreviewModal";
 import { Button, Input, Modal, SearchableSelect } from "@/components/ui";
@@ -18,6 +18,122 @@ import type { ActionStepOpenPopup } from "@/types/page";
 
 /** Tối đa dòng render trong bảng list — cap để DOM không lag khi tập kết quả lớn. */
 const LIST_ROW_CAP = 200;
+
+/** Ngưỡng bản ghi: nhỏ hơn → lọc client; lớn hơn → tìm server-side (debounce). */
+const LOOKUP_THRESHOLD = 300;
+
+/** Combobox cho 1 field lookup trong form popup.
+ *  Tự quyết small/large: tải sẵn ≤LOOKUP_THRESHOLD → lọc client (zero re-fetch);
+ *  entity lớn → gõ debounce 350ms → tìm server-side, huỷ request cũ khi gõ tiếp. */
+function PopupLookupSelect({
+  entity,
+  valueField,
+  labelField,
+  value,
+  onChange,
+}: {
+  entity: string;
+  valueField: string;
+  labelField: string;
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  const [opts, setOpts] = useState<Array<{ value: string; label: string }>>([]);
+  const [isLarge, setIsLarge] = useState(false);
+  const [searching, setSearching] = useState(false);
+  // term gõ — cập nhật đồng bộ (ô không lag); fetch chạy qua debounce 350ms
+  const [q, setQ] = useState("");
+  // Giữ preload để khôi phục khi q xoá trống (không fetch lại)
+  const preloadRef = useRef<Array<{ value: string; label: string }>>([]);
+
+  // Tải sẵn ban đầu: limit THRESHOLD+1 → quyết small/large
+  useEffect(() => {
+    let alive = true;
+    api
+      .getRecords(entity, { limit: LOOKUP_THRESHOLD + 1 })
+      .then((res) => {
+        if (!alive) return;
+        const large = res.rows.length > LOOKUP_THRESHOLD;
+        setIsLarge(large);
+        const preload = (large ? res.rows.slice(0, LOOKUP_THRESHOLD) : res.rows)
+          .map((r) => {
+            const d = r.data as Record<string, unknown>;
+            const val = d[valueField];
+            const lbl = d[labelField];
+            return {
+              value: val == null ? "" : String(val),
+              label: lbl == null ? String(val ?? "") : String(lbl),
+            };
+          })
+          .filter((o) => o.value !== "")
+          .sort((a, b) => a.label.localeCompare(b.label, "vi"));
+        preloadRef.current = preload;
+        setOpts(preload);
+      })
+      .catch(() => {
+        if (alive) setOpts([]);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [entity, valueField, labelField]);
+
+  // Server-search (chỉ khi entity lớn): debounce 350ms, huỷ request cũ khi gõ tiếp.
+  useEffect(() => {
+    if (!isLarge) return;
+    const term = q.trim();
+    if (!term) {
+      // Xoá term → khôi phục preload, không cần fetch lại
+      setOpts(preloadRef.current);
+      return;
+    }
+    let alive = true;
+    const handle = setTimeout(() => {
+      setSearching(true);
+      api
+        .getRecords(entity, {
+          filters: { [labelField]: { op: "contains", value: term } },
+          limit: 40,
+        })
+        .then((res) => {
+          if (!alive) return;
+          setOpts(
+            res.rows
+              .map((r) => {
+                const d = r.data as Record<string, unknown>;
+                const val = d[valueField];
+                const lbl = d[labelField];
+                return {
+                  value: val == null ? "" : String(val),
+                  label: lbl == null ? String(val ?? "") : String(lbl),
+                };
+              })
+              .filter((o) => o.value !== ""),
+          );
+          setSearching(false);
+        })
+        .catch(() => {
+          if (alive) setSearching(false);
+        });
+    }, 350);
+    return () => {
+      alive = false;
+      clearTimeout(handle);
+    };
+  }, [q, isLarge, entity, valueField, labelField]);
+
+  return (
+    <SearchableSelect
+      className="w-full"
+      value={value}
+      onChange={onChange}
+      options={opts}
+      emptyOption="— chọn —"
+      onSearch={isLarge ? setQ : undefined}
+      loading={isLarge ? searching : undefined}
+    />
+  );
+}
 
 const api = createApiDataSource("");
 
@@ -56,10 +172,11 @@ export function PopupPickerModal({ step, recordId, filters, onSelect, onCancel }
   });
 
   const [rows, setRows] = useState<Record<string, unknown>[]>([]);
-  // Options cho field-dropdown nguồn-entity (lookups): { fieldName → [{value,label}] }.
-  const [lookupOpts, setLookupOpts] = useState<
-    Record<string, Array<{ value: string; label: string }>>
-  >({});
+  // Map field name → lookup config từ step — tra O(1) trong render (thay cho lookupOpts + effect)
+  const lookupCfgByField = useMemo(
+    () => Object.fromEntries((step.lookups ?? []).map((l) => [l.field, l])),
+    [step.lookups],
+  );
   // (list) Map nhãn cho cột lookup: { fieldName → { giá trị lưu → nhãn } }.
   const [listLabels, setListLabels] = useState<Record<string, Record<string, string>>>({});
   const [detailRow, setDetailRow] = useState<Record<string, unknown> | null>(null);
@@ -140,47 +257,6 @@ export function PopupPickerModal({ step, recordId, filters, onSelect, onCancel }
     }
     setFormValues(init);
   }, [step.entity, step.popupMode, formSeed]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  /* Nạp options cho các field-dropdown nguồn-entity (lookups). */
-  // biome-ignore lint/correctness/useExhaustiveDependencies: chi chay lai khi popupMode (form) doi; step.lookups on dinh theo lan mo popup
-  useEffect(() => {
-    const lks = step.lookups ?? [];
-    if (step.popupMode !== "form" || lks.length === 0) return;
-    let alive = true;
-    Promise.all(
-      lks.map(async (lk) => {
-        // Options tĩnh (value≠label) → dùng thẳng, không fetch.
-        if (lk.options && lk.options.length > 0) return [lk.field, lk.options] as const;
-        if (!lk.entity || !lk.valueField || !lk.labelField)
-          return [lk.field, [] as Array<{ value: string; label: string }>] as const;
-        const valueField = lk.valueField;
-        const labelField = lk.labelField;
-        try {
-          const res = await api.getRecords(lk.entity, { limit: 2000 });
-          const opts = res.rows
-            .map((r) => {
-              const d = r.data as Record<string, unknown>;
-              const value = d[valueField];
-              const label = d[labelField];
-              return {
-                value: value == null ? "" : String(value),
-                label: label == null ? String(value ?? "") : String(label),
-              };
-            })
-            .filter((o) => o.value !== "")
-            .sort((a, b) => a.label.localeCompare(b.label, "vi"));
-          return [lk.field, opts] as const;
-        } catch {
-          return [lk.field, [] as Array<{ value: string; label: string }>] as const;
-        }
-      }),
-    ).then((pairs) => {
-      if (alive) setLookupOpts(Object.fromEntries(pairs));
-    });
-    return () => {
-      alive = false;
-    };
-  }, [step.popupMode]); // eslint-disable-line react-hooks/exhaustive-deps
 
   /* (list) Nạp nhãn cho cột lookup (vd bom_son_version_id → mã phiên bản). */
   // biome-ignore lint/correctness/useExhaustiveDependencies: chỉ chạy lại khi đổi popupMode/entity; step.listLookups ổn định theo lần mở popup
@@ -546,13 +622,23 @@ export function PopupPickerModal({ step, recordId, filters, onSelect, onCancel }
                       )}
                     </div>
                   </div>
-                ) : lookupOpts[f.name] ? (
+                ) : lookupCfgByField[f.name]?.options?.length ? (
+                  // Options tĩnh (value≠label) — không cần fetch
                   <SearchableSelect
                     className="w-full"
                     value={formValues[f.name] ?? ""}
                     onChange={(val) => setFormValues((v) => ({ ...v, [f.name]: val }))}
-                    options={lookupOpts[f.name] ?? []}
+                    options={lookupCfgByField[f.name]?.options ?? []}
                     emptyOption="— chọn —"
+                  />
+                ) : lookupCfgByField[f.name]?.entity ? (
+                  // Lookup từ entity: small → lọc client; large → tìm server-side debounce
+                  <PopupLookupSelect
+                    entity={lookupCfgByField[f.name]?.entity ?? ""}
+                    valueField={lookupCfgByField[f.name]?.valueField ?? "id"}
+                    labelField={lookupCfgByField[f.name]?.labelField ?? "id"}
+                    value={formValues[f.name] ?? ""}
+                    onChange={(val) => setFormValues((v) => ({ ...v, [f.name]: val }))}
                   />
                 ) : f.type === "boolean" ? (
                   <label className="flex items-center gap-2 text-sm">
