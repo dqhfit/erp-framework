@@ -44,6 +44,32 @@ export function SplitPane({
   const [isDragging, setIsDragging] = useState(false);
   const [containerWidth, setContainerWidth] = useState(1200);
 
+  const [internalLeftCollapsed, setInternalLeftCollapsed] = useState(false);
+  const [internalRightCollapsed, setInternalRightCollapsed] = useState(false);
+
+  const leftCollapsed = isLeftCollapsed !== undefined ? isLeftCollapsed : internalLeftCollapsed;
+  const rightCollapsed = isRightCollapsed !== undefined ? isRightCollapsed : internalRightCollapsed;
+
+  const handleLeftCollapse = useCallback(
+    (val: boolean) => {
+      onLeftCollapseChange?.(val);
+      if (isLeftCollapsed === undefined) {
+        setInternalLeftCollapsed(val);
+      }
+    },
+    [onLeftCollapseChange, isLeftCollapsed],
+  );
+
+  const handleRightCollapse = useCallback(
+    (val: boolean) => {
+      onRightCollapseChange?.(val);
+      if (isRightCollapsed === undefined) {
+        setInternalRightCollapsed(val);
+      }
+    },
+    [onRightCollapseChange, isRightCollapsed],
+  );
+
   const containerRef = useRef<HTMLDivElement>(null);
   const dragging = useRef(false);
   const startX = useRef(0);
@@ -65,7 +91,7 @@ export function SplitPane({
 
   const onMouseDown = useCallback(
     (e: React.MouseEvent) => {
-      if (isLeftCollapsed || isRightCollapsed) return;
+      if (leftCollapsed || rightCollapsed) return;
       e.preventDefault();
       dragging.current = true;
       setIsDragging(true);
@@ -74,7 +100,7 @@ export function SplitPane({
       document.body.style.cursor = "col-resize";
       document.body.style.userSelect = "none";
     },
-    [leftWidth, isLeftCollapsed, isRightCollapsed],
+    [leftWidth, leftCollapsed, rightCollapsed],
   );
 
   useEffect(() => {
@@ -132,10 +158,10 @@ export function SplitPane({
       <div
         className="flex min-h-0 flex-col overflow-hidden"
         style={{
-          width: isLeftCollapsed ? 0 : isRightCollapsed ? containerWidth : leftWidth,
-          minWidth: isLeftCollapsed ? 0 : isRightCollapsed ? containerWidth : minLeft,
+          width: leftCollapsed ? 0 : rightCollapsed ? containerWidth : leftWidth,
+          minWidth: leftCollapsed ? 0 : rightCollapsed ? containerWidth : minLeft,
           flex: "none",
-          visibility: isLeftCollapsed ? "hidden" : "visible",
+          visibility: leftCollapsed ? "hidden" : "visible",
           transition: isDragging
             ? "none"
             : "width 300ms cubic-bezier(0.4, 0, 0.2, 1), min-width 300ms cubic-bezier(0.4, 0, 0.2, 1), visibility 300ms",
@@ -149,89 +175,89 @@ export function SplitPane({
       <div
         role="separator"
         aria-orientation="vertical"
-        aria-valuenow={isLeftCollapsed ? 0 : leftWidth}
-        aria-valuemin={isLeftCollapsed ? 0 : minLeft}
+        aria-valuenow={leftCollapsed ? 0 : leftWidth}
+        aria-valuemin={leftCollapsed ? 0 : minLeft}
         aria-valuemax={9999}
         tabIndex={0}
         onMouseDown={onMouseDown}
         onDoubleClick={(e) => {
           e.preventDefault();
-          onLeftCollapseChange?.(!isLeftCollapsed);
+          handleLeftCollapse(!leftCollapsed);
         }}
         onKeyDown={(e) => {
-          if (isLeftCollapsed || isRightCollapsed) return;
+          if (leftCollapsed || rightCollapsed) return;
           const step = e.shiftKey ? 50 : 10;
           if (e.key === "ArrowLeft") setLeftWidth((w) => Math.max(minLeft, w - step));
           else if (e.key === "ArrowRight") setLeftWidth((w) => w + step);
         }}
         className={`group relative z-10 flex w-[5px] shrink-0 items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
-          isLeftCollapsed || isRightCollapsed ? "cursor-default" : "cursor-col-resize"
+          leftCollapsed || rightCollapsed ? "cursor-default" : "cursor-col-resize"
         }`}
       >
         <div className="h-full w-px bg-border transition-colors group-hover:bg-accent group-active:bg-accent" />
 
         {/* Subtle drag dot indicators */}
-        {!isLeftCollapsed && !isRightCollapsed && (
+        {!leftCollapsed && !rightCollapsed && (
           <div className="absolute flex h-8 w-[5px] items-center justify-center opacity-0 group-hover:opacity-100 group-active:opacity-100">
             <div className="h-4 w-[3px] rounded-full bg-accent" />
           </div>
         )}
 
         {/* Collapse Left Button (Floating) */}
-        {!isRightCollapsed && (
+        {!rightCollapsed && (
           <button
             type="button"
             onClick={(e) => {
               e.stopPropagation();
-              onLeftCollapseChange?.(!isLeftCollapsed);
+              handleLeftCollapse(!leftCollapsed);
             }}
             onMouseDown={(e) => e.stopPropagation()}
             className={`absolute z-20 flex h-6 w-4 items-center justify-center border border-border bg-panel text-text shadow-md hover:shadow-lg hover:scale-110 active:scale-95 transition-all duration-200 group/btn ${
-              isLeftCollapsed ? "rounded-r" : "rounded"
+              leftCollapsed ? "rounded-r" : "rounded"
             }`}
             style={{
               top: "40%",
-              left: isLeftCollapsed ? "0px" : "50%",
-              transform: isLeftCollapsed ? "translateY(-50%)" : "translate(-50%, -50%)",
+              left: leftCollapsed ? "0px" : "50%",
+              transform: leftCollapsed ? "translateY(-50%)" : "translate(-50%, -50%)",
             }}
-            title={isLeftCollapsed ? "Mở rộng danh sách" : "Thu gọn danh sách"}
+            title={leftCollapsed ? "Mở rộng danh sách" : "Thu gọn danh sách"}
           >
             <div
               className={`transition-transform duration-200 group-active/btn:scale-90 group-hover/btn:${
-                isLeftCollapsed ? "translate-x-0.5" : "-translate-x-0.5"
+                leftCollapsed ? "translate-x-0.5" : "-translate-x-0.5"
               }`}
             >
-              {isLeftCollapsed ? <I.ChevronRight size={10} /> : <I.ChevronLeft size={10} />}
+              {leftCollapsed ? <I.ChevronRight size={10} /> : <I.ChevronLeft size={10} />}
             </div>
           </button>
         )}
 
         {/* Collapse Right Button (Floating) */}
-        {!isLeftCollapsed && (
+        {!leftCollapsed && (
           <button
             type="button"
             onClick={(e) => {
               e.stopPropagation();
-              onRightCollapseChange?.(!isRightCollapsed);
+              handleRightCollapse(!rightCollapsed);
             }}
             onMouseDown={(e) => e.stopPropagation()}
             className={`absolute z-20 flex h-6 w-4 items-center justify-center border border-border bg-panel text-text shadow-md hover:shadow-lg hover:scale-110 active:scale-95 transition-all duration-200 group/btn ${
-              isRightCollapsed ? "rounded-l" : "rounded"
+              rightCollapsed ? "rounded-l" : "rounded"
             }`}
             style={{
               top: "60%",
-              left: isRightCollapsed ? "auto" : "50%",
-              right: isRightCollapsed ? "0px" : "auto",
-              transform: isRightCollapsed ? "translateY(-50%)" : "translate(-50%, -50%)",
+              left: rightCollapsed ? "auto" : "50%",
+              right: rightCollapsed ? "0px" : "auto",
+              transform: rightCollapsed ? "translateY(-50%)" : "translate(-50%, -50%)",
             }}
-            title={isRightCollapsed ? "Mở rộng PDF" : "Thu gọn PDF"}
+            title={rightCollapsed ? "Mở rộng PDF" : "Thu gọn PDF"}
           >
             <div
               className={`transition-transform duration-200 group-active/btn:scale-90 group-hover/btn:${
-                isRightCollapsed ? "-translate-x-0.5" : "translate-x-0.5"
+                rightCollapsed ? "-translate-x-0.5" : "translate-x-0.5"
               }`}
             >
-              {isRightCollapsed ? <I.ChevronLeft size={10} /> : <I.ChevronRight size={10} />}
+              {rightCollapsed ? <I.ChevronLeft size={10} /> : <I.ChevronRight size={10} />}
             </div>
           </button>
         )}
@@ -241,14 +267,10 @@ export function SplitPane({
       <div
         className="flex min-h-0 flex-col overflow-hidden"
         style={{
-          width: isRightCollapsed
-            ? 0
-            : isLeftCollapsed
-              ? containerWidth
-              : containerWidth - leftWidth,
-          minWidth: isRightCollapsed ? 0 : isLeftCollapsed ? containerWidth : minRight,
+          width: rightCollapsed ? 0 : leftCollapsed ? containerWidth : containerWidth - leftWidth,
+          minWidth: rightCollapsed ? 0 : leftCollapsed ? containerWidth : minRight,
           flex: "none",
-          visibility: isRightCollapsed ? "hidden" : "visible",
+          visibility: rightCollapsed ? "hidden" : "visible",
           transition: isDragging
             ? "none"
             : "width 300ms cubic-bezier(0.4, 0, 0.2, 1), min-width 300ms cubic-bezier(0.4, 0, 0.2, 1), visibility 300ms",
