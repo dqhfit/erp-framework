@@ -596,8 +596,9 @@ export function registerDrawingRoutes(app: FastifyInstance, db: DB): void {
                  ARRAY(
                    SELECT DISTINCT bv.f_phanloai FROM tr_banve bv
                    WHERE bv.company_id = ${auth.companyId}::uuid AND bv.deleted_at IS NULL
-                     AND bv.f_masp = sp.f_masp AND bv.f_active IS DISTINCT FROM FALSE
-                     AND bv.f_filepath IS NOT NULL AND bv.f_filepath <> ''
+                     AND bv.f_masp = sp.f_masp
+                     AND COALESCE(bv.ext->>'active', 'true') NOT IN ('0', 'false')
+                     AND (COALESCE(bv.f_filepath, '') <> '' OR COALESCE(bv.f_pdffile, '') <> '')
                      AND bv.f_phanloai IS NOT NULL AND bv.f_phanloai <> ''
                  ) AS types
           FROM tr_sanpham sp
@@ -626,8 +627,8 @@ export function registerDrawingRoutes(app: FastifyInstance, db: DB): void {
           LEFT JOIN (
             SELECT DISTINCT f_masp AS masp FROM tr_banve
             WHERE company_id = ${cid}::uuid AND deleted_at IS NULL
-              AND f_active IS DISTINCT FROM FALSE
-              AND f_filepath IS NOT NULL AND f_filepath <> ''
+              AND COALESCE(ext->>'active', 'true') NOT IN ('0', 'false')
+              AND (COALESCE(f_filepath, '') <> '' OR COALESCE(f_pdffile, '') <> '')
           ) bv ON bv.masp = sp.f_masp
           WHERE sp.company_id = ${cid}::uuid AND sp.deleted_at IS NULL
             AND sp.f_hehang IS NOT NULL AND sp.f_hehang <> ''
@@ -957,7 +958,7 @@ export function registerDrawingRoutes(app: FastifyInstance, db: DB): void {
                  COALESCE(ext->>'seq1', f_seq1) AS seq1,
                  COALESCE(ext->>'seq2', f_seq2) AS seq2,
                  COALESCE(ext->>'khachhang', f_khachhang) AS khachhang,
-                 f_active AS active,
+                 ext->>'active' AS active,
                  f_create_by AS create_by,
                  f_update_by AS update_by,
                  created_at::date::text AS create_date,
@@ -965,7 +966,7 @@ export function registerDrawingRoutes(app: FastifyInstance, db: DB): void {
            FROM tr_banve
            WHERE company_id = ${cid}::uuid AND deleted_at IS NULL
              ${filterCond} ${phanloaiCond}
-             AND (f_active IS DISTINCT FROM FALSE)
+             AND COALESCE(ext->>'active', 'true') NOT IN ('0', 'false')
            ORDER BY created_at DESC LIMIT 200`,
     )) as unknown as Array<Record<string, unknown>>;
     return reply.send({ rows });
@@ -1100,7 +1101,7 @@ export function registerDrawingRoutes(app: FastifyInstance, db: DB): void {
           FROM tr_banve b
           WHERE b.company_id = ${cid}::uuid AND b.deleted_at IS NULL
             AND b.f_phanloai = 'Bản vẽ đóng gói'
-            AND (b.f_active IS DISTINCT FROM FALSE)
+            AND COALESCE(b.ext->>'active', 'true') NOT IN ('0', 'false')
             AND (${hehang} = '' OR b.f_hehang = ${hehang})
           GROUP BY b.f_masp
           ORDER BY b.f_masp LIMIT 500`,
