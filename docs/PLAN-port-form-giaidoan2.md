@@ -266,9 +266,17 @@ cho **cả 3** loại (gỗ ván/ngũ kim/đóng gói).
   _id/id, set masp=đích + audit). Khoá `masp`=tr_sanpham.masp (verify 100%). typecheck+lint xanh.
 - ⚠ **Blocker**: (1) cần commit+push+**Coolify redeploy** mới load proc; (2) tr_dinhmuc_*
   đang **mirror** → proc-table chặn ghi tới khi **cutover** module định mức.
-- **CÒN LẠI (config, sau redeploy)**: wire nút "Copy định mức" (picker SP nguồn+đích qua
-  LookupPicker tr_sanpham → invoke-module-proc) trên 3 trang định mức + "Tạo mới" (thêm
-  dòng BOM / list editable). Thiết kế UI nút chờ chốt sau redeploy.
+- ✅ **REDEPLOY xong** — verify 3 proc loaded (invoke masp nguồn không tồn tại → báo
+  "không tồn tại" đúng logic, 0 ghi).
+- ✅ **Trang copy độc lập** `copy_dinh_muc_sanpham` (3e6598c8, DRAFT) — khớp frmBOMCopy
+  (form độc lập, không nhúng vào trang định mức live {meta,components} rủi ro): filter
+  picker SP nguồn/đích (combobox `ds_sanpham_filter` masp/tensp) + actionbar 3 nút
+  (Copy ĐM Gỗ ván/Ngũ kim/Đóng gói) — confirm cảnh báo THAY THẾ → invoke-module-proc
+  (args masp_nguon/masp_dich từ state selNguon/selDich + nguoitao=$currentUser).
+- ⚠ **GIỮ DRAFT, CHƯA publish/link** — `tr_dinhmuc_*` mirror → bấm copy báo "đang mirror".
+  **Sau CUTOVER module định mức** → publish + link menu + verify 1 copy thật.
+- **"Tạo mới"**: chủ yếu phủ bởi copy-từ-SP-giống; tạo trống thật = list editable
+  add-row (sau cutover). Chưa làm.
 
 **CÒN LẠI (polish/cutover — không phải port mới):**
 - Anh Thiện: 4 gap config (phần lớn đã fix; còn nút Phát hành định mức cần state binding).

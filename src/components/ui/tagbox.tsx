@@ -41,6 +41,7 @@ export interface TagBoxProps {
   pickerTitle?: string;
   /** Chiều cao cố định h-8 — dùng khi cần đồng bộ với input/select khác. */
   compact?: boolean;
+  disableDropdown?: boolean;
 }
 
 export function TagBox({
@@ -56,6 +57,7 @@ export function TagBox({
   enablePicker,
   pickerTitle,
   compact = false,
+  disableDropdown = false,
 }: TagBoxProps) {
   const t = useT();
   const showPicker = (enablePicker ?? suggestions.length > 0) && !disabled;
@@ -228,7 +230,8 @@ export function TagBox({
         )}
       </div>
 
-      {open &&
+      {!disableDropdown &&
+        open &&
         pos &&
         (filtered.length > 0 || (q.trim() && !strict)) &&
         createPortal(
@@ -353,6 +356,7 @@ function PickerModal({
       onClose={onClose}
       title={title}
       width={560}
+      align="top"
       footer={
         <>
           <Button variant="default" size="sm" onClick={onClose}>
@@ -398,7 +402,7 @@ function PickerModal({
             {t("tagbox.selected_count", { count: draft.size })}
           </div>
         </div>
-        <ul className="border border-border rounded max-h-96 overflow-y-auto divide-y divide-border">
+        <ul className="border border-border rounded h-96 overflow-y-auto divide-y divide-border">
           {filtered.length === 0 && (
             <li className="p-3 text-sm text-muted text-center">{t("tagbox.no_results")}</li>
           )}

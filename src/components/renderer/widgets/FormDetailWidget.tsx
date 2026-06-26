@@ -2,7 +2,7 @@
    pageState) + CollectionSection (bảng con 1-N trong detail) + FormWidget (sinh
    form từ field, lưu record thật). Tách từ ConsumerPage.tsx (Phase A5) — chỉ di
    chuyển code, KHÔNG đổi hành vi. */
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { I } from "@/components/Icons";
 import { FileCell, ImageCell } from "@/components/renderer/FilePreviewModal";
 import { LookupPicker } from "@/components/renderer/LookupPicker";
@@ -38,6 +38,7 @@ export function DetailWidget({ cfg, compId }: { cfg: Record<string, unknown>; co
   const [busy, setBusy] = useState(false);
   const [saveMsg, setSaveMsg] = useState("");
   const [saveErr, setSaveErr] = useState("");
+  const submittingRef = useRef(false);
 
   const recordId = recordIdFromState ? pageState.get(recordIdFromState) : undefined;
   const record = rows.find((r) => r.id === recordId || String(r.id) === String(recordId));
@@ -103,6 +104,8 @@ export function DetailWidget({ cfg, compId }: { cfg: Record<string, unknown>; co
   const fwdSet = new Set(forwardRefs.map((r) => r.field));
 
   const save = async () => {
+    if (submittingRef.current) return;
+    submittingRef.current = true;
     setBusy(true);
     setSaveErr("");
     setSaveMsg("");
@@ -110,11 +113,12 @@ export function DetailWidget({ cfg, compId }: { cfg: Record<string, unknown>; co
       const data: Record<string, unknown> = {};
       for (const [k, v] of Object.entries(form)) if (v !== "") data[k] = v;
       if (isDataSource) await dataUpdate(String(record.id), data);
-      else await api.updateRecord(String(record.id), data);
+      else await api.updateRecord(String(record.id), data, record.version as number | undefined);
       setSaveMsg(t("widget.saved_ok"));
     } catch (e) {
       setSaveErr((e as Error).message);
     } finally {
+      submittingRef.current = false;
       setBusy(false);
     }
   };
@@ -490,6 +494,7 @@ export function FormWidget({ cfg, compId }: { cfg: Record<string, unknown>; comp
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
   const [err, setErr] = useState("");
+  const submittingRef = useRef(false);
   const linkedToState = cfg.linkedToState as { field: string; stateKey: string } | undefined;
   const emitLive = cfg.emitLiveFields === true;
   const pageState = usePageState();
@@ -525,6 +530,8 @@ export function FormWidget({ cfg, compId }: { cfg: Record<string, unknown>; comp
     : allFields;
 
   const submit = async () => {
+    if (submittingRef.current) return;
+    submittingRef.current = true;
     setBusy(true);
     setErr("");
     setMsg("");
@@ -541,6 +548,7 @@ export function FormWidget({ cfg, compId }: { cfg: Record<string, unknown>; comp
     } catch (e) {
       setErr((e as Error).message);
     } finally {
+      submittingRef.current = false;
       setBusy(false);
     }
   };
