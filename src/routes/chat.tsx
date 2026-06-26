@@ -520,11 +520,37 @@ function ChatPage() {
     const body = draft.trim();
     if ((!body && pending.length === 0) || !selectedId || sending) return;
     setSending(true);
+    // Lưu nội dung trước khi xóa — dùng cho optimistic update và restore khi lỗi.
+    const bodyToSend = body;
+    const attachmentsToSend = pending.length > 0 ? [...pending] : undefined;
+    // Xóa draft ngay để textarea sạch, không chờ server phản hồi.
+    setDraft("");
+    setPending([]);
     try {
-      await chat.messages.send(selectedId, body, pending.length > 0 ? pending : undefined);
-      setDraft("");
-      setPending([]);
+      const result = await chat.messages.send(selectedId, bodyToSend, attachmentsToSend);
+      // Append lạc quan (optimistic) — dedup với WS echo bằng id để không nhân đôi.
+      // Server publish kênh chat:<id> cho MỌI subscriber (kể cả người gửi),
+      // nhưng nếu WS chậm/ngắt thì echo không về → tin không hiện trên màn hình.
+      // Optimistic append đảm bảo tin luôn xuất hiện ngay sau khi server confirm.
+      if (result?.id) {
+        const optimistic: ChatMessageRow = {
+          id: result.id,
+          senderUserId: me,
+          body: bodyToSend,
+          attachments: attachmentsToSend ?? null,
+          // tRPC không dùng superjson → createdAt đã là string ISO khi về client.
+          createdAt: String(result.createdAt),
+          editedAt: null,
+          reactions: [],
+        };
+        setMessages((prev) =>
+          prev.some((m) => m.id === result.id) ? prev : [...prev, optimistic],
+        );
+      }
     } catch (e) {
+      // Khôi phục draft + đính kèm khi gửi thất bại.
+      setDraft(bodyToSend);
+      if (attachmentsToSend) setPending(attachmentsToSend);
       void dialog.alert(`Gui that bai: ${(e as Error).message}`);
     } finally {
       setSending(false);
