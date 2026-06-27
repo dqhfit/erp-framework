@@ -246,7 +246,7 @@ function Widget({ comp, pageId }: { comp: PageComponent; pageId: string }) {
     ) {
       return (
         <Suspense fallback={<div className="p-3 text-xs text-muted">Đang tải...</div>}>
-          <BangMauTypePage />
+          <BangMauTypePage comp={comp} />
         </Suspense>
       );
     }

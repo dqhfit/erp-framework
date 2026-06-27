@@ -2,10 +2,13 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import { createPortal } from "react-dom";
 import { I } from "@/components/Icons";
 import { DataGrid } from "@/components/renderer/DataGrid";
-import { api } from "@/components/renderer/page-data";
+import { api, usePageState } from "@/components/renderer/page-data";
+import { ActionWidget } from "@/components/renderer/ActionWidget";
 import { Button, EmptyState, Modal, SplitPane, TagBox } from "@/components/ui";
 import { dialog } from "@/lib/dialog";
 import { toast } from "@/lib/toast";
+import { useRbac } from "@/stores/rbac";
+import type { PageComponent } from "@/components/renderer/page-types";
 
 const ENTITY_BANGMAU = "03a7f9bb-313d-4bf4-bd7e-99ac569caadc";
 const ENTITY_QUYTRINH = "74fb4a74-83dc-4fa8-989c-c4bdfe6b8d0e";
@@ -61,11 +64,134 @@ interface SpRow {
   hehang: string | null;
 }
 
-export function BangMauTypePage() {
+/* ── 3-dot row action menu ─────────────────────────────────────────── */
+function PaletteRowMenu({
+  palette,
+  onEdit,
+  onDelete,
+}: {
+  palette: PaletteRow;
+  onEdit: (p: PaletteRow) => void;
+  onDelete: (p: PaletteRow) => void;
+}) {
+  const canEdit = useRbac((s) => s.can("edit", "entity"));
+  const canDelete = useRbac((s) => s.can("delete", "entity"));
+
+  const [open, setOpen] = useState(false);
+  const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (!(e.target as Element).closest("[data-palette-menu]")) setOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [open]);
+
+  if (!canEdit && !canDelete) return null;
+
+  const toggle = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (open) {
+      setOpen(false);
+      return;
+    }
+    const r = triggerRef.current?.getBoundingClientRect();
+    if (r) setPos({ top: r.bottom + 4, left: r.right - 128 });
+    setOpen(true);
+  };
+
+  return (
+    <>
+      <button
+        ref={triggerRef}
+        type="button"
+        data-palette-menu
+        onClick={toggle}
+        title="Hành động"
+        className="inline-flex h-6 w-6 items-center justify-center rounded border border-border text-muted hover:text-text hover:border-border transition-colors"
+      >
+        <I.MoreHorizontal size={14} />
+      </button>
+
+      {open &&
+        pos &&
+        createPortal(
+          <div
+            data-palette-menu
+            style={{ position: "fixed", top: pos.top, left: pos.left, zIndex: 9999, minWidth: 128 }}
+            className="bg-panel border border-border rounded-lg shadow-lg py-1 text-sm"
+          >
+            {canEdit && (
+              <button
+                type="button"
+                data-palette-menu
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setOpen(false);
+                  onEdit(palette);
+                }}
+                className="flex w-full items-center gap-2 px-3 py-1.5 hover:bg-hover text-text transition-colors"
+              >
+                <I.Edit size={13} className="text-muted" />
+                Sửa
+              </button>
+            )}
+            {canDelete && (
+              <>
+                {canEdit && <div className="my-1 border-t border-border" />}
+                <button
+                  type="button"
+                  data-palette-menu
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setOpen(false);
+                    void onDelete(palette);
+                  }}
+                  className="flex w-full items-center gap-2 px-3 py-1.5 hover:bg-danger/10 text-danger transition-colors"
+                >
+                  <I.Trash size={13} />
+                  Xóa
+                </button>
+              </>
+            )}
+          </div>,
+          document.body,
+        )}
+    </>
+  );
+}
+
+export function BangMauTypePage({ comp }: { comp?: PageComponent }) {
+  // ── Phân quyền nhúng tại component gốc ───────────────────────
+  const canCreate = useRbac((s) => s.can("create", "entity"));
+  const canEdit = useRbac((s) => s.can("edit", "entity"));
+  const canDelete = useRbac((s) => s.can("delete", "entity"));
+  // ───────────────────────────────────────────────────────
+
+  const pageState = usePageState();
+  const panelA = comp?.config?.panelA ?? {};
+  const embeddedActions = (panelA.embeddedActions ?? []) as any[];
+  const rowActionsBuiltin = panelA.rowActionsBuiltin === true;
+
   const [palettes, setPalettes] = useState<PaletteRow[]>([]);
   const [loadingPalettes, setLoadingPalettes] = useState(true);
   const [selectedPalette, setSelectedPalette] = useState<PaletteRow | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+
+  // Synchronize selection key with pageState for designer actions
+  const selectionKey = comp?.id ? `split_${comp.id}_sel` : undefined;
+  const handleSelectPalette = useCallback(
+    (palette: PaletteRow | null) => {
+      setSelectedPalette(palette);
+      if (selectionKey) {
+        pageState.set(selectionKey, palette?.id ?? null);
+      }
+    },
+    [selectionKey, pageState],
+  );
 
   const [quytrinhRows, setQuytrinhRows] = useState<QuyTrinhRow[]>([]);
   const [loadingQuytrinh, setLoadingQuytrinh] = useState(false);
@@ -158,8 +284,12 @@ export function BangMauTypePage() {
     fetch("/banvesvc/hehang", { credentials: "include" })
       .then((r) => r.json())
       .then((d) => {
-        const data = d as { rows?: string[] };
-        setHehangs(data.rows ?? []);
+        const data = d as { rows?: Array<{ hehang: string } | string> };
+        setHehangs(
+          (data.rows ?? [])
+            .map((r) => (typeof r === "string" ? r : r.hehang))
+            .filter(Boolean) as string[],
+        );
       })
       .catch(() => setHehangs([]));
   }, []);
@@ -197,6 +327,14 @@ export function BangMauTypePage() {
   useEffect(() => {
     void loadPalettes();
   }, []);
+
+  // Tự động reload khi có tín hiệu refresh từ designer actions
+  const refreshKey = pageState.get(`__refresh:${ENTITY_BANGMAU}`);
+  useEffect(() => {
+    if (refreshKey) {
+      void loadPalettes();
+    }
+  }, [refreshKey, loadPalettes]);
 
   // Fetch process detail list for the selected palette
   const loadQuytrinh = useCallback(async (paletteCode: string) => {
@@ -367,62 +505,48 @@ export function BangMauTypePage() {
   };
 
   const columnsPalettes = useMemo(
-    () => [
-      {
-        accessorKey: "ma",
-        header: "Mã",
-        size: 70,
-        cell: (c: { getValue: () => unknown }) => (
-          <span className="font-mono text-accent select-all">{String(c.getValue() ?? "")}</span>
-        ),
-      },
-      {
-        accessorKey: "ten",
-        header: "Tên bảng màu",
-        size: 150,
-      },
-      {
-        accessorKey: "hehang",
-        header: "Hệ hàng",
-        size: 80,
-      },
-      {
-        id: "__actions",
-        header: "",
-        size: 60,
-        cell: (c: { row: { original: PaletteRow } }) => {
-          const p = c.row.original;
-          return (
-            <div className="flex items-center justify-center gap-1 opacity-60 group-hover:opacity-100 transition-opacity">
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  void handleEditPalette(p);
-                }}
-                title="Sửa bảng màu"
-                className="p-1 rounded text-muted hover:text-text hover:bg-panel border border-transparent hover:border-border transition-all"
-              >
-                <I.Edit size={12} />
-              </button>
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  void handleDeletePalette(p);
-                }}
-                title="Xóa bảng màu"
-                className="p-1 rounded text-muted hover:text-danger hover:bg-danger/10 border border-transparent hover:border-danger/20 transition-all"
-              >
-                <I.Trash size={12} />
-              </button>
-            </div>
-          );
+    () => {
+      const cols = [
+        {
+          accessorKey: "ma",
+          header: "Mã",
+          size: 70,
+          cell: (c: { getValue: () => unknown }) => (
+            <span className="font-mono text-accent select-all">{String(c.getValue() ?? "")}</span>
+          ),
         },
-      },
-    ],
+        {
+          accessorKey: "ten",
+          header: "Tên bảng màu",
+          size: 150,
+        },
+        {
+          accessorKey: "hehang",
+          header: "Hệ hàng",
+          size: 80,
+        },
+      ];
+      if (rowActionsBuiltin) {
+        cols.push({
+          id: "__row_actions",
+          header: "",
+          size: 36,
+          cell: (c: { row: { original: PaletteRow } }) => {
+            const p = c.row.original;
+            return (
+              <PaletteRowMenu
+                palette={p}
+                onEdit={handleEditPalette}
+                onDelete={handleDeletePalette}
+              />
+            );
+          },
+        } as any);
+      }
+      return cols;
+    },
     // biome-ignore lint/correctness/useExhaustiveDependencies: callbacks are stable
-    [handleEditPalette, handleDeletePalette],
+    [rowActionsBuiltin, handleEditPalette, handleDeletePalette],
   );
 
   const columnsQuytrinh = useMemo(
@@ -766,14 +890,6 @@ export function BangMauTypePage() {
                     <I.Download size={13} />
                     Xuất
                   </Button>
-                  <Button
-                    variant="primary"
-                    onClick={handleAddPalette}
-                    className="h-7 px-2.5 text-xs flex items-center gap-1 bg-accent hover:bg-accent-2 transition-colors text-white font-medium rounded"
-                  >
-                    <I.Plus size={13} />
-                    Thêm mới
-                  </Button>
                 </div>
               </div>
               <div className="relative">
@@ -799,6 +915,55 @@ export function BangMauTypePage() {
                   </button>
                 )}
               </div>
+
+              {/* Embedded Actions (Hành động nhúng) */}
+              {embeddedActions.length > 0 ? (
+                <div className="flex items-center gap-1.5 pt-1 border-t border-border/40 flex-wrap shrink-0">
+                  {embeddedActions.map((item) => (
+                    <ActionWidget key={item.id} config={item} pageState={pageState} inline />
+                  ))}
+                </div>
+              ) : (
+                (canCreate || canEdit || canDelete) && (
+                  <div className="flex items-center gap-1.5 pt-1 border-t border-border/40">
+                    {canCreate && (
+                      <Button
+                        variant="primary"
+                        onClick={handleAddPalette}
+                        className="h-7 px-2.5 text-xs flex items-center gap-1 bg-accent hover:bg-accent-2 transition-colors text-white font-medium rounded"
+                        title="Thêm mới bảng màu"
+                      >
+                        <I.Plus size={13} />
+                        Thêm
+                      </Button>
+                    )}
+                    {canEdit && (
+                      <Button
+                        variant="ghost"
+                        disabled={!selectedPalette}
+                        onClick={() => selectedPalette && void handleEditPalette(selectedPalette)}
+                        className="h-7 px-2.5 text-xs flex items-center gap-1 border border-border hover:bg-hover rounded text-text font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                        title="Sửa bảng màu đang chọn"
+                      >
+                        <I.Edit size={13} />
+                        Sửa
+                      </Button>
+                    )}
+                    {canDelete && (
+                      <Button
+                        variant="ghost"
+                        disabled={!selectedPalette}
+                        onClick={() => selectedPalette && void handleDeletePalette(selectedPalette)}
+                        className="h-7 px-2.5 text-xs flex items-center gap-1 border border-danger/20 hover:bg-danger/10 text-danger rounded font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                        title="Xóa bảng màu đang chọn"
+                      >
+                        <I.Trash size={13} />
+                        Xóa
+                      </Button>
+                    )}
+                  </div>
+                )
+              )}
             </div>
 
             {/* List */}
@@ -813,7 +978,7 @@ export function BangMauTypePage() {
                   data={filteredPalettes}
                   columns={columnsPalettes}
                   toolbar={false}
-                  onRowClick={(row) => setSelectedPalette(row)}
+                  onRowClick={(row) => handleSelectPalette(row)}
                   isRowSelected={(row) => selectedPalette?.id === row.id}
                   emptyText="Không tìm thấy bảng màu nào."
                 />
@@ -849,25 +1014,6 @@ export function BangMauTypePage() {
                         </div>
                       )}
                     </div>
-                  </div>
-
-                  <div className="flex items-center gap-2 self-end md:self-center shrink-0">
-                    <Button
-                      variant="ghost"
-                      onClick={() => void handleEditPalette(selectedPalette)}
-                      className="h-8 px-3 text-xs flex items-center gap-1 border border-border hover:bg-hover rounded"
-                    >
-                      <I.Edit size={13} />
-                      Sửa bảng màu
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      onClick={() => void handleDeletePalette(selectedPalette)}
-                      className="h-8 px-3 text-xs flex items-center gap-1 border border-danger/20 hover:bg-danger/10 text-danger rounded"
-                    >
-                      <I.Trash size={13} />
-                      Xóa
-                    </Button>
                   </div>
                 </div>
 
