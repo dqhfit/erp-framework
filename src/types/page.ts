@@ -111,6 +111,8 @@ export interface ActionStepInvokeModule {
   args: Record<string, "$currentUser" | "$now" | BindingValue>;
   saveOutputTo?: string;
   invalidateEntities?: string[];
+  /** Refetch các list bind DataSource sau khi proc chạy xong (__refresh:ds:<id>). */
+  invalidateDataSources?: string[];
 }
 /** Xoá bản ghi đang chọn (records.deleteRecord theo recordId). Thường ghép
  *  sau 1 step confirm. Nút "Xoá" của form DQHF map tới đây. */
