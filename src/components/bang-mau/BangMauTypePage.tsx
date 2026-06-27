@@ -1,14 +1,14 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { I } from "@/components/Icons";
+import { ActionWidget } from "@/components/renderer/ActionWidget";
 import { DataGrid } from "@/components/renderer/DataGrid";
 import { api, usePageState } from "@/components/renderer/page-data";
-import { ActionWidget } from "@/components/renderer/ActionWidget";
+import type { PageComponent } from "@/components/renderer/page-types";
 import { Button, EmptyState, Modal, SplitPane, TagBox } from "@/components/ui";
 import { dialog } from "@/lib/dialog";
 import { toast } from "@/lib/toast";
 import { useRbac } from "@/stores/rbac";
-import type { PageComponent } from "@/components/renderer/page-types";
 
 const ENTITY_BANGMAU = "03a7f9bb-313d-4bf4-bd7e-99ac569caadc";
 const ENTITY_QUYTRINH = "74fb4a74-83dc-4fa8-989c-c4bdfe6b8d0e";
