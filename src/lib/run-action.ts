@@ -334,6 +334,10 @@ export async function runActionSteps(
           const stamp = Date.now();
           for (const eid of step.invalidateEntities) rs.set(`__refresh:${eid}`, stamp);
         }
+        if (step.invalidateDataSources?.length) {
+          const stamp = Date.now();
+          for (const dsId of step.invalidateDataSources) rs.set(`__refresh:ds:${dsId}`, stamp);
+        }
       } catch (e) {
         await ctx.dialog.alert(friendlyActionError(e, "cập nhật bản ghi"), {
           title: "Không lưu được",

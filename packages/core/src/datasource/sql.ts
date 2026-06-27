@@ -991,6 +991,12 @@ function condToSql(lhs: string, op: FilterOp, value: unknown): string {
       return `${lhs} <> ${lit(value)}`;
     case "is-not-true":
       return `COALESCE(${lhs}::text, 'false') <> 'true'`;
+    case "is-true":
+      return `COALESCE(${lhs}::text, 'false') = 'true'`;
+    case "is-empty":
+      return `(${lhs} IS NULL OR ${lhs}::text = '')`;
+    case "is-not-empty":
+      return `(${lhs} IS NOT NULL AND ${lhs}::text <> '')`;
     default:
       return `${lhs} ${op} ${lit(value)}`;
   }

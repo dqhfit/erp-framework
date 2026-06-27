@@ -24,6 +24,7 @@ import type { CreateFormCfg } from "@/components/renderer/MasterDetailCreateModa
 import { PageStateProvider, usePageState } from "@/components/renderer/page-data";
 import type {
   ActionBarItem,
+  DerivedColumn,
   EmbeddedFilter,
   LoadFilters,
   PageComponent,
@@ -190,17 +191,7 @@ function Widget({ comp, pageId }: { comp: PageComponent; pageId: string }) {
         computedColumns={
           cfg.computedColumns as Array<{ field: string; product: string[] }> | undefined
         }
-        derivedColumns={
-          cfg.derivedColumns as
-            | Array<{
-                field: string;
-                label?: string;
-                kind: "percentDelta";
-                from: string;
-                to: string;
-              }>
-            | undefined
-        }
+        derivedColumns={cfg.derivedColumns as DerivedColumn[] | undefined}
         batchEdit={cfg.batchEdit === true}
         excelMode={cfg.excelMode === true}
         rowLimit={cfg.rowLimit as number | undefined}

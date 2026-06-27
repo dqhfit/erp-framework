@@ -42,6 +42,14 @@ function matchOp(op: FilterOp, left: unknown, right: unknown): boolean {
         .includes(String(right ?? "").toLowerCase());
     case "in":
       return Array.isArray(right) && right.includes(left);
+    case "is-true":
+      return left === true || left === "true";
+    case "is-not-true":
+      return !(left === true || left === "true");
+    case "is-empty":
+      return left == null || left === "";
+    case "is-not-empty":
+      return left != null && left !== "";
     default:
       return false;
   }

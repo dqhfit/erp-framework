@@ -174,7 +174,9 @@ export type FilterOp =
   | "contains"
   | "in"
   | "is-not-true"
-  | "is-true";
+  | "is-true"
+  | "is-empty"
+  | "is-not-empty";
 
 /** Tham số truy vấn record động. */
 export interface QueryParams {

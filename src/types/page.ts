@@ -161,6 +161,8 @@ export interface ActionStepUpdateFields {
   fields: Record<string, "$currentUser" | "$now" | BindingValue>;
   /** Invalidate list sau update. */
   invalidateEntities?: string[];
+  /** Refresh các list join `dataSourceId` sau update (set __refresh:ds:<id>). */
+  invalidateDataSources?: string[];
 }
 /** Cập nhật CÙNG bộ field cho NHIỀU bản ghi (lặp records.update). Dùng sau 1
  *  step open-popup multiSelect — gán cùng giá trị (vd phiên bản BOM sơn) cho

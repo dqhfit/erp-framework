@@ -163,7 +163,9 @@ function useDataOpts(cfg: Record<string, unknown>): UseRecordsOpts {
             .filter(Boolean),
         };
       } else {
-        filters[field] = { op, value };
+        // value LUÔN có mặt (server zod yêu cầu). Op rỗng (is-empty/is-not-empty/
+        // is-true/is-not-true) không cần value → gửi null cho hợp lệ.
+        filters[field] = { op, value: value ?? null };
       }
     }
     if (Object.keys(filters).length === 0) filters = undefined;

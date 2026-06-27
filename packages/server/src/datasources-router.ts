@@ -28,6 +28,8 @@ const filterOp = z.enum([
   "in",
   "is-not-true",
   "is-true",
+  "is-empty",
+  "is-not-empty",
 ]);
 
 const dsRelation = z.object({

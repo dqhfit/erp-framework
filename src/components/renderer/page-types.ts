@@ -41,7 +41,9 @@ export type LoadFilterOp =
   | "contains"
   | "in"
   | "is-not-true"
-  | "is-true";
+  | "is-true"
+  | "is-empty"
+  | "is-not-empty";
 /** Điều kiện lọc server-side: map field → {op, value} (khớp QueryParams.filters). */
 export type LoadFilters = Record<string, { op: LoadFilterOp; value: unknown }>;
 
@@ -112,6 +114,30 @@ export type RowDetailCfg = {
   /** Override nhãn cột con. */
   columnLabels?: Record<string, string>;
 };
+
+/** Sắc thái màu cho cột trạng thái (map sang token semantic). */
+export type DerivedColumnTone = "success" | "danger" | "warning" | "muted" | "accent";
+
+/** Cột TÍNH read-only (không phải field entity). 2 kind:
+ *  - "percentDelta": % chênh lệch (row[to] − row[from]) / row[from] × 100.
+ *  - "status": gán nhãn trạng thái theo bộ luật, luật đầu khớp thắng; không khớp
+ *    luật nào → fallback. Mỗi luật so 1 field theo op (is-empty/is-not-empty/
+ *    is-true/is-not-true/=/!=). */
+export type DerivedColumn =
+  | { field: string; label?: string; kind: "percentDelta"; from: string; to: string }
+  | {
+      field: string;
+      label?: string;
+      kind: "status";
+      rules: Array<{
+        field: string;
+        op: "is-empty" | "is-not-empty" | "is-true" | "is-not-true" | "=" | "!=";
+        value?: unknown;
+        label: string;
+        tone?: DerivedColumnTone;
+      }>;
+      fallback?: { label: string; tone?: DerivedColumnTone };
+    };
 
 export type EmbeddedFilter = {
   label?: string;

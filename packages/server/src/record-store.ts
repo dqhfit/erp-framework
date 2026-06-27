@@ -518,6 +518,12 @@ class TableRecordStore implements RecordStore {
         case "is-true":
           conds.push(sql`COALESCE(${e}, 'false') = 'true'`);
           break;
+        case "is-empty":
+          conds.push(sql`(${e} IS NULL OR ${e} = '')`);
+          break;
+        case "is-not-empty":
+          conds.push(sql`(${e} IS NOT NULL AND ${e} <> '')`);
+          break;
       }
     }
     // q (full-text) trên search_tsv (set khi insert/merge/replace từ field searchable).
