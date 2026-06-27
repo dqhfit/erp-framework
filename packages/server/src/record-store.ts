@@ -524,6 +524,16 @@ class TableRecordStore implements RecordStore {
         case "is-not-empty":
           conds.push(sql`(${e} IS NOT NULL AND ${e} <> '')`);
           break;
+        case "between": {
+          // value = [from, to] — so sánh TEXT (chuỗi ISO ngày sắp xếp đúng theo từ
+          // điển). Bỏ trống 1 đầu → chỉ áp đầu còn lại.
+          const arr = Array.isArray(cond.value) ? cond.value : [];
+          const from = arr[0];
+          const to = arr[1];
+          if (from != null && from !== "") conds.push(sql`${e} >= ${String(from)}`);
+          if (to != null && to !== "") conds.push(sql`${e} <= ${String(to)}`);
+          break;
+        }
       }
     }
     // q (full-text) trên search_tsv (set khi insert/merge/replace từ field searchable).

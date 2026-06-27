@@ -202,6 +202,28 @@ export interface ActionStepRefresh {
   entities: string[];
 }
 
+/** Xuất danh sách record của 1 entity ra file (Excel/CSV) — nút "Xuất". */
+export interface ActionStepExportRecords {
+  id: string;
+  kind: "export-records";
+  /** entityId cần xuất. */
+  entity: string;
+  /** Định dạng file (mặc định xlsx). */
+  format?: "xlsx" | "csv";
+  /** Tên file / tiêu đề (mặc định tên entity). */
+  title?: string;
+}
+
+/** In danh sách record của 1 entity (mở cửa sổ in với bảng) — nút "In". */
+export interface ActionStepPrintRecords {
+  id: string;
+  kind: "print-records";
+  /** entityId cần in. */
+  entity: string;
+  /** Tiêu đề trang in. */
+  title?: string;
+}
+
 export interface ActionStepOpenPopup {
   id: string;
   kind: "open-popup";
@@ -305,6 +327,16 @@ export interface WizardLookupRef {
   /** Field TỰ TĂNG khi tạo nhanh (không nhập tay) = max(giá trị nguồn)+1.
    *  Vd id_buocson. Giá trị mới cũng dùng cho autofill. */
   createAutoInc?: string[];
+  /** (Field lookup ở BƯỚC HEADER) Khi chọn giá trị → nạp các dòng entity con vào
+   *  LƯỚI CHI TIẾT của wizard. Vd chọn Đơn mua hàng → fill chi tiết phiếu nhập từ
+   *  tr_dondathang_chitiet. `entity` = entity nguồn (chi tiết đơn); `matchField` =
+   *  field trên entity nguồn khớp giá trị vừa chọn; `map` = { fieldLướiĐích:
+   *  fieldNguồn }. Ghi ĐÈ các dòng đang có trong lưới. */
+  fillDetail?: {
+    entity: string;
+    matchField: string;
+    map: Record<string, string>;
+  };
 }
 
 /** Cấu hình bước nhập LƯỚI chi tiết (master-detail) trong wizard 1-entity. */
@@ -440,6 +472,8 @@ export type ActionStep =
   | ActionStepNavigate
   | ActionStepSetState
   | ActionStepRefresh
+  | ActionStepExportRecords
+  | ActionStepPrintRecords
   | ActionStepOpenPopup
   | ActionStepOpenCreateForm
   | ActionStepOpenWizard;

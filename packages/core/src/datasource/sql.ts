@@ -997,6 +997,13 @@ function condToSql(lhs: string, op: FilterOp, value: unknown): string {
       return `(${lhs} IS NULL OR ${lhs}::text = '')`;
     case "is-not-empty":
       return `(${lhs} IS NOT NULL AND ${lhs}::text <> '')`;
+    case "between": {
+      const arr = Array.isArray(value) ? value : [];
+      const parts: string[] = [];
+      if (arr[0] != null && arr[0] !== "") parts.push(`${lhs}::text >= ${lit(arr[0])}`);
+      if (arr[1] != null && arr[1] !== "") parts.push(`${lhs}::text <= ${lit(arr[1])}`);
+      return parts.length > 0 ? `(${parts.join(" AND ")})` : "TRUE";
+    }
     default:
       return `${lhs} ${op} ${lit(value)}`;
   }

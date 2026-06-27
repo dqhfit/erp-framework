@@ -50,6 +50,13 @@ function matchOp(op: FilterOp, left: unknown, right: unknown): boolean {
       return left == null || left === "";
     case "is-not-empty":
       return left != null && left !== "";
+    case "between": {
+      const arr = Array.isArray(right) ? right : [];
+      const s = String(left ?? "");
+      if (arr[0] != null && arr[0] !== "" && s < String(arr[0])) return false;
+      if (arr[1] != null && arr[1] !== "" && s > String(arr[1])) return false;
+      return true;
+    }
     default:
       return false;
   }

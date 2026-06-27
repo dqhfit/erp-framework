@@ -43,7 +43,8 @@ export type LoadFilterOp =
   | "is-not-true"
   | "is-true"
   | "is-empty"
-  | "is-not-empty";
+  | "is-not-empty"
+  | "between";
 /** Điều kiện lọc server-side: map field → {op, value} (khớp QueryParams.filters). */
 export type LoadFilters = Record<string, { op: LoadFilterOp; value: unknown }>;
 
@@ -209,8 +210,14 @@ export type SplitGridCell = SplitPanelCfg & {
 
 export type FItemCfg = {
   id: string;
-  kind: "combobox" | "tagbox" | "search";
+  kind: "combobox" | "tagbox" | "search" | "daterange";
   label?: string;
+  /** Hiện nhãn (label) BÊN NGOÀI control (bên trái) thay vì chỉ làm placeholder/
+   *  empty-option bên trong. Mặc định false (giữ hành vi cũ). */
+  showLabel?: boolean;
+  /** Combobox: BỎ mục "tất cả" (empty option) → bắt buộc chọn 1 trong các giá trị
+   *  (kết hợp defaultValue để luôn có giá trị). Mặc định false. */
+  noEmpty?: boolean;
   entity?: string;
   dataSourceId?: string;
   field?: string;
@@ -227,6 +234,9 @@ export type FItemCfg = {
   /** Giá trị chọn sẵn khi mở trang (seed vào pageState 1 lần nếu state chưa có).
    *  string cho single, string[] cho multiSelect. */
   defaultValue?: string | string[];
+  /** daterange: khoảng ngày mặc định seed khi mở trang (nếu state chưa có).
+   *  "currentMonth" = đầu tháng → cuối tháng hiện tại. */
+  defaultRange?: "currentMonth";
   width?: number;
   /** Lọc options theo field này khi filterFromState có giá trị (cascade 1 cha — legacy). */
   filterField?: string;

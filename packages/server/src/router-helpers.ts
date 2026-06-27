@@ -178,6 +178,7 @@ export const filterOp = z.enum([
   "is-true",
   "is-empty",
   "is-not-empty",
+  "between",
 ]);
 
 export const queryParams = z

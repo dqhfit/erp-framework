@@ -176,7 +176,8 @@ export type FilterOp =
   | "is-not-true"
   | "is-true"
   | "is-empty"
-  | "is-not-empty";
+  | "is-not-empty"
+  | "between";
 
 /** Tham số truy vấn record động. */
 export interface QueryParams {

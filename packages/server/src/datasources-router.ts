@@ -30,6 +30,7 @@ const filterOp = z.enum([
   "is-true",
   "is-empty",
   "is-not-empty",
+  "between",
 ]);
 
 const dsRelation = z.object({

@@ -222,6 +222,13 @@ function filterFrag(expr: SQL, op: string, value: unknown): SQL | null {
       const arr = Array.isArray(value) ? value.map(String) : [];
       return arr.length > 0 ? inArray(sql`${expr}::text`, arr) : sql`1 = 0`;
     }
+    case "between": {
+      const arr = Array.isArray(value) ? value : [];
+      const parts: SQL[] = [];
+      if (arr[0] != null && arr[0] !== "") parts.push(sql`${expr}::text >= ${String(arr[0])}`);
+      if (arr[1] != null && arr[1] !== "") parts.push(sql`${expr}::text <= ${String(arr[1])}`);
+      return parts.length > 0 ? sql.join(parts, sql` AND `) : sql`TRUE`;
+    }
     default:
       return null;
   }

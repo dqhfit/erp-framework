@@ -2,7 +2,7 @@
    riêng) + MultiItemFilter (nhiều item, lọc cha-con + visibleWhen) + FilterWidget
    (dispatcher) + LegacyCascadeFilter (bộ lọc tầng cũ). Đẩy/đọc pageState. Tách
    từ ConsumerPage.tsx (Phase A4) — chỉ di chuyển code, KHÔNG đổi hành vi. */
-import { useEffect, useMemo, useRef, useState } from "react";
+import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { I } from "@/components/Icons";
 import { usePageState, useWidgetData } from "@/components/renderer/page-data";
@@ -19,11 +19,13 @@ function MultiCombo({
   label,
   options,
   width,
+  emptyLabel,
 }: {
   stateKey: string;
   label: string;
   options: { value: string; label: string }[];
   width?: number;
+  emptyLabel?: string;
 }) {
   const pageState = usePageState();
   const [open, setOpen] = useState(false);
@@ -56,9 +58,7 @@ function MultiCombo({
 
   const triggerLabel =
     selected.length === 0
-      ? label
-        ? `${label}: tất cả`
-        : "— tất cả —"
+      ? (emptyLabel ?? (label ? `${label}: tất cả` : "— tất cả —"))
       : `${label ? `${label}: ` : ""}${selected.length} đã chọn`;
   const wrapCls = width ? "shrink-0" : "shrink-0 min-w-[160px] max-w-[240px]";
 
@@ -159,7 +159,21 @@ function FilterItem({ item }: { item: FItemCfg }) {
   useEffect(() => {
     if (seededRef.current) return;
     seededRef.current = true;
-    if (stateKey && item.defaultValue !== undefined && pageState.get(stateKey) === undefined) {
+    if (!stateKey || pageState.get(stateKey) !== undefined) return;
+    // daterange: seed khoảng ngày mặc định (đầu→cuối tháng hiện tại) dạng cận ISO.
+    if (item.kind === "daterange" && item.defaultRange === "currentMonth") {
+      const now = new Date();
+      const y = now.getFullYear();
+      const m = now.getMonth();
+      const pad = (n: number) => String(n).padStart(2, "0");
+      const lastDay = new Date(y, m + 1, 0).getDate();
+      pageState.set(stateKey, [
+        `${y}-${pad(m + 1)}-01T00:00:00.000Z`,
+        `${y}-${pad(m + 1)}-${pad(lastDay)}T23:59:59.999Z`,
+      ]);
+      return;
+    }
+    if (item.defaultValue !== undefined) {
       pageState.set(stateKey, item.defaultValue);
     }
   }, []);
@@ -230,15 +244,75 @@ function FilterItem({ item }: { item: FItemCfg }) {
   // width cố định khi có; mặc định shrink-0 (không flex-1 để không giãn fill row).
   const wrapStyle = item.width ? { width: item.width } : undefined;
 
+  // Bọc control với label bên ngoài (bên trái) khi showLabel — opt-in.
+  const withLabel = (control: ReactNode): ReactNode =>
+    item.showLabel && label ? (
+      <div className="flex items-center gap-1.5 shrink-0">
+        <span className="text-xs text-muted whitespace-nowrap">{label}</span>
+        {control}
+      </div>
+    ) : (
+      control
+    );
+
+  if (item.kind === "daterange") {
+    // value state = [fromISO, toISO]. Input date "YYYY-MM-DD" → bọc thành cận ISO
+    // (from = 00:00:00, to = 23:59:59) để so chuỗi với cột ngày lưu dạng ISO.
+    const raw = pageState.get(stateKey);
+    const range = Array.isArray(raw) ? (raw as string[]) : ["", ""];
+    const fromDay = (range[0] ?? "").slice(0, 10);
+    const toDay = (range[1] ?? "").slice(0, 10);
+    const setRange = (from: string, to: string) => pageState.set(stateKey, [from, to]);
+    return (
+      <div className="flex items-center gap-1.5 shrink-0">
+        <span className="text-xs text-muted whitespace-nowrap">{item.label || "Khoảng ngày"}</span>
+        <span className="text-xs text-muted">Từ</span>
+        <input
+          type="date"
+          value={fromDay}
+          onChange={(e) =>
+            setRange(e.target.value ? `${e.target.value}T00:00:00.000Z` : "", range[1] ?? "")
+          }
+          className="input"
+        />
+        <span className="text-xs text-muted">Đến</span>
+        <input
+          type="date"
+          value={toDay}
+          onChange={(e) =>
+            setRange(range[0] ?? "", e.target.value ? `${e.target.value}T23:59:59.999Z` : "")
+          }
+          className="input"
+        />
+        {(fromDay || toDay) && (
+          <button
+            type="button"
+            onClick={() => setRange("", "")}
+            className="shrink-0 text-muted hover:text-danger"
+            title="Xóa khoảng ngày"
+          >
+            <I.X size={13} />
+          </button>
+        )}
+      </div>
+    );
+  }
+
   if (item.kind === "combobox") {
     if (item.multiSelect) {
-      return (
-        <MultiCombo stateKey={stateKey} label={label} options={labelOptions} width={item.width} />
+      return withLabel(
+        <MultiCombo
+          stateKey={stateKey}
+          label={label}
+          options={labelOptions}
+          width={item.width}
+          emptyLabel={item.emptyLabel}
+        />,
       );
     }
     const val = (pageState.get(stateKey) as string) ?? "";
     const wrapCls = item.width ? "shrink-0" : "shrink-0 min-w-[160px] max-w-[240px]";
-    return (
+    return withLabel(
       <div className={wrapCls} style={wrapStyle}>
         <SearchableSelect
           className="w-full"
@@ -246,10 +320,14 @@ function FilterItem({ item }: { item: FItemCfg }) {
           onChange={(v) => pageState.set(stateKey, v)}
           options={labelOptions}
           placeholder={label || "Chọn…"}
-          emptyOption={item.emptyLabel ?? (label ? `${label}: tất cả` : "— tất cả —")}
+          emptyOption={
+            item.noEmpty
+              ? undefined
+              : (item.emptyLabel ?? (label ? `${label}: tất cả` : "— tất cả —"))
+          }
           wrapOptions
         />
-      </div>
+      </div>,
     );
   }
 
@@ -257,7 +335,7 @@ function FilterItem({ item }: { item: FItemCfg }) {
     const raw = pageState.get(stateKey);
     const selected: string[] = Array.isArray(raw) ? (raw as string[]) : [];
     const wrapCls = item.width ? "shrink-0" : "shrink-0 min-w-[180px] max-w-[320px]";
-    return (
+    return withLabel(
       <div className={wrapCls} style={wrapStyle}>
         <TagBox
           value={selected}
@@ -267,14 +345,14 @@ function FilterItem({ item }: { item: FItemCfg }) {
           placeholder={item.placeholder || label || "Gõ để thêm…"}
           compact
         />
-      </div>
+      </div>,
     );
   }
 
   // search
   const valS = (pageState.get(stateKey) as string) ?? "";
   const wrapCls = item.width ? "shrink-0" : "shrink-0 min-w-[160px] max-w-[280px]";
-  return (
+  return withLabel(
     <div className={wrapCls} style={wrapStyle}>
       <input
         type="text"
@@ -283,7 +361,7 @@ function FilterItem({ item }: { item: FItemCfg }) {
         placeholder={item.placeholder || label || "Tìm…"}
         className="input w-full"
       />
-    </div>
+    </div>,
   );
 }
 

@@ -153,6 +153,21 @@ function WizardLookupField({
       ? { value: val, label: lbl || val, cells, searchText: cells.join(" ") }
       : { value: val, label: lbl || val };
   });
+  // Fallback hiển thị: value đang chọn KHÔNG có trong pool (vd mã fill từ nguồn khác
+  // hệ — masp đơn hàng không phải mã vật tư) → thêm option mã thô để ô không trống.
+  const vStr = String(value ?? "");
+  if (vStr && !opts.some((o) => o.value === vStr)) {
+    opts.unshift(
+      multiCol
+        ? {
+            value: vStr,
+            label: vStr,
+            cells: labels.map((_, i) => (i === 0 ? vStr : "")),
+            searchText: vStr,
+          }
+        : { value: vStr, label: vStr },
+    );
+  }
   const ent = entities.find((e) => e.id === lk.entity);
   const srcLabel = ent?.name ?? "mục";
   const headers = multiCol
@@ -974,6 +989,7 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
             const now = new Date();
             const tpl = an.format
               .replace(/yyyy/g, String(now.getFullYear()))
+              .replace(/yy/g, String(now.getFullYear()).slice(-2))
               .replace(/MM/g, String(now.getMonth() + 1).padStart(2, "0"))
               .replace(/dd/g, String(now.getDate()).padStart(2, "0"));
             const prefix = tpl.split("{seq}")[0] ?? tpl;
@@ -1343,6 +1359,35 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
               setField(tgt, val == null ? "" : String(val));
             }
           }
+          // fillDetail: nạp dòng entity con vào lưới chi tiết (vd chọn Đơn mua hàng
+          // → fill chi tiết phiếu nhập từ tr_dondathang_chitiet). Ghi đè dòng hiện có.
+          const fd = lk.fillDetail;
+          const detailStep = fd ? wizardSteps.find((s) => s.detail) : undefined;
+          if (fd && detailStep && v) {
+            void api
+              .getRecords(fd.entity, {
+                filters: { [fd.matchField]: { op: "=", value: v } },
+                limit: 2000,
+              })
+              .then((res) => {
+                const mapped = res.rows.map((rr) => {
+                  const d = rr.data as Record<string, unknown>;
+                  const row: Record<string, string> = interpRowDefaults(
+                    detailStep.detail?.rowDefaults,
+                    pageState.get,
+                  );
+                  for (const [tgt, srcF] of Object.entries(fd.map)) {
+                    const val = d[srcF];
+                    row[tgt] = val == null ? "" : String(val);
+                  }
+                  return row;
+                });
+                if (mapped.length > 0) {
+                  setDetailRows((prev) => ({ ...prev, [detailStep.id]: mapped }));
+                }
+              })
+              .catch(() => {});
+          }
         };
         return (
           <WizardLookupField
@@ -1472,7 +1517,11 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
                 ? "email"
                 : "text"
         }
-        value={form[f.name] ?? ""}
+        value={
+          f.type === "date" || f.type === "datetime"
+            ? String(form[f.name] ?? "").slice(0, 10)
+            : (form[f.name] ?? "")
+        }
         onChange={(e) => setField(f.name, e.target.value)}
         placeholder={f.label}
       />
