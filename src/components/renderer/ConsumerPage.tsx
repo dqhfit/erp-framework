@@ -9,7 +9,6 @@
 import { createProceduresClient } from "@erp-framework/client";
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Drawer } from "@/components/ui/drawer";
 import { BanVeTypePage } from "@/components/ban-ve/BanVeTypePage";
 import { I } from "@/components/Icons";
 import { ActionWidget } from "@/components/renderer/ActionWidget";
@@ -57,6 +56,7 @@ import {
   StepWidget,
 } from "@/components/renderer/widgets/viz-widgets";
 import { isScalableKind, ScaleToFit } from "@/components/ScaleToFit";
+import { Drawer } from "@/components/ui/drawer";
 import { useIsMobile } from "@/hooks/useMediaQuery";
 import { useT } from "@/hooks/useT";
 import { applyInsertAndResolve } from "@/lib/page-layout";
