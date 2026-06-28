@@ -7,6 +7,7 @@ import { createApiDataSource, createProceduresClient } from "@erp-framework/clie
 import { useNavigate } from "@tanstack/react-router";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { I } from "@/components/Icons";
+import { exportCsvContentAsXlsx } from "@/components/renderer/consumer-utils";
 import { PopupPickerModal } from "@/components/renderer/PopupPickerModal";
 import { WizardModal } from "@/components/renderer/WizardModal";
 import { Button } from "@/components/ui";
@@ -20,6 +21,73 @@ import type { ActionConfig, ActionStepOpenPopup, ActionStepOpenWizard } from "@/
 
 const procClient = createProceduresClient("");
 const recordsApi = createApiDataSource("");
+
+/** Parse CSV (RFC-4180 gọn: hỗ trợ ngoặc kép + dấu phẩy/xuống dòng trong ô).
+ *  Dùng cho In: nội dung lấy từ records.export (csv) → bảng HTML. */
+function parseCsv(text: string): string[][] {
+  const rows: string[][] = [];
+  let row: string[] = [];
+  let cell = "";
+  let inQ = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (inQ) {
+      if (c === '"') {
+        if (text[i + 1] === '"') {
+          cell += '"';
+          i++;
+        } else inQ = false;
+      } else cell += c;
+    } else if (c === '"') inQ = true;
+    else if (c === ",") {
+      row.push(cell);
+      cell = "";
+    } else if (c === "\n" || c === "\r") {
+      if (c === "\r" && text[i + 1] === "\n") i++;
+      row.push(cell);
+      cell = "";
+      rows.push(row);
+      row = [];
+    } else cell += c;
+  }
+  if (cell !== "" || row.length > 0) {
+    row.push(cell);
+    rows.push(row);
+  }
+  return rows.filter((r) => r.length > 1 || (r.length === 1 && r[0] !== ""));
+}
+
+const htmlEsc = (s: string) =>
+  s.replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" })[c] ?? c);
+
+/** Mở cửa sổ in với bảng HTML dựng từ nội dung CSV. */
+function printCsvTable(csv: string, title: string): void {
+  const rows = parseCsv(csv);
+  if (rows.length === 0) {
+    toast.info("Không có dữ liệu để in");
+    return;
+  }
+  const [head, ...body] = rows;
+  const thead = `<tr>${(head ?? []).map((h) => `<th>${htmlEsc(h)}</th>`).join("")}</tr>`;
+  const tbody = body
+    .map((r) => `<tr>${r.map((c) => `<td>${htmlEsc(c)}</td>`).join("")}</tr>`)
+    .join("");
+  const w = window.open("", "_blank", "width=1024,height=768");
+  if (!w) {
+    toast.error("Trình duyệt chặn cửa sổ in");
+    return;
+  }
+  w.document.write(
+    `<!doctype html><html><head><meta charset="utf-8"><title>${htmlEsc(title)}</title>` +
+      `<style>body{font-family:system-ui,sans-serif;font-size:12px;color:#111;padding:16px}` +
+      `h3{margin:0 0 10px}table{border-collapse:collapse;width:100%}` +
+      `th,td{border:1px solid #ccc;padding:4px 8px;text-align:left;white-space:nowrap}` +
+      `th{background:#f3f4f6}</style></head><body>` +
+      `<h3>${htmlEsc(title)}</h3><table><thead>${thead}</thead><tbody>${tbody}</tbody></table>` +
+      `<script>window.onload=function(){window.print()}</script></body></html>`,
+  );
+  w.document.close();
+}
 
 interface Props {
   config: ActionConfig;
@@ -148,6 +216,26 @@ export function ActionWidget({
         openWizard: (s: ActionStepOpenWizard, getter: (key: string) => unknown) =>
           openWizard(s, getter),
         openCreateForm: onOpenCreateForm,
+        exportRecords: async (entityId: string, format: "xlsx" | "csv", title?: string) => {
+          const r = await recordsApi.exportRecords(entityId, "csv");
+          const name = title || "export";
+          if (format === "xlsx") {
+            await exportCsvContentAsXlsx(r.content, name);
+          } else {
+            const blob = new Blob([`﻿${r.content}`], { type: "text/csv;charset=utf-8" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `${name}.csv`;
+            a.click();
+            URL.revokeObjectURL(url);
+          }
+          toast.success("Đã xuất dữ liệu");
+        },
+        printRecords: async (entityId: string, title?: string) => {
+          const r = await recordsApi.exportRecords(entityId, "csv");
+          printCsvTable(r.content, title || "Danh sách");
+        },
       };
       const res = await runActionSteps(config.steps ?? [], ctx);
       // invoke-module-proc tự hiện toast.success có nội dung (run-action.ts) →

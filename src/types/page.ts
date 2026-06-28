@@ -111,6 +111,8 @@ export interface ActionStepInvokeModule {
   args: Record<string, "$currentUser" | "$now" | BindingValue>;
   saveOutputTo?: string;
   invalidateEntities?: string[];
+  /** Refetch các list bind DataSource sau khi proc chạy xong (__refresh:ds:<id>). */
+  invalidateDataSources?: string[];
 }
 /** Xoá bản ghi đang chọn (records.deleteRecord theo recordId). Thường ghép
  *  sau 1 step confirm. Nút "Xoá" của form DQHF map tới đây. */
@@ -161,6 +163,8 @@ export interface ActionStepUpdateFields {
   fields: Record<string, "$currentUser" | "$now" | BindingValue>;
   /** Invalidate list sau update. */
   invalidateEntities?: string[];
+  /** Refresh các list join `dataSourceId` sau update (set __refresh:ds:<id>). */
+  invalidateDataSources?: string[];
 }
 /** Cập nhật CÙNG bộ field cho NHIỀU bản ghi (lặp records.update). Dùng sau 1
  *  step open-popup multiSelect — gán cùng giá trị (vd phiên bản BOM sơn) cho
@@ -196,6 +200,28 @@ export interface ActionStepRefresh {
   kind: "refresh";
   /** Danh sách entityId cần nạp lại. */
   entities: string[];
+}
+
+/** Xuất danh sách record của 1 entity ra file (Excel/CSV) — nút "Xuất". */
+export interface ActionStepExportRecords {
+  id: string;
+  kind: "export-records";
+  /** entityId cần xuất. */
+  entity: string;
+  /** Định dạng file (mặc định xlsx). */
+  format?: "xlsx" | "csv";
+  /** Tên file / tiêu đề (mặc định tên entity). */
+  title?: string;
+}
+
+/** In danh sách record của 1 entity (mở cửa sổ in với bảng) — nút "In". */
+export interface ActionStepPrintRecords {
+  id: string;
+  kind: "print-records";
+  /** entityId cần in. */
+  entity: string;
+  /** Tiêu đề trang in. */
+  title?: string;
 }
 
 export interface ActionStepOpenPopup {
@@ -301,6 +327,16 @@ export interface WizardLookupRef {
   /** Field TỰ TĂNG khi tạo nhanh (không nhập tay) = max(giá trị nguồn)+1.
    *  Vd id_buocson. Giá trị mới cũng dùng cho autofill. */
   createAutoInc?: string[];
+  /** (Field lookup ở BƯỚC HEADER) Khi chọn giá trị → nạp các dòng entity con vào
+   *  LƯỚI CHI TIẾT của wizard. Vd chọn Đơn mua hàng → fill chi tiết phiếu nhập từ
+   *  tr_dondathang_chitiet. `entity` = entity nguồn (chi tiết đơn); `matchField` =
+   *  field trên entity nguồn khớp giá trị vừa chọn; `map` = { fieldLướiĐích:
+   *  fieldNguồn }. Ghi ĐÈ các dòng đang có trong lưới. */
+  fillDetail?: {
+    entity: string;
+    matchField: string;
+    map: Record<string, string>;
+  };
 }
 
 /** Cấu hình bước nhập LƯỚI chi tiết (master-detail) trong wizard 1-entity. */
@@ -415,6 +451,13 @@ export interface ActionStepOpenWizard {
   /** (1-entity, TẠO MỚI) Giá trị mặc định điền sẵn cho form (fieldName → giá trị
    *  dạng chuỗi; boolean dùng "true"/"false"). Chỉ áp khi tạo mới (không có recordId). */
   defaults?: Record<string, string>;
+  /** (1-entity, TẠO MỚI) Tự sinh SỐ chứng từ khi `field` để TRỐNG lúc lưu.
+   *  `format` hỗ trợ token theo ngày hiện tại: `MM` (tháng 2 số), `yyyy` (năm 4 số),
+   *  `dd` (ngày 2 số); và `{seq}` = số thứ tự tăng dần trong nhóm cùng prefix
+   *  (phần trước {seq}). Vd "MMyyyy-{seq}" → "062026-49". `pad` = số chữ số tối
+   *  thiểu của seq (mặc định 2). Số sinh ra cũng được dùng làm khoá liên kết
+   *  master-detail nếu parentKeyField trỏ tới `field` này. */
+  autoNumber?: { field: string; format: string; pad?: number };
 }
 
 export type ActionStep =
@@ -429,6 +472,8 @@ export type ActionStep =
   | ActionStepNavigate
   | ActionStepSetState
   | ActionStepRefresh
+  | ActionStepExportRecords
+  | ActionStepPrintRecords
   | ActionStepOpenPopup
   | ActionStepOpenCreateForm
   | ActionStepOpenWizard;

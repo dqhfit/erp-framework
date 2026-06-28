@@ -57,6 +57,10 @@ export interface ActionContext {
   /** Mở form Tạo mới master-detail của list (createForm). Do list widget cấp khi
    *  render embeddedActions → cho nút "Tạo đơn hàng" nằm trong thanh hành động. */
   openCreateForm?: () => void;
+  /** Xuất toàn bộ record của entity ra file (xlsx/csv). */
+  exportRecords?: (entityId: string, format: "xlsx" | "csv", title?: string) => Promise<void>;
+  /** In danh sách record của entity (mở cửa sổ in). */
+  printRecords?: (entityId: string, title?: string) => Promise<void>;
 }
 
 /** Lỗi có phải do thiếu quyền / chưa đăng nhập không. */
@@ -166,6 +170,34 @@ export async function runActionSteps(
       // Đặt timestamp MỚI mỗi lần → __refresh đổi giá trị → list refetch.
       const stamp = Date.now();
       for (const eid of step.entities) rs.set(`__refresh:${eid}`, stamp);
+      continue;
+    }
+    if (step.kind === "export-records") {
+      if (!ctx.exportRecords) {
+        ctx.toast.error("Xuất dữ liệu không khả dụng trong ngữ cảnh này");
+        return { completed: false, procedureRuns };
+      }
+      try {
+        await ctx.exportRecords(step.entity, step.format ?? "xlsx", step.title);
+      } catch (e) {
+        await ctx.dialog.alert(friendlyActionError(e, "xuất dữ liệu"), {
+          title: "Không xuất được",
+        });
+        throw e;
+      }
+      continue;
+    }
+    if (step.kind === "print-records") {
+      if (!ctx.printRecords) {
+        ctx.toast.error("In dữ liệu không khả dụng trong ngữ cảnh này");
+        return { completed: false, procedureRuns };
+      }
+      try {
+        await ctx.printRecords(step.entity, step.title);
+      } catch (e) {
+        await ctx.dialog.alert(friendlyActionError(e, "in dữ liệu"), { title: "Không in được" });
+        throw e;
+      }
       continue;
     }
     if (step.kind === "navigate") {
@@ -334,6 +366,10 @@ export async function runActionSteps(
           const stamp = Date.now();
           for (const eid of step.invalidateEntities) rs.set(`__refresh:${eid}`, stamp);
         }
+        if (step.invalidateDataSources?.length) {
+          const stamp = Date.now();
+          for (const dsId of step.invalidateDataSources) rs.set(`__refresh:ds:${dsId}`, stamp);
+        }
       } catch (e) {
         await ctx.dialog.alert(friendlyActionError(e, "cập nhật bản ghi"), {
           title: "Không lưu được",
@@ -418,6 +454,10 @@ export async function runActionSteps(
         if (step.invalidateEntities?.length) {
           const stamp = Date.now();
           for (const eid of step.invalidateEntities) rs.set(`__refresh:${eid}`, stamp);
+        }
+        if (step.invalidateDataSources?.length) {
+          const stamp = Date.now();
+          for (const dsId of step.invalidateDataSources) rs.set(`__refresh:ds:${dsId}`, stamp);
         }
       } catch (e) {
         await ctx.dialog.alert(friendlyActionError(e, `chạy ${step.procName}`), {

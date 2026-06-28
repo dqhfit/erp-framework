@@ -195,6 +195,9 @@ export async function procTable(
   // còn là nguồn sự thật, delta-sync sở hữu bảng — proc ghi vào sẽ bị sync
   // ghi đè/xung đột. Fail-closed cho MỌI đường ghi của helper.
   const assertWritable = () => {
+    // Dev/local: cờ env cho ghi cả entity mirror (đồng nhất entity-write-guard
+    // assertEntityNotMirror — prod KHÔNG đặt cờ → vẫn guard).
+    if (process.env.ERP_ALLOW_MIRROR_WRITE === "1") return;
     if (ent.syncState === "mirror") {
       throw new Error(
         `proc-table: entity "${entityName}" đang mirror (sync 1 chiều từ MSSQL, chưa cutover) — không được ghi. Chờ cutover module hoặc chuyển sync.state sang 'live'.`,

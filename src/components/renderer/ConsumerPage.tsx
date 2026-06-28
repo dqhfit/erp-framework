@@ -28,6 +28,7 @@ import {
 } from "@/components/renderer/page-data";
 import type {
   ActionBarItem,
+  DerivedColumn,
   EmbeddedFilter,
   LoadFilters,
   PageComponent,
@@ -211,6 +212,7 @@ const Widget = memo(function Widget({ comp, pageId }: { comp: PageComponent; pag
         computedColumns={
           cfg.computedColumns as Array<{ field: string; product: string[] }> | undefined
         }
+        derivedColumns={cfg.derivedColumns as DerivedColumn[] | undefined}
         batchEdit={cfg.batchEdit === true}
         excelMode={cfg.excelMode === true}
         rowLimit={cfg.rowLimit as number | undefined}
