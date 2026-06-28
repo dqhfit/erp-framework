@@ -181,6 +181,22 @@ export function PopupPickerModal({ step, recordId, filters, onSelect, onCancel }
   const [listLabels, setListLabels] = useState<Record<string, Record<string, string>>>({});
   const [detailRow, setDetailRow] = useState<Record<string, unknown> | null>(null);
   const [formValues, setFormValues] = useState<Record<string, string>>({});
+  const handleFieldChange = (name: string, val: string) => {
+    setFormValues((v) => {
+      const next = { ...v, [name]: val };
+      if (name === "madonhang" && val) {
+        // Tự động map hệ hàng và khách hàng khi chọn mã đơn hàng
+        const parts = val.split("-").map((p) => p.trim());
+        if (parts.length >= 4) {
+          next.khachhang = parts[2] ?? "";
+          next.hehang = parts[3] ?? "";
+        } else if (parts.length === 3) {
+          next.hehang = parts[2] ?? "";
+        }
+      }
+      return next;
+    });
+  };
   // Dữ liệu record nạp sẵn cho form "Sửa" (có recordId). null = form thêm mới.
   const [formSeed, setFormSeed] = useState<Record<string, unknown> | null>(null);
   const [loading, setLoading] = useState(false);
@@ -627,7 +643,7 @@ export function PopupPickerModal({ step, recordId, filters, onSelect, onCancel }
                   <SearchableSelect
                     className="w-full"
                     value={formValues[f.name] ?? ""}
-                    onChange={(val) => setFormValues((v) => ({ ...v, [f.name]: val }))}
+                    onChange={(val) => handleFieldChange(f.name, val)}
                     options={lookupCfgByField[f.name]?.options ?? []}
                     emptyOption="— chọn —"
                   />
@@ -638,7 +654,7 @@ export function PopupPickerModal({ step, recordId, filters, onSelect, onCancel }
                     valueField={lookupCfgByField[f.name]?.valueField ?? "id"}
                     labelField={lookupCfgByField[f.name]?.labelField ?? "id"}
                     value={formValues[f.name] ?? ""}
-                    onChange={(val) => setFormValues((v) => ({ ...v, [f.name]: val }))}
+                    onChange={(val) => handleFieldChange(f.name, val)}
                   />
                 ) : f.type === "boolean" ? (
                   <label className="flex items-center gap-2 text-sm">
@@ -646,10 +662,7 @@ export function PopupPickerModal({ step, recordId, filters, onSelect, onCancel }
                       type="checkbox"
                       checked={formValues[f.name] === "true"}
                       onChange={(e) =>
-                        setFormValues((v) => ({
-                          ...v,
-                          [f.name]: e.target.checked ? "true" : "false",
-                        }))
+                        handleFieldChange(f.name, e.target.checked ? "true" : "false")
                       }
                     />
                     {f.label}
@@ -659,7 +672,7 @@ export function PopupPickerModal({ step, recordId, filters, onSelect, onCancel }
                   <SearchableSelect
                     className="w-full"
                     value={formValues[f.name] ?? ""}
-                    onChange={(val) => setFormValues((v) => ({ ...v, [f.name]: val }))}
+                    onChange={(val) => handleFieldChange(f.name, val)}
                     options={f.options.map((opt) => ({ value: opt, label: opt }))}
                     emptyOption="— chọn —"
                   />
@@ -668,7 +681,7 @@ export function PopupPickerModal({ step, recordId, filters, onSelect, onCancel }
                     className="input w-full resize-none"
                     rows={f.type === "longtext" ? 3 : 1}
                     value={formValues[f.name] ?? ""}
-                    onChange={(e) => setFormValues((v) => ({ ...v, [f.name]: e.target.value }))}
+                    onChange={(e) => handleFieldChange(f.name, e.target.value)}
                     placeholder={f.label}
                   />
                 ) : (
@@ -681,7 +694,7 @@ export function PopupPickerModal({ step, recordId, filters, onSelect, onCancel }
                           : "text"
                     }
                     value={formValues[f.name] ?? ""}
-                    onChange={(e) => setFormValues((v) => ({ ...v, [f.name]: e.target.value }))}
+                    onChange={(e) => handleFieldChange(f.name, e.target.value)}
                     placeholder={f.label}
                   />
                 )}

@@ -204,7 +204,7 @@ export async function insertRowToTable(
   const { cols, ext } = splitDataForStorage(storage, data);
   (ext as Record<string, unknown>).__sync_hash = stableRowHash(data);
   const colList = ["company_id", "created_by", ...cols.map((c) => `"${c.col}"`), "ext"];
-  const vals = [
+  const vals: any[] = [
     sql`${companyId}::uuid`,
     sql`${userId}::uuid`,
     ...cols.map((c) => sql`${c.value}`),
@@ -215,6 +215,18 @@ export async function insertRowToTable(
     colList.push("search_tsv");
     vals.push(sql`to_tsvector('simple', ${tsv})`);
   }
+
+  // Explicit UUID override from legacy fields
+  let overrideId = data.id;
+  if (!overrideId && data.f_report_id) overrideId = data.f_report_id;
+  if (
+    typeof overrideId === "string" &&
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(overrideId)
+  ) {
+    colList.push("id");
+    vals.push(sql`${overrideId}::uuid`);
+  }
+
   const res = await tx.execute(
     sql`INSERT INTO ${tbl} (${sql.raw(colList.join(", "))}) VALUES (${sql.join(vals, sql`, `)}) RETURNING id`,
   );
@@ -827,12 +839,26 @@ export async function runFullImportJob(data: FullJobData): Promise<{
               } else {
                 if (toInsert.length > 0) {
                   await tx.insert(entityRecords).values(
-                    toInsert.map((d) => ({
-                      companyId: job.companyId,
-                      entityId: tableEntityId,
-                      data: d,
-                      createdBy: data.userId,
-                    })),
+                    toInsert.map((d) => {
+                      let overrideId = d.id;
+                      if (!overrideId && d.f_report_id) overrideId = d.f_report_id;
+                      const idField: { id?: string } = {};
+                      if (
+                        typeof overrideId === "string" &&
+                        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+                          overrideId,
+                        )
+                      ) {
+                        idField.id = overrideId;
+                      }
+                      return {
+                        ...idField,
+                        companyId: job.companyId,
+                        entityId: tableEntityId,
+                        data: d,
+                        createdBy: data.userId,
+                      };
+                    }),
                   );
                 }
                 for (const u of toUpdate) {

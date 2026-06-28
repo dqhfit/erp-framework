@@ -180,11 +180,10 @@ function buildSubCfg(
     addRowPos: panel.addRowPos,
     groupBy: panel.groupBy,
     valueField: panel.valueField,
-    // chart kind maps to cfg.kind (ChartWidget reads cfg.kind for bar/line/pie…)
     ...(kind === "chart" ? { kind: panel.chartKind ?? "bar" } : {}),
     ...(kind === "list"
       ? {
-          selectionStateKey: ownStateKey,
+          selectionStateKey: (panel as Record<string, any>).selectionStateKey ?? ownStateKey,
           ...(panel.sourceField ? { selectionField: panel.sourceField } : {}),
           // sourceFields: mỗi field phát thêm 1 state key riêng {ownStateKey}:{field}
           ...(panel.sourceFields?.length
@@ -196,7 +195,9 @@ function buildSubCfg(
             : {}),
         }
       : {}),
-    ...(kind === "detail" ? { recordIdFromState: srcStateKey } : {}),
+    ...(kind === "detail"
+      ? { recordIdFromState: (panel as Record<string, any>).recordIdFromState ?? srcStateKey }
+      : {}),
     // linkField đơn (backwards compat) → filterFromState như cũ.
     // Bỏ qua khi linkConditions đã khai báo: linkConditions ưu tiên + filterFromState
     // sẽ dùng row-id (uuid) làm stateKey → không bao giờ khớp field nghiệp vụ → ẩn hết.
@@ -319,7 +320,7 @@ function RenderSubWidget({
         addRowPos={cfg.addRowPos === "top" ? "top" : "bottom"}
         defaultSort={cfg.defaultSort as { field: string; dir: "asc" | "desc" } | undefined}
       />,
-      embeddedActions,
+      [],
       pageState,
     );
   }

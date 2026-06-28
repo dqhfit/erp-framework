@@ -172,7 +172,7 @@ export function BangMauTypePage({ comp }: { comp?: PageComponent }) {
   // ───────────────────────────────────────────────────────
 
   const pageState = usePageState();
-  const panelA = comp?.config?.panelA ?? {};
+  const panelA = (comp?.config?.panelA ?? {}) as any;
   const embeddedActions = (panelA.embeddedActions ?? []) as any[];
   const rowActionsBuiltin = panelA.rowActionsBuiltin === true;
 

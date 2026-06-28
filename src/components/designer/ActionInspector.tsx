@@ -712,7 +712,14 @@ function SetStateEditor({
         />
       </FormField>
       <FormField label="Giá trị">
-        <BindingValueRow binding={step.value} onChange={(b) => onChange({ ...step, value: b })} />
+        <BindingValueRow
+          binding={
+            typeof step.value === "object" && step.value !== null
+              ? (step.value as BindingValue)
+              : { source: "const", value: step.value }
+          }
+          onChange={(b) => onChange({ ...step, value: b })}
+        />
       </FormField>
     </div>
   );

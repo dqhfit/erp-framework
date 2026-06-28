@@ -162,7 +162,23 @@ export function ActionWidget({
           procClient.invokeModule(name, args),
         dialog: { confirm: dialog.confirm, alert: dialog.alert },
         toast: { success: toast.success, error: toast.error, info: toast.info },
-        navigate: (href: string) => void navigate({ to: href }),
+        navigate: (href: string) => {
+          try {
+            if (href.includes("?")) {
+              const [path, query] = href.split("?");
+              const searchParams: Record<string, string> = {};
+              const params = new URLSearchParams(query);
+              params.forEach((v, k) => {
+                searchParams[k] = v;
+              });
+              void navigate({ to: path, search: searchParams as any });
+            } else {
+              void navigate({ to: href });
+            }
+          } catch {
+            void navigate({ to: href });
+          }
+        },
         openPopup,
         openWizard: (s: ActionStepOpenWizard, getter: (key: string) => unknown) =>
           openWizard(s, getter),

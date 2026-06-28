@@ -8,6 +8,8 @@ import {
 import { Chip, FormField, Input, Select, Switch, Textarea } from "@/components/ui";
 import { useT } from "@/hooks/useT";
 
+import { useUserObjects } from "@/stores/userObjects";
+
 export function ChungInspector({
   sel,
   update,
@@ -18,6 +20,8 @@ export function ChungInspector({
   setInspTab: (tab: string) => void;
 }) {
   const t = useT();
+  const pages = useUserObjects((s) => s.pages) || [];
+
   return (
     <>
       <FormField label={t("designer.comp_type")}>
@@ -30,6 +34,57 @@ export function ChungInspector({
           onChange={(e) => update(sel.id, { config: { ...sel.config, title: e.target.value } })}
         />
       </FormField>
+      {sel.kind === "subpage" && (
+        <FormField label="Chọn trang con nhúng">
+          <Select
+            value={(sel.config.targetPageId as string) ?? ""}
+            onChange={(e) =>
+              update(sel.id, { config: { ...sel.config, targetPageId: e.target.value } })
+            }
+          >
+            <option value="">— Chọn trang con —</option>
+            {pages.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}
+              </option>
+            ))}
+          </Select>
+        </FormField>
+      )}
+      {sel.kind === "detail" && sel.config.editable === true && (
+        <>
+          <FormField label="Trang quay lại khi Lưu">
+            <Select
+              value={(sel.config.onSaveNavigate as string) ?? ""}
+              onChange={(e) =>
+                update(sel.id, { config: { ...sel.config, onSaveNavigate: e.target.value } })
+              }
+            >
+              <option value="">— Giữ nguyên trang —</option>
+              {pages.map((p) => (
+                <option key={p.id} value={`/portal?page=${p.id}`}>
+                  {p.name}
+                </option>
+              ))}
+            </Select>
+          </FormField>
+          <FormField label="Trang quay lại khi Hủy">
+            <Select
+              value={(sel.config.onCancelNavigate as string) ?? ""}
+              onChange={(e) =>
+                update(sel.id, { config: { ...sel.config, onCancelNavigate: e.target.value } })
+              }
+            >
+              <option value="">— Giữ nguyên trang —</option>
+              {pages.map((p) => (
+                <option key={p.id} value={`/portal?page=${p.id}`}>
+                  {p.name}
+                </option>
+              ))}
+            </Select>
+          </FormField>
+        </>
+      )}
       {sel.kind === "banve-type" && (
         <FormField label="Phân loại bản vẽ">
           <Select

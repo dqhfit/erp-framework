@@ -557,10 +557,22 @@ export function splitDataForStorage(
 ): { cols: Array<{ col: string; value: unknown }>; ext: Record<string, unknown> } {
   const cols: Array<{ col: string; value: unknown }> = [];
   const ext: Record<string, unknown> = {};
+
+  const normalizeValue = (v: unknown) => {
+    if (
+      typeof v === "string" &&
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v)
+    ) {
+      return v.toLowerCase();
+    }
+    return v;
+  };
+
   for (const [k, v] of Object.entries(data)) {
     const m = storage.columns[k];
-    if (m) cols.push({ col: m.col, value: coerceColumnValue(m.pgType, v) });
-    else ext[k] = v;
+    const normalizedV = normalizeValue(v);
+    if (m) cols.push({ col: m.col, value: coerceColumnValue(m.pgType, normalizedV) });
+    else ext[k] = normalizedV;
   }
   return { cols, ext };
 }

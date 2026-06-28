@@ -51,8 +51,41 @@ export function PageStateProvider({
   children: React.ReactNode;
   pageId?: string;
 }) {
-  const [values, setValues] = useState<Record<string, PageStateValue>>({});
+  const [values, setValues] = useState<Record<string, PageStateValue>>(() => {
+    const init: Record<string, PageStateValue> = {};
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      for (const [k, v] of params.entries()) {
+        init[k] = v;
+      }
+    }
+    return init;
+  });
   const idbKey = pageId ? `pageState:${pageId}` : null;
+
+  // Đồng bộ tham số URL query params vào pageState khi URL thay đổi
+  const searchStr = typeof window !== "undefined" ? window.location.search : "";
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(searchStr);
+    setValues((prev) => {
+      let changed = false;
+      const next = { ...prev };
+      for (const [k, v] of params.entries()) {
+        if (next[k] !== v) {
+          next[k] = v;
+          changed = true;
+        }
+      }
+      for (const key of Object.keys(prev)) {
+        if (key.startsWith("sel_") && !params.has(key)) {
+          delete next[key];
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
+  }, [searchStr]);
 
   // Restore từ IDB 1 lần khi mount (chỉ các key không phải refresh signal).
   const restoredRef = useRef(false);
@@ -64,9 +97,11 @@ export function PageStateProvider({
       // Bỏ qua __refresh:* — tín hiệu 1 lần, không có nghĩa sau reload.
       const clean: Record<string, PageStateValue> = {};
       for (const [k, v] of Object.entries(saved)) {
-        if (!k.startsWith("__refresh:")) clean[k] = v;
+        if (!k.startsWith("__refresh:") && !k.startsWith("sel_")) clean[k] = v;
       }
-      if (Object.keys(clean).length > 0) setValues(clean);
+      if (Object.keys(clean).length > 0) {
+        setValues((prev) => ({ ...clean, ...prev }));
+      }
     });
   }, [idbKey]);
 
@@ -78,7 +113,7 @@ export function PageStateProvider({
     saveTimer.current = setTimeout(() => {
       const clean: Record<string, PageStateValue> = {};
       for (const [k, v] of Object.entries(values)) {
-        if (!k.startsWith("__refresh:")) clean[k] = v;
+        if (!k.startsWith("__refresh:") && !k.startsWith("sel_")) clean[k] = v;
       }
       void idbSet(idbKey, clean);
     }, 400);

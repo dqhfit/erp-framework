@@ -9,6 +9,7 @@
 import { createProceduresClient } from "@erp-framework/client";
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { Drawer } from "@/components/ui/drawer";
 import { BanVeTypePage } from "@/components/ban-ve/BanVeTypePage";
 import { I } from "@/components/Icons";
 import { ActionWidget } from "@/components/renderer/ActionWidget";
@@ -129,7 +130,15 @@ function PageLeaveHandler({
 }
 
 /** Render một widget theo kind. */
-function Widget({ comp, pageId }: { comp: PageComponent; pageId: string }) {
+function Widget({
+  comp,
+  pageId,
+  layoutEditing,
+}: {
+  comp: PageComponent;
+  pageId: string;
+  layoutEditing?: boolean;
+}) {
   const cfg = comp.config ?? {};
   const stateKey = `${pageId}:${comp.id}`;
   const pageState = usePageState();
@@ -263,6 +272,54 @@ function Widget({ comp, pageId }: { comp: PageComponent; pageId: string }) {
   if (comp.kind === "pivot") return <PivotWidget cfg={cfg} />;
   if (comp.kind === "report") return <ReportWidget cfg={cfg} />;
   if (comp.kind === "document") return <DocumentWidget cfg={cfg} />;
+  if (comp.kind === "subpage") {
+    const targetPageId = cfg.targetPageId as string | undefined;
+
+    if (!targetPageId) {
+      return <div className="p-3 text-xs text-muted">Vui lòng cấu hình targetPageId</div>;
+    }
+
+    // DESIGNER VIEW: Hiển thị như một block nhỏ, không đè lên List
+    if (layoutEditing) {
+      return (
+        <div className="w-full h-full border border-dashed border-accent/50 bg-accent/10 rounded flex flex-col items-center justify-center p-2 text-center overflow-hidden">
+          <I.Layout size={24} className="text-accent mb-1 shrink-0" />
+          <div className="font-medium text-xs truncate max-w-full">Subpage</div>
+          <div className="text-[10px] text-muted truncate max-w-full">{targetPageId}</div>
+        </div>
+      );
+    }
+
+    const renderMode = cfg.renderMode as string | undefined;
+
+    if (renderMode === "drawer") {
+      const rule = (comp.config as { visibleWhen?: VisibleRule }).visibleWhen;
+      return (
+        <Drawer
+          inline
+          open={true}
+          onClose={() => {
+            if (rule?.stateKey) {
+              pageState.set(rule.stateKey, "");
+            }
+          }}
+          title={(cfg.title as string | undefined) ?? "Chi tiết"}
+          width={Number(cfg.width) || 960}
+        >
+          <div className="h-full relative overflow-y-auto min-h-[400px]">
+            <ConsumerPage pageId={targetPageId} chromeless active isSubpage />
+          </div>
+        </Drawer>
+      );
+    }
+
+    // CONSUMER VIEW: Hiển thị đúng vào vị trí ô Grid Layout được thiết kế
+    return (
+      <div className="w-full h-full overflow-hidden relative">
+        <ConsumerPage pageId={targetPageId} chromeless active isSubpage />
+      </div>
+    );
+  }
   if (comp.kind === "banve-type") {
     const rawActs = (cfg.embeddedActions ?? []) as ActionBarItem[];
     const embActs = filterActs(rawActs);
@@ -348,6 +405,7 @@ export function ConsumerPage({
   pageId,
   chromeless = false,
   active = false,
+  isSubpage = false,
 }: {
   pageId: string;
   /** Portal: bỏ thanh tiêu đề trong trang; đẩy nút điều khiển bố cục lên header
@@ -355,6 +413,7 @@ export function ConsumerPage({
   chromeless?: boolean;
   /** Trang đang xem (chỉ trang active mới đẩy nút lên slot — tránh chồng nút). */
   active?: boolean;
+  isSubpage?: boolean;
 }) {
   const t = useT();
   const isMobile = useIsMobile();
@@ -413,7 +472,30 @@ export function ConsumerPage({
   const [localComps, setLocalComps] = useState<PageComponent[]>([]);
 
   // Nguồn hiển thị: bố cục cá nhân → bố cục gốc
-  const displayComps = layoutEditing ? localComps : (personalLayout ?? baseComponents);
+  const mergedPersonalLayout = useMemo(() => {
+    if (!personalLayout) return null;
+    const mapped = personalLayout.map((pComp) => {
+      const baseComp = baseComponents.find((bc) => bc.id === pComp.id);
+      if (!baseComp) return pComp;
+      return {
+        ...pComp,
+        kind: baseComp.kind,
+        config: {
+          ...pComp.config,
+          ...baseComp.config,
+        },
+      };
+    });
+
+    // Bổ sung các linh kiện mới được thêm ở Database mà chưa có trong LocalStorage
+    const missing = baseComponents.filter(
+      (bc) => !personalLayout.some((pComp) => pComp.id === bc.id),
+    );
+
+    return [...mapped, ...missing];
+  }, [personalLayout, baseComponents]);
+
+  const displayComps = layoutEditing ? localComps : (mergedPersonalLayout ?? baseComponents);
   const hasPersonal = personalLayout !== null;
   // Mobile: stack 1 cột theo thứ tự đọc (trên→dưới, trái→phải).
   const renderComps = isMobile
@@ -687,12 +769,12 @@ export function ConsumerPage({
     </>
   );
 
-  return (
-    <PageStateProvider>
+  const contentEl = (
+    <>
       {onLeaveProc && (
         <PageLeaveHandler active={active} proc={onLeaveProc} refreshEntities={onLeaveRefresh} />
       )}
-      <div ref={canvasRef} className="overflow-y-auto overflow-x-hidden h-full">
+      <div ref={canvasRef} className="overflow-y-auto overflow-x-hidden h-full relative">
         {/* Nội dung trang full width (bỏ giới hạn max-w để tràn 100%).
             px trái/phải = 1px để thành phần sát mép; giữ py trên/dưới. */}
         <div className="py-0.5 px-px">
@@ -774,170 +856,216 @@ export function ConsumerPage({
                     );
                   })()}
 
-                {renderComps.map((c) => {
-                  const colStart = (c.x ?? 0) + 1;
-                  const rowStart = (c.y ?? 0) + 1;
-                  const w = Math.min(c.w || 3, 12);
-                  // Widget fill (đáy, cuộn được): giãn span để lấp hết viewport.
-                  let h = c.h || 2;
-                  if (c.id === fillId && availH > 0) {
-                    const GAP = 4; // gap-1 giữa các hàng
-                    const availForFill = availH - (rowStart - 1) * (ROW_H + GAP);
-                    h = Math.max(2, Math.floor((availForFill + GAP) / (ROW_H + GAP)));
-                  }
-                  const isBeingDragged = dragCompId === c.id;
-                  const isBeingResized = resizingId === c.id;
-                  return (
+                {renderComps
+                  .filter(
+                    (c) =>
+                      !(
+                        c.kind === "subpage" &&
+                        (c.config?.renderMode === "drawer" ||
+                          c.config?.renderMode === "fullscreen") &&
+                        !layoutEditing
+                      ),
+                  )
+                  .map((c) => {
+                    const colStart = (c.x ?? 0) + 1;
+                    const rowStart = (c.y ?? 0) + 1;
+                    const w = Math.min(c.w || 3, 12);
+                    // Widget fill (đáy, cuộn được): giãn span để lấp hết viewport.
+                    let h = c.h || 2;
+                    if (c.id === fillId && availH > 0) {
+                      const GAP = 4; // gap-1 giữa các hàng
+                      const availForFill = availH - (rowStart - 1) * (ROW_H + GAP);
+                      h = Math.max(2, Math.floor((availForFill + GAP) / (ROW_H + GAP)));
+                    }
+                    const isBeingDragged = dragCompId === c.id;
+                    const isBeingResized = resizingId === c.id;
+                    return (
+                      <VisibilityGate
+                        key={c.id}
+                        rule={(c.config as { visibleWhen?: VisibleRule } | undefined)?.visibleWhen}
+                        editing={layoutEditing}
+                      >
+                        <div
+                          draggable={layoutEditing && !isBeingResized && !isMobile}
+                          className={cn(
+                            "card overflow-hidden",
+                            // Bộ lọc khi XEM: cao bằng nội dung (không kéo giãn full ô
+                            // ROW_H / 1fr) → thanh lọc gọn. Khi sửa giữ giãn để resize.
+                            (c.kind === "filter" || c.kind === "actionbar") &&
+                              !layoutEditing &&
+                              "self-start",
+                            layoutEditing && !isMobile && "relative group/card",
+                            layoutEditing &&
+                              !isBeingResized &&
+                              !isMobile &&
+                              "cursor-grab active:cursor-grabbing",
+                            isBeingDragged && "opacity-40",
+                            isBeingResized && "select-none",
+                          )}
+                          style={
+                            isMobile
+                              ? c.kind === "filter" || c.kind === "actionbar"
+                                ? undefined
+                                : { minHeight: h * ROW_H }
+                              : {
+                                  gridColumn: `${colStart} / span ${w}`,
+                                  // Widget fill: span tới HÀNG CUỐI (1fr) để lấp khít;
+                                  // còn lại span theo số hàng h.
+                                  gridRow:
+                                    c.id === fillId && availH > 0
+                                      ? `${rowStart} / -1`
+                                      : `${rowStart} / span ${h}`,
+                                }
+                          }
+                          onDragStart={
+                            layoutEditing
+                              ? (e) => {
+                                  if (isBeingResized) {
+                                    e.preventDefault();
+                                    return;
+                                  }
+                                  e.dataTransfer.effectAllowed = "move";
+                                  e.dataTransfer.setData("text/plain", c.id);
+                                  setDragCompId(c.id);
+                                  setDropPos(null);
+                                }
+                              : undefined
+                          }
+                          onDragEnd={
+                            layoutEditing
+                              ? () => {
+                                  setDragCompId(null);
+                                  setDropPos(null);
+                                  stopAutoScroll();
+                                }
+                              : undefined
+                          }
+                        >
+                          {isMobile || !isScalableKind(c.kind) ? (
+                            // Danh sách/tương tác: giữ nguyên + tự cuộn; mobile: layout dọc.
+                            <Widget comp={c} pageId={pageId} layoutEditing={layoutEditing} />
+                          ) : (
+                            <ScaleToFit>
+                              <Widget comp={c} pageId={pageId} layoutEditing={layoutEditing} />
+                            </ScaleToFit>
+                          )}
+
+                          {/* Resize handles — chỉ hiện khi layoutEditing */}
+                          {layoutEditing && (
+                            <>
+                              <div
+                                className="absolute right-0 top-0 bottom-2.5 w-1.5 cursor-ew-resize z-20 opacity-0 group-hover/card:opacity-100 hover:bg-accent/40 transition-colors"
+                                onMouseDown={(e) => {
+                                  e.stopPropagation();
+                                  e.preventDefault();
+                                  resizeRef.current = {
+                                    compId: c.id,
+                                    dir: "e",
+                                    startMouseX: e.clientX,
+                                    startMouseY: e.clientY,
+                                    startW: c.w,
+                                    startH: c.h,
+                                    compX: c.x,
+                                  };
+                                  setResizingId(c.id);
+                                }}
+                              />
+                              <div
+                                className="absolute left-0 right-2.5 bottom-0 h-1.5 cursor-ns-resize z-20 opacity-0 group-hover/card:opacity-100 hover:bg-accent/40 transition-colors"
+                                onMouseDown={(e) => {
+                                  e.stopPropagation();
+                                  e.preventDefault();
+                                  resizeRef.current = {
+                                    compId: c.id,
+                                    dir: "s",
+                                    startMouseX: e.clientX,
+                                    startMouseY: e.clientY,
+                                    startW: c.w,
+                                    startH: c.h,
+                                    compX: c.x,
+                                  };
+                                  setResizingId(c.id);
+                                }}
+                              />
+                              <div
+                                className="absolute right-0 bottom-0 w-2.5 h-2.5 cursor-nwse-resize z-30 opacity-0 group-hover/card:opacity-100 hover:bg-accent/40 transition-colors flex items-center justify-center"
+                                onMouseDown={(e) => {
+                                  e.stopPropagation();
+                                  e.preventDefault();
+                                  resizeRef.current = {
+                                    compId: c.id,
+                                    dir: "se",
+                                    startMouseX: e.clientX,
+                                    startMouseY: e.clientY,
+                                    startW: c.w,
+                                    startH: c.h,
+                                    compX: c.x,
+                                  };
+                                  setResizingId(c.id);
+                                }}
+                              >
+                                <svg
+                                  width="7"
+                                  height="7"
+                                  viewBox="0 0 7 7"
+                                  className="text-accent/70"
+                                  aria-hidden="true"
+                                >
+                                  <path
+                                    d="M1 6 L6 1 M3.5 6 L6 3.5"
+                                    stroke="currentColor"
+                                    strokeWidth="1.5"
+                                    strokeLinecap="round"
+                                  />
+                                </svg>
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      </VisibilityGate>
+                    );
+                  })}
+              </div>
+
+              {/* Lớp overlay cho subpage (drawer) - rendered ngoài lưới để overlay toàn trang Consumer */}
+              {!layoutEditing &&
+                renderComps
+                  .filter((c) => c.kind === "subpage" && c.config?.renderMode === "drawer")
+                  .map((c) => (
                     <VisibilityGate
                       key={c.id}
                       rule={(c.config as { visibleWhen?: VisibleRule } | undefined)?.visibleWhen}
-                      editing={layoutEditing}
+                      editing={false}
                     >
-                      <div
-                        draggable={layoutEditing && !isBeingResized && !isMobile}
-                        className={cn(
-                          "card overflow-hidden",
-                          // Bộ lọc khi XEM: cao bằng nội dung (không kéo giãn full ô
-                          // ROW_H / 1fr) → thanh lọc gọn. Khi sửa giữ giãn để resize.
-                          (c.kind === "filter" || c.kind === "actionbar") &&
-                            !layoutEditing &&
-                            "self-start",
-                          layoutEditing && !isMobile && "relative group/card",
-                          layoutEditing &&
-                            !isBeingResized &&
-                            !isMobile &&
-                            "cursor-grab active:cursor-grabbing",
-                          isBeingDragged && "opacity-40",
-                          isBeingResized && "select-none",
-                        )}
-                        style={
-                          isMobile
-                            ? c.kind === "filter" || c.kind === "actionbar"
-                              ? undefined
-                              : { minHeight: h * ROW_H }
-                            : {
-                                gridColumn: `${colStart} / span ${w}`,
-                                // Widget fill: span tới HÀNG CUỐI (1fr) để lấp khít;
-                                // còn lại span theo số hàng h.
-                                gridRow:
-                                  c.id === fillId && availH > 0
-                                    ? `${rowStart} / -1`
-                                    : `${rowStart} / span ${h}`,
-                              }
-                        }
-                        onDragStart={
-                          layoutEditing
-                            ? (e) => {
-                                if (isBeingResized) {
-                                  e.preventDefault();
-                                  return;
-                                }
-                                e.dataTransfer.effectAllowed = "move";
-                                e.dataTransfer.setData("text/plain", c.id);
-                                setDragCompId(c.id);
-                                setDropPos(null);
-                              }
-                            : undefined
-                        }
-                        onDragEnd={
-                          layoutEditing
-                            ? () => {
-                                setDragCompId(null);
-                                setDropPos(null);
-                                stopAutoScroll();
-                              }
-                            : undefined
-                        }
-                      >
-                        {isMobile || !isScalableKind(c.kind) ? (
-                          // Danh sách/tương tác: giữ nguyên + tự cuộn; mobile: layout dọc.
-                          <Widget comp={c} pageId={pageId} />
-                        ) : (
-                          <ScaleToFit>
-                            <Widget comp={c} pageId={pageId} />
-                          </ScaleToFit>
-                        )}
+                      <Widget comp={c} pageId={pageId} layoutEditing={false} />
+                    </VisibilityGate>
+                  ))}
 
-                        {/* Resize handles — chỉ hiện khi layoutEditing */}
-                        {layoutEditing && (
-                          <>
-                            <div
-                              className="absolute right-0 top-0 bottom-2.5 w-1.5 cursor-ew-resize z-20 opacity-0 group-hover/card:opacity-100 hover:bg-accent/40 transition-colors"
-                              onMouseDown={(e) => {
-                                e.stopPropagation();
-                                e.preventDefault();
-                                resizeRef.current = {
-                                  compId: c.id,
-                                  dir: "e",
-                                  startMouseX: e.clientX,
-                                  startMouseY: e.clientY,
-                                  startW: c.w,
-                                  startH: c.h,
-                                  compX: c.x,
-                                };
-                                setResizingId(c.id);
-                              }}
-                            />
-                            <div
-                              className="absolute left-0 right-2.5 bottom-0 h-1.5 cursor-ns-resize z-20 opacity-0 group-hover/card:opacity-100 hover:bg-accent/40 transition-colors"
-                              onMouseDown={(e) => {
-                                e.stopPropagation();
-                                e.preventDefault();
-                                resizeRef.current = {
-                                  compId: c.id,
-                                  dir: "s",
-                                  startMouseX: e.clientX,
-                                  startMouseY: e.clientY,
-                                  startW: c.w,
-                                  startH: c.h,
-                                  compX: c.x,
-                                };
-                                setResizingId(c.id);
-                              }}
-                            />
-                            <div
-                              className="absolute right-0 bottom-0 w-2.5 h-2.5 cursor-nwse-resize z-30 opacity-0 group-hover/card:opacity-100 hover:bg-accent/40 transition-colors flex items-center justify-center"
-                              onMouseDown={(e) => {
-                                e.stopPropagation();
-                                e.preventDefault();
-                                resizeRef.current = {
-                                  compId: c.id,
-                                  dir: "se",
-                                  startMouseX: e.clientX,
-                                  startMouseY: e.clientY,
-                                  startW: c.w,
-                                  startH: c.h,
-                                  compX: c.x,
-                                };
-                                setResizingId(c.id);
-                              }}
-                            >
-                              <svg
-                                width="7"
-                                height="7"
-                                viewBox="0 0 7 7"
-                                className="text-accent/70"
-                                aria-hidden="true"
-                              >
-                                <path
-                                  d="M1 6 L6 1 M3.5 6 L6 3.5"
-                                  stroke="currentColor"
-                                  strokeWidth="1.5"
-                                  strokeLinecap="round"
-                                />
-                              </svg>
-                            </div>
-                          </>
-                        )}
+              {/* Fullscreen Subpages - Overlays the entire grid when active */}
+              {!layoutEditing &&
+                renderComps
+                  .filter((c) => c.kind === "subpage" && c.config?.renderMode === "fullscreen")
+                  .map((c) => (
+                    <VisibilityGate
+                      key={c.id}
+                      rule={(c.config as { visibleWhen?: VisibleRule } | undefined)?.visibleWhen}
+                      editing={false}
+                    >
+                      <div className="absolute inset-0 z-40 bg-bg overflow-hidden flex flex-col">
+                        <Widget comp={c} pageId={pageId} layoutEditing={false} />
                       </div>
                     </VisibilityGate>
-                  );
-                })}
-              </div>
+                  ))}
             </div>
           )}
         </div>
       </div>
-    </PageStateProvider>
+    </>
   );
+
+  if (isSubpage) {
+    return contentEl;
+  }
+
+  return <PageStateProvider pageId={pageId}>{contentEl}</PageStateProvider>;
 }

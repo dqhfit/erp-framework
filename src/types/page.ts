@@ -187,7 +187,7 @@ export interface ActionStepSetState {
   id: string;
   kind: "set-state";
   key: string;
-  value: BindingValue;
+  value: BindingValue | string | unknown;
 }
 
 /** Nạp lại dữ liệu lưới: đặt cờ __refresh cho từng entity → list refetch. */

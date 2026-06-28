@@ -955,13 +955,6 @@ function EditableListWidget({
           <span className="ml-auto">{t("widget.loading")}</span>
         </div>
       )}
-      {embeddedActions && embeddedActions.length > 0 && (
-        <div className="px-2 py-1.5 border-b border-border flex items-center gap-1.5 flex-wrap shrink-0">
-          {embeddedActions.map((item) => (
-            <ActionWidget key={item.id} config={item} pageState={pageState} inline />
-          ))}
-        </div>
-      )}
       {batchEdit &&
         (pending.size > 0 || newRows.length > 0) &&
         (() => {
@@ -1539,6 +1532,20 @@ function bindRowIdToAction(action: ActionConfig, row: Record<string, unknown>): 
           ...s,
           args: { ...(s.args ?? {}), _id: { source: "const" as const, value: rowId } },
         };
+      }
+      if (s.kind === "set-state") {
+        const val = s.value;
+        const rawVal =
+          val &&
+          typeof val === "object" &&
+          "source" in (val as object) &&
+          (val as { source: string }).source === "const"
+            ? (val as { value?: unknown }).value
+            : val;
+        if (rawVal === "{{id}}" || rawVal === "$rowId" || rawVal == null) {
+          return { ...s, value: { source: "const" as const, value: rowId } };
+        }
+        return { ...s, value: subSentinel(val) as any };
       }
       return s.kind === "delete-record" || s.kind === "open-wizard"
         ? { ...s, recordIdBinding: { source: "const" as const, value: rowId } }

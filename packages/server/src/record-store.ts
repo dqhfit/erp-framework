@@ -425,8 +425,8 @@ class TableRecordStore implements RecordStore {
     return { cols, ext };
   }
 
-  /** Biểu thức (text) của field cho filter/sort/match: cột → "col"::text; else ext->>field. */
   private textExpr(field: string): SQL {
+    if (field === "id") return sql`id::text`;
     const m = this.storage.columns[field];
     return m ? sql.raw(`"${assertIdent(m.col)}"::text`) : sql`ext->>${field}`;
   }
