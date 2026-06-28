@@ -103,7 +103,7 @@ interface Props {
    *  render embeddedActions, cho step "open-create-form". */
   onOpenCreateForm?: () => void;
   /** Gọi sau khi chuỗi action chạy xong, dùng để refresh lookup trong wizard cha. */
-  onComplete?: () => void;
+  onComplete?: (output?: any) => void;
 }
 
 export function ActionWidget({
@@ -188,6 +188,24 @@ export function ActionWidget({
 
   const onClick = async () => {
     if (busy || !canRun) return;
+
+    let preloadedFile: File | null = null;
+    const hasUploadStep = (config.steps ?? []).some((s) => s.kind === "upload-file");
+    if (hasUploadStep) {
+      const uploadStep = (config.steps ?? []).find((s) => s.kind === "upload-file");
+      const filePromise = new Promise<File | null>((resolve) => {
+        const input = document.createElement("input");
+        input.type = "file";
+        if (uploadStep?.accept) input.accept = uploadStep.accept;
+        input.onchange = () => resolve(input.files?.[0] || null);
+        input.onerror = () => resolve(null);
+        input.oncancel = () => resolve(null);
+        input.click();
+      });
+      preloadedFile = await filePromise;
+      if (!preloadedFile) return; // Cancelled or closed
+    }
+
     // Hỏi xác nhận top-level (config.requireConfirm) trước khi vào chain.
     if (config.requireConfirm) {
       const ok = await dialog.confirm(config.confirmMessage || "Bạn có chắc chắn?", {
@@ -201,6 +219,7 @@ export function ActionWidget({
       const ctx = {
         pageState,
         procClient,
+        preloadedFile,
         currentUser: user ? { name: user.name, email: user.email } : undefined,
         deleteRecord: (recordId: string) => recordsApi.deleteRecord(recordId).then(() => undefined),
         createRecord: (entityId: string, data: Record<string, unknown>) =>
@@ -244,7 +263,7 @@ export function ActionWidget({
       if (res.completed && res.procedureRuns > 0 && !hasModuleProc) {
         toast.success(config.label ? `Đã chạy: ${config.label}` : "Đã chạy xong");
       }
-      if (res.completed) onComplete?.();
+      if (res.completed) onComplete?.(res.output);
     } catch {
       // toast.error đã hiển thị trong run-action.ts; nuốt để không crash widget.
     } finally {
@@ -295,11 +314,11 @@ export function ActionWidget({
             pageState={pageState}
             onDone={(value) => closeWizard(value)}
             onCancel={() => closeWizard(null)}
-            renderAction={(a, key, onActionComplete) => (
+            renderAction={(a, key, onActionComplete, customPageState) => (
               <ActionWidget
                 key={key}
                 config={a}
-                pageState={pageState}
+                pageState={customPageState || pageState}
                 inline
                 onComplete={onActionComplete}
               />
@@ -348,11 +367,11 @@ export function ActionWidget({
           pageState={pageState}
           onDone={(value) => closeWizard(value)}
           onCancel={() => closeWizard(null)}
-          renderAction={(a, key, onActionComplete) => (
+          renderAction={(a, key, onActionComplete, customPageState) => (
             <ActionWidget
               key={key}
               config={a}
-              pageState={pageState}
+              pageState={customPageState || pageState}
               inline
               onComplete={onActionComplete}
             />

@@ -282,7 +282,7 @@ function EditableCell({
           className="w-full"
           value={str}
           options={getLookupOptions().map((o) => ({ value: o, label: o }))}
-          emptyOption="— chọn —"
+          emptyOption="chọn"
           autoOpen
           onClose={() => setEditing(false)}
           onChange={(v) => {
@@ -484,6 +484,13 @@ interface EditableListWidgetProps {
   onBulkCreate?: (records: Array<Record<string, string>>) => Promise<void>;
   /** Field cố định cho dòng tạo mới (vd masp = sản phẩm đang lọc). */
   createDefaults?: Record<string, string>;
+  /** Nút hành động nhúng trong toolbar (cùng hàng, tương tự read-only mode). */
+  embeddedActions?: ActionBarItem[];
+  /** Override text khi lưới rỗng (vd hint "Chọn bộ lọc..." khi loadGate chưa mở). */
+  emptyText?: string;
+  /** loadGate chưa mở → bỏ qua DataGrid, render hint full-area (tránh text lạc trong
+   *  <td colSpan> bị overflow-x ẩn khi bảng nhiều cột). */
+  gateClosed?: boolean;
   /** Khoá lưu trạng thái (IndexedDB) — dùng làm key nháp pending khi batchEdit. */
   stateKey?: string;
   /** Cột hành động theo dòng (Xem/Sửa/Xoá…) — render ActionWidget cho từng dòng. */
@@ -501,13 +508,6 @@ interface EditableListWidgetProps {
   addRowAtEnd?: boolean;
   /** Vị trí dòng thêm mới: đầu hay cuối lưới (cfg.addRowPos, mặc định "bottom"). */
   addRowPos?: "top" | "bottom";
-  /** Nút hành động nhúng trong toolbar (cùng hàng, tương tự read-only mode). */
-  embeddedActions?: ActionBarItem[];
-  /** Override text khi lưới rỗng (vd hint "Chọn bộ lọc..." khi loadGate chưa mở). */
-  emptyText?: string;
-  /** loadGate chưa mở → bỏ qua DataGrid, render hint full-area (tránh text lạc trong
-   *  <td colSpan> bị overflow-x ẩn khi bảng nhiều cột). */
-  gateClosed?: boolean;
 }
 
 /** Dòng MỚI nháp (chưa lưu): id tạm (`__new_*`) + vị trí chèn trên/dưới lưới.
@@ -1032,6 +1032,13 @@ function EditableListWidget({
 
   return (
     <div className="h-full flex flex-col">
+      {embeddedActions && embeddedActions.length > 0 && (
+        <div className="px-2 py-1.5 border-b border-border flex items-center gap-1.5 flex-wrap shrink-0">
+          {embeddedActions.map((item) => (
+            <ActionWidget key={item.id} config={item} pageState={pageState} inline />
+          ))}
+        </div>
+      )}
       {loading && (
         <div className="text-xs px-2 py-1 border-b border-border text-muted flex items-center gap-1">
           <I.Table size={11} />

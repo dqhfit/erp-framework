@@ -64,7 +64,6 @@ export const PALETTE: Array<{
   { kind: "action", label: "Action", icon: "Play", defaultSize: { w: 3, h: 1 } },
   { kind: "actionbar", label: "Thanh hành động", icon: "Toolbar", defaultSize: { w: 12, h: 1 } },
   { kind: "step", label: "Wizard / Theo bước", icon: "Workflow", defaultSize: { w: 12, h: 6 } },
-  { kind: "banve-type", label: "Quản lý Bản vẽ", icon: "FileText", defaultSize: { w: 12, h: 6 } },
 ];
 
 export const RECORD_DATA_KINDS = new Set([

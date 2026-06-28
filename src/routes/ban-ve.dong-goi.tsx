@@ -7,7 +7,6 @@ import { useUserObjects } from "@/stores/userObjects";
 function BanVeDongGoiRoute() {
   const { page: urlPage } = Route.useSearch();
   const { data: navNodes } = useNavTree();
-  const pages = useUserObjects((s) => s.pages);
   const pageContent = useUserObjects((s) => s.pageContent);
 
   // 1. Ưu tiên 1: Đọc pageId trực tiếp từ URL query param ?page=xxx
@@ -17,16 +16,6 @@ function BanVeDongGoiRoute() {
   if (!activePageId) {
     const menuNode = navNodes?.find((n) => n.code === "bbiBanVeDongGoi" || n.code === "D1");
     activePageId = menuNode?.pageId ?? undefined;
-  }
-
-  // 3. Ưu tiên 3: Tìm trang có techName bắt đầu bằng ban_ve_dong_goi_ hoặc name khớp
-  if (!activePageId) {
-    const fallbackPage = pages.find(
-      (p) => p.techName?.startsWith("ban_ve_dong_goi_") || p.name === "Bản vẽ đóng gói",
-    );
-    if (fallbackPage) {
-      activePageId = fallbackPage.id ?? undefined;
-    }
   }
 
   // Kiểm tra trang có components thiết kế thực tế không (nếu là trang rỗng thì hiển thị fallback bản vẽ mặc định)
@@ -47,7 +36,7 @@ function BanVeDongGoiRoute() {
 }
 
 export const Route = createFileRoute("/ban-ve/dong-goi")({
-  validateSearch: (search: Record<string, unknown>) => {
+  validateSearch: (search: Record<string, unknown>): { page?: string } => {
     return {
       page: (search.page as string) || undefined,
     };

@@ -11,7 +11,8 @@
 import { type RefObject, useLayoutEffect, useState } from "react";
 
 export interface DropdownPos {
-  top: number;
+  top?: number;
+  bottom?: number;
   left: number;
   width: number;
 }
@@ -27,7 +28,23 @@ export function useDropdownPosition<T extends HTMLElement>(
       const el = anchorRef.current;
       if (!el) return;
       const r = el.getBoundingClientRect();
-      setPos({ top: r.bottom + 4, left: r.left, width: r.width });
+      const spaceBelow = window.innerHeight - r.bottom;
+      const spaceAbove = r.top;
+
+      // Nếu không đủ chỗ ở dưới (cần khoảng 280px) và trên có nhiều chỗ hơn
+      if (spaceBelow < 280 && spaceAbove > spaceBelow) {
+        setPos({
+          bottom: window.innerHeight - r.top + 4,
+          left: r.left,
+          width: r.width,
+        });
+      } else {
+        setPos({
+          top: r.bottom + 4,
+          left: r.left,
+          width: r.width,
+        });
+      }
     };
     // Gộp nhiều event scroll/resize trong 1 frame → 1 lần đo layout, tránh
     // getBoundingClientRect + setState dồn dập gây giật khi cuộn nhanh.

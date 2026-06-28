@@ -23,6 +23,7 @@ export interface PageStateLike {
 export interface ActionContext {
   pageState: PageStateLike;
   procClient: ProceduresClient;
+  preloadedFile?: File | null;
   /** Xoá 1 bản ghi theo recordId (records.deleteRecord). Optional — context
    *  không cung cấp thì step delete-record báo lỗi nhẹ. */
   deleteRecord?: (recordId: string) => Promise<void>;
@@ -144,6 +145,7 @@ export interface RunActionResult {
   completed: boolean;
   /** Số step procedure đã chạy thành công. */
   procedureRuns: number;
+  output?: unknown;
 }
 
 export async function runActionSteps(
@@ -152,6 +154,7 @@ export async function runActionSteps(
 ): Promise<RunActionResult> {
   const rs = makeRuntimeState(ctx);
   let procedureRuns = 0;
+  let lastResult: unknown;
   for (const step of steps) {
     if (step.kind === "confirm") {
       const ok = await ctx.dialog.confirm(step.message, {
@@ -229,6 +232,7 @@ export async function runActionSteps(
       const result = await ctx.openPopup(step, rs.get);
       if (result === null) return { completed: false, procedureRuns };
       if (step.saveOutputTo) rs.set(step.saveOutputTo, result);
+      lastResult = result;
       // Popup persist (tạo/sửa) xong → nạp lại list các entity liên quan.
       if (step.invalidateEntities?.length) {
         const stamp = Date.now();
@@ -248,6 +252,7 @@ export async function runActionSteps(
       const result = await ctx.openWizard(step, rs.get);
       if (result === null) return { completed: false, procedureRuns };
       if (step.saveOutputTo) rs.set(step.saveOutputTo, result);
+      lastResult = result;
       // Wizard lưu (tạo/sửa) xong → nạp lại list các entity liên quan.
       if (step.invalidateEntities?.length) {
         const stamp = Date.now();
@@ -297,6 +302,7 @@ export async function runActionSteps(
         const newId = await ctx.createRecord(step.entity, data as Record<string, unknown>);
         ctx.toast.success("Đã thêm");
         if (step.saveOutputTo && newId) rs.set(step.saveOutputTo, newId);
+        lastResult = { id: newId, ...data };
         if (step.invalidateEntities?.length) {
           const stamp = Date.now();
           for (const eid of step.invalidateEntities) rs.set(`__refresh:${eid}`, stamp);
@@ -467,6 +473,58 @@ export async function runActionSteps(
       }
       continue;
     }
+    if (step.kind === "upload-file") {
+      let file: { url: string; name: string } | null = null;
+      let f = ctx.preloadedFile;
+
+      if (f) {
+        ctx.preloadedFile = null; // consume it
+      } else {
+        f = await new Promise<File | null>((resolve) => {
+          const input = document.createElement("input");
+          input.type = "file";
+          if (step.accept) input.accept = step.accept;
+          input.onchange = () => resolve(input.files?.[0] || null);
+          input.onerror = () => resolve(null);
+          input.oncancel = () => resolve(null);
+          input.click();
+        });
+      }
+
+      if (!f) {
+        return { completed: false, procedureRuns };
+      }
+
+      const fd = new FormData();
+      fd.append("file", f);
+      const sub = step.subfolder ? interpolate(step.subfolder, rs.get) : "doc";
+      try {
+        const res = await fetch(`/upload/file?subfolder=${encodeURIComponent(sub)}`, {
+          method: "POST",
+          credentials: "include",
+          body: fd,
+        });
+        if (!res.ok) {
+          const body = (await res.json().catch(() => ({}))) as { error?: string };
+          ctx.toast.error(body.error || "Lỗi tải file lên");
+          return { completed: false, procedureRuns };
+        }
+        const data = (await res.json()) as { url: string; name: string };
+        file = data;
+      } catch (err) {
+        ctx.toast.error(`Lỗi: ${(err as Error).message}`);
+        return { completed: false, procedureRuns };
+      }
+
+      if (!file) {
+        return { completed: false, procedureRuns };
+      }
+      if (step.saveUrlTo) rs.set(step.saveUrlTo, file.url);
+      if (step.saveNameTo) rs.set(step.saveNameTo, file.name);
+      rs.set("uploadedFileSubfolder", step.subfolder ? interpolate(step.subfolder, rs.get) : "doc");
+      lastResult = file;
+      continue;
+    }
     if (step.kind === "procedure") {
       const args = resolveArgs(step.args, rs.get);
       try {
@@ -475,6 +533,7 @@ export async function runActionSteps(
         if (step.saveOutputTo) {
           rs.set(step.saveOutputTo, result.output);
         }
+        lastResult = result.output;
         if (step.invalidateEntities && step.invalidateEntities.length > 0) {
           const stamp = Date.now();
           for (const eid of step.invalidateEntities) {
@@ -490,5 +549,5 @@ export async function runActionSteps(
       }
     }
   }
-  return { completed: true, procedureRuns };
+  return { completed: true, procedureRuns, output: lastResult };
 }

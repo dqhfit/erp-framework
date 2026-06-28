@@ -556,7 +556,8 @@ function LegacyCascadeFilter({ cfg }: { cfg: Record<string, unknown> }) {
               ref={panelRef}
               style={{
                 position: "fixed",
-                top: dropPos.top,
+                top: dropPos.top !== undefined ? dropPos.top : "auto",
+                bottom: dropPos.bottom !== undefined ? dropPos.bottom : "auto",
                 left: dropPos.left,
                 minWidth: Math.max(dropPos.width, 280),
               }}

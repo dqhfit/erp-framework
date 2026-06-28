@@ -285,7 +285,7 @@ export function ComboboxWidget({ cfg }: { cfg: Record<string, unknown> }) {
           value={val}
           onChange={(v) => dispatch.set(stateKey, v)}
           options={options}
-          emptyOption="— tất cả —"
+          emptyOption="tất cả"
         />
       </div>
     </div>

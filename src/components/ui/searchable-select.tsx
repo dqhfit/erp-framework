@@ -235,11 +235,21 @@ export function SearchableSelect({
         createPortal(
           <div
             ref={panelRef}
-            style={{ position: "fixed", top: pos.top, left: pos.left, minWidth: pos.width }}
+            style={{
+              position: "fixed",
+              top: pos.top !== undefined ? pos.top : "auto",
+              bottom: pos.bottom !== undefined ? pos.bottom : "auto",
+              left: pos.left > window.innerWidth / 2 ? "auto" : pos.left,
+              right:
+                pos.left > window.innerWidth / 2
+                  ? window.innerWidth - (pos.left + pos.width)
+                  : "auto",
+              minWidth: pos.width,
+            }}
             className={cn(
               "z-[1000] w-max rounded-md border border-border bg-panel shadow-lg",
               multiCol
-                ? "max-w-[min(760px,96vw)]"
+                ? "max-w-[min(480px,96vw)]"
                 : wrapOptions
                   ? "max-w-[min(460px,92vw)]"
                   : "max-w-[280px]",

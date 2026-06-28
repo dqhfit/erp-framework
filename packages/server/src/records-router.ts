@@ -206,6 +206,7 @@ export const recordsRouter = router({
   create: rbacProcedure("create", "entity")
     .input(z.object({ entityId: z.string().uuid(), data: z.record(z.string(), z.unknown()) }))
     .mutation(async ({ ctx, input }) => {
+      console.log("SERVER CREATE RECORD:", input.entityId, JSON.stringify(input.data, null, 2));
       await assertEntityNotMirror(ctx.user.companyId, input.entityId);
       const fields = await loadEntityFields(ctx.db, ctx.user.companyId, input.entityId);
       // Strip field user không có quyền write (field-level RBAC).
@@ -293,6 +294,7 @@ export const recordsRouter = router({
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      console.log("SERVER UPDATE RECORD:", input.recordId, JSON.stringify(input.data, null, 2));
       // Lấy state hiện tại để check version + tính diff.
       const store = getRecordStore(ctx.db);
       const rec = await store.loadState(ctx.user.companyId, input.recordId);

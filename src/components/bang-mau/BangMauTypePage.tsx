@@ -1,14 +1,40 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { I } from "@/components/Icons";
-import { api } from "@/components/renderer/page-data";
+import { ActionWidget } from "@/components/renderer/ActionWidget";
+import { DataGrid } from "@/components/renderer/DataGrid";
+import { api, usePageState } from "@/components/renderer/page-data";
+import type { PageComponent } from "@/components/renderer/page-types";
 import { Button, EmptyState, Modal, SplitPane, TagBox } from "@/components/ui";
 import { dialog } from "@/lib/dialog";
 import { toast } from "@/lib/toast";
+import { useRbac } from "@/stores/rbac";
 
 const ENTITY_BANGMAU = "03a7f9bb-313d-4bf4-bd7e-99ac569caadc";
 const ENTITY_QUYTRINH = "74fb4a74-83dc-4fa8-989c-c4bdfe6b8d0e";
 const ENTITY_SANPHAM = "b71515cf-4a57-4eed-a1f5-9275d7781c72";
+
+function safeRandomUUID() {
+  if (typeof window !== "undefined" && window.crypto?.randomUUID) {
+    return window.crypto.randomUUID();
+  }
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    const v = c === "x" ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+}
+
+function parseNumber(v: unknown): number | null {
+  if (v === undefined || v === null || v === "") return null;
+  const num = Number(v);
+  return Number.isNaN(num) ? null : num;
+}
+
+function getInputValue(v: number | null | undefined): string | number {
+  if (v === null || v === undefined || Number.isNaN(v)) return "";
+  return v;
+}
 
 interface PaletteRow {
   id: string;
@@ -38,11 +64,134 @@ interface SpRow {
   hehang: string | null;
 }
 
-export function BangMauTypePage() {
+/* ── 3-dot row action menu ─────────────────────────────────────────── */
+function PaletteRowMenu({
+  palette,
+  onEdit,
+  onDelete,
+}: {
+  palette: PaletteRow;
+  onEdit: (p: PaletteRow) => void;
+  onDelete: (p: PaletteRow) => void;
+}) {
+  const canEdit = useRbac((s) => s.can("edit", "entity"));
+  const canDelete = useRbac((s) => s.can("delete", "entity"));
+
+  const [open, setOpen] = useState(false);
+  const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (!(e.target as Element).closest("[data-palette-menu]")) setOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [open]);
+
+  if (!canEdit && !canDelete) return null;
+
+  const toggle = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (open) {
+      setOpen(false);
+      return;
+    }
+    const r = triggerRef.current?.getBoundingClientRect();
+    if (r) setPos({ top: r.bottom + 4, left: r.right - 128 });
+    setOpen(true);
+  };
+
+  return (
+    <>
+      <button
+        ref={triggerRef}
+        type="button"
+        data-palette-menu
+        onClick={toggle}
+        title="Hành động"
+        className="inline-flex h-6 w-6 items-center justify-center rounded border border-border text-muted hover:text-text hover:border-border transition-colors"
+      >
+        <I.MoreHorizontal size={14} />
+      </button>
+
+      {open &&
+        pos &&
+        createPortal(
+          <div
+            data-palette-menu
+            style={{ position: "fixed", top: pos.top, left: pos.left, zIndex: 9999, minWidth: 128 }}
+            className="bg-panel border border-border rounded-lg shadow-lg py-1 text-sm"
+          >
+            {canEdit && (
+              <button
+                type="button"
+                data-palette-menu
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setOpen(false);
+                  onEdit(palette);
+                }}
+                className="flex w-full items-center gap-2 px-3 py-1.5 hover:bg-hover text-text transition-colors"
+              >
+                <I.Edit size={13} className="text-muted" />
+                Sửa
+              </button>
+            )}
+            {canDelete && (
+              <>
+                {canEdit && <div className="my-1 border-t border-border" />}
+                <button
+                  type="button"
+                  data-palette-menu
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setOpen(false);
+                    void onDelete(palette);
+                  }}
+                  className="flex w-full items-center gap-2 px-3 py-1.5 hover:bg-danger/10 text-danger transition-colors"
+                >
+                  <I.Trash size={13} />
+                  Xóa
+                </button>
+              </>
+            )}
+          </div>,
+          document.body,
+        )}
+    </>
+  );
+}
+
+export function BangMauTypePage({ comp }: { comp?: PageComponent }) {
+  // ── Phân quyền nhúng tại component gốc ───────────────────────
+  const canCreate = useRbac((s) => s.can("create", "entity"));
+  const canEdit = useRbac((s) => s.can("edit", "entity"));
+  const canDelete = useRbac((s) => s.can("delete", "entity"));
+  // ───────────────────────────────────────────────────────
+
+  const pageState = usePageState();
+  const panelA = comp?.config?.panelA ?? {};
+  const embeddedActions = (panelA.embeddedActions ?? []) as any[];
+  const rowActionsBuiltin = panelA.rowActionsBuiltin === true;
+
   const [palettes, setPalettes] = useState<PaletteRow[]>([]);
   const [loadingPalettes, setLoadingPalettes] = useState(true);
   const [selectedPalette, setSelectedPalette] = useState<PaletteRow | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+
+  // Synchronize selection key with pageState for designer actions
+  const selectionKey = comp?.id ? `split_${comp.id}_sel` : undefined;
+  const handleSelectPalette = useCallback(
+    (palette: PaletteRow | null) => {
+      setSelectedPalette(palette);
+      if (selectionKey) {
+        pageState.set(selectionKey, palette?.id ?? null);
+      }
+    },
+    [selectionKey, pageState],
+  );
 
   const [quytrinhRows, setQuytrinhRows] = useState<QuyTrinhRow[]>([]);
   const [loadingQuytrinh, setLoadingQuytrinh] = useState(false);
@@ -135,8 +284,12 @@ export function BangMauTypePage() {
     fetch("/banvesvc/hehang", { credentials: "include" })
       .then((r) => r.json())
       .then((d) => {
-        const data = d as { rows?: string[] };
-        setHehangs(data.rows ?? []);
+        const data = d as { rows?: Array<{ hehang: string } | string> };
+        setHehangs(
+          (data.rows ?? [])
+            .map((r) => (typeof r === "string" ? r : r.hehang))
+            .filter(Boolean) as string[],
+        );
       })
       .catch(() => setHehangs([]));
   }, []);
@@ -175,6 +328,14 @@ export function BangMauTypePage() {
     void loadPalettes();
   }, []);
 
+  // Tự động reload khi có tín hiệu refresh từ designer actions
+  const refreshKey = pageState.get(`__refresh:${ENTITY_BANGMAU}`);
+  useEffect(() => {
+    if (refreshKey) {
+      void loadPalettes();
+    }
+  }, [refreshKey, loadPalettes]);
+
   // Fetch process detail list for the selected palette
   const loadQuytrinh = useCallback(async (paletteCode: string) => {
     setLoadingQuytrinh(true);
@@ -187,12 +348,12 @@ export function BangMauTypePage() {
       const mapped: QuyTrinhRow[] = res.rows.map(
         (r: { id: string; data: Record<string, unknown> }) => ({
           id: r.id,
-          key: r.id || crypto.randomUUID(),
+          key: r.id || safeRandomUUID(),
           stt: Number(r.data.stt ?? 0),
           mact: String(r.data.mact ?? ""),
           quytrinh: String(r.data.quytrinh ?? ""),
-          dinhluong: r.data.dinhluong !== null ? Number(r.data.dinhluong) : null,
-          somat: r.data.somat !== null ? Number(r.data.somat) : null,
+          dinhluong: parseNumber(r.data.dinhluong),
+          somat: parseNumber(r.data.somat),
           ghichu: String(r.data.ghichu ?? ""),
           nguyenlieu: String(r.data.nguyenlieu ?? ""),
         }),
@@ -273,12 +434,12 @@ export function BangMauTypePage() {
       const mapped: QuyTrinhRow[] = res.rows.map(
         (r: { id: string; data: Record<string, unknown> }) => ({
           id: r.id,
-          key: r.id || crypto.randomUUID(),
+          key: r.id || safeRandomUUID(),
           stt: Number(r.data.stt ?? 0),
           mact: String(r.data.mact ?? ""),
           quytrinh: String(r.data.quytrinh ?? ""),
-          dinhluong: r.data.dinhluong !== null ? Number(r.data.dinhluong) : null,
-          somat: r.data.somat !== null ? Number(r.data.somat) : null,
+          dinhluong: parseNumber(r.data.dinhluong),
+          somat: parseNumber(r.data.somat),
           ghichu: String(r.data.ghichu ?? ""),
           nguyenlieu: String(r.data.nguyenlieu ?? ""),
         }),
@@ -342,6 +503,111 @@ export function BangMauTypePage() {
       toast.error(`Lỗi khi xóa bảng màu: ${(e as Error).message}`);
     }
   };
+
+  const columnsPalettes = useMemo(
+    () => {
+      const cols = [
+        {
+          accessorKey: "ma",
+          header: "Mã",
+          size: 70,
+          cell: (c: { getValue: () => unknown }) => (
+            <span className="font-mono text-accent select-all">{String(c.getValue() ?? "")}</span>
+          ),
+        },
+        {
+          accessorKey: "ten",
+          header: "Tên bảng màu",
+          size: 150,
+        },
+        {
+          accessorKey: "hehang",
+          header: "Hệ hàng",
+          size: 80,
+        },
+      ];
+      if (rowActionsBuiltin) {
+        cols.push({
+          id: "__row_actions",
+          header: "",
+          size: 36,
+          cell: (c: { row: { original: PaletteRow } }) => {
+            const p = c.row.original;
+            return (
+              <PaletteRowMenu
+                palette={p}
+                onEdit={handleEditPalette}
+                onDelete={handleDeletePalette}
+              />
+            );
+          },
+        } as any);
+      }
+      return cols;
+    },
+    // biome-ignore lint/correctness/useExhaustiveDependencies: callbacks are stable
+    [rowActionsBuiltin, handleEditPalette, handleDeletePalette],
+  );
+
+  const columnsQuytrinh = useMemo(
+    () => [
+      {
+        accessorKey: "stt",
+        header: "STT",
+        size: 60,
+        cell: (c: { getValue: () => unknown }) => (
+          <span className="font-mono font-medium text-muted">{String(c.getValue() ?? "")}</span>
+        ),
+      },
+      {
+        accessorKey: "quytrinh",
+        header: "Tên quy trình",
+        size: 200,
+        cell: (c: { getValue: () => unknown }) => (
+          <span className="font-medium text-text">{String(c.getValue() ?? "")}</span>
+        ),
+      },
+      {
+        accessorKey: "mact",
+        header: "Mã chi tiết",
+        size: 150,
+        cell: (c: { getValue: () => unknown }) => (
+          <span className="font-mono text-accent select-all">{String(c.getValue() ?? "")}</span>
+        ),
+      },
+      {
+        id: "tensp",
+        header: "Tên chi tiết",
+        size: 240,
+        cell: (c: { row: { original: QuyTrinhRow } }) => {
+          const mact = c.row.original.mact;
+          return mact ? (productNameMap.get(mact) ?? "") : "";
+        },
+      },
+      {
+        accessorKey: "dinhluong",
+        header: "Định lượng (g)",
+        size: 120,
+        cell: (c: { getValue: () => unknown }) => {
+          const val = c.getValue() as number | null;
+          return val !== null && val !== undefined ? val.toLocaleString("vi-VN") : "0";
+        },
+      },
+      {
+        accessorKey: "somat",
+        header: "Số lớp cán/mặt",
+        size: 100,
+        cell: (c: { getValue: () => unknown }) => String(c.getValue() ?? "0"),
+      },
+      {
+        accessorKey: "ghichu",
+        header: "Ghi chú",
+        size: 200,
+        cell: (c: { getValue: () => unknown }) => String(c.getValue() ?? ""),
+      },
+    ],
+    [productNameMap],
+  );
 
   // Search products inside the inline lookup popup
   const searchLookupProducts = async (queryStr: string) => {
@@ -467,9 +733,8 @@ export function BangMauTypePage() {
           stt: row.stt ? Number(row.stt) : 0,
           mact: row.mact || "",
           quytrinh: row.quytrinh || "",
-          dinhluong:
-            row.dinhluong !== null && !Number.isNaN(row.dinhluong) ? Number(row.dinhluong) : 0,
-          somat: row.somat !== null && !Number.isNaN(row.somat) ? Number(row.somat) : 0,
+          dinhluong: parseNumber(row.dinhluong),
+          somat: parseNumber(row.somat),
           ghichu: row.ghichu || "",
           nguyenlieu: row.nguyenlieu || "",
         };
@@ -557,7 +822,7 @@ export function BangMauTypePage() {
     setGridRows([
       ...gridRows,
       {
-        key: crypto.randomUUID(),
+        key: safeRandomUUID(),
         stt: nextStt,
         mact: "",
         tensp: "",
@@ -625,14 +890,6 @@ export function BangMauTypePage() {
                     <I.Download size={13} />
                     Xuất
                   </Button>
-                  <Button
-                    variant="primary"
-                    onClick={handleAddPalette}
-                    className="h-7 px-2.5 text-xs flex items-center gap-1 bg-accent hover:bg-accent-2 transition-colors text-white font-medium rounded"
-                  >
-                    <I.Plus size={13} />
-                    Thêm mới
-                  </Button>
                 </div>
               </div>
               <div className="relative">
@@ -658,86 +915,73 @@ export function BangMauTypePage() {
                   </button>
                 )}
               </div>
+
+              {/* Embedded Actions (Hành động nhúng) */}
+              {embeddedActions.length > 0 ? (
+                <div className="flex items-center gap-1.5 pt-1 border-t border-border/40 flex-wrap shrink-0">
+                  {embeddedActions.map((item) => (
+                    <ActionWidget key={item.id} config={item} pageState={pageState} inline />
+                  ))}
+                </div>
+              ) : (
+                (canCreate || canEdit || canDelete) && (
+                  <div className="flex items-center gap-1.5 pt-1 border-t border-border/40">
+                    {canCreate && (
+                      <Button
+                        variant="primary"
+                        onClick={handleAddPalette}
+                        className="h-7 px-2.5 text-xs flex items-center gap-1 bg-accent hover:bg-accent-2 transition-colors text-white font-medium rounded"
+                        title="Thêm mới bảng màu"
+                      >
+                        <I.Plus size={13} />
+                        Thêm
+                      </Button>
+                    )}
+                    {canEdit && (
+                      <Button
+                        variant="ghost"
+                        disabled={!selectedPalette}
+                        onClick={() => selectedPalette && void handleEditPalette(selectedPalette)}
+                        className="h-7 px-2.5 text-xs flex items-center gap-1 border border-border hover:bg-hover rounded text-text font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                        title="Sửa bảng màu đang chọn"
+                      >
+                        <I.Edit size={13} />
+                        Sửa
+                      </Button>
+                    )}
+                    {canDelete && (
+                      <Button
+                        variant="ghost"
+                        disabled={!selectedPalette}
+                        onClick={() => selectedPalette && void handleDeletePalette(selectedPalette)}
+                        className="h-7 px-2.5 text-xs flex items-center gap-1 border border-danger/20 hover:bg-danger/10 text-danger rounded font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                        title="Xóa bảng màu đang chọn"
+                      >
+                        <I.Trash size={13} />
+                        Xóa
+                      </Button>
+                    )}
+                  </div>
+                )
+              )}
             </div>
 
             {/* List */}
-            <div className="flex-1 overflow-y-auto">
+            <div className="flex-1 flex flex-col overflow-hidden min-h-0">
               {loadingPalettes ? (
                 <div className="flex flex-col items-center justify-center py-12">
                   <div className="loader" />
                   <span className="text-xs text-muted mt-3">Đang tải danh sách bảng màu…</span>
                 </div>
-              ) : filteredPalettes.length === 0 ? (
-                <div className="py-12 text-center text-xs text-muted">
-                  Không tìm thấy bảng màu nào.
-                </div>
               ) : (
-                <table className="w-full text-xs text-left border-collapse">
-                  <thead className="bg-panel border-b border-border text-muted sticky top-0 z-10">
-                    <tr>
-                      <th className="p-2 border-r border-border font-semibold w-16">Mã</th>
-                      <th className="p-2 border-r border-border font-semibold">Tên bảng màu</th>
-                      <th className="p-2 border-r border-border font-semibold w-24">Hệ hàng</th>
-                      <th className="p-2 font-semibold text-center w-14"></th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border/40">
-                    {filteredPalettes.map((p) => {
-                      const isSelected = selectedPalette?.id === p.id;
-                      return (
-                        <tr
-                          key={p.id}
-                          onClick={() => setSelectedPalette(p)}
-                          className={`group cursor-pointer transition-colors hover:bg-hover/40 ${
-                            isSelected ? "bg-hover font-medium" : ""
-                          }`}
-                        >
-                          <td className="p-2 border-r border-border/80 font-mono text-accent select-all">
-                            {p.ma}
-                          </td>
-                          <td
-                            className="p-2 border-r border-border/80 truncate max-w-[120px]"
-                            title={p.ten}
-                          >
-                            {p.ten}
-                          </td>
-                          <td
-                            className="p-2 border-r border-border/80 truncate max-w-[100px]"
-                            title={p.hehang ?? ""}
-                          >
-                            {p.hehang ?? ""}
-                          </td>
-                          <td className="p-2 text-center">
-                            <div className="flex items-center justify-center gap-1 opacity-60 group-hover:opacity-100 transition-opacity">
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  void handleEditPalette(p);
-                                }}
-                                title="Sửa bảng màu"
-                                className="p-1 rounded text-muted hover:text-text hover:bg-panel border border-transparent hover:border-border transition-all"
-                              >
-                                <I.Edit size={12} />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  void handleDeletePalette(p);
-                                }}
-                                title="Xóa bảng màu"
-                                className="p-1 rounded text-muted hover:text-danger hover:bg-danger/10 border border-transparent hover:border-danger/20 transition-all"
-                              >
-                                <I.Trash size={12} />
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+                <DataGrid
+                  data={filteredPalettes}
+                  columns={columnsPalettes}
+                  toolbar={false}
+                  onRowClick={(row) => handleSelectPalette(row)}
+                  isRowSelected={(row) => selectedPalette?.id === row.id}
+                  emptyText="Không tìm thấy bảng màu nào."
+                />
               )}
             </div>
           </div>
@@ -771,111 +1015,24 @@ export function BangMauTypePage() {
                       )}
                     </div>
                   </div>
-
-                  <div className="flex items-center gap-2 self-end md:self-center shrink-0">
-                    <Button
-                      variant="ghost"
-                      onClick={() => void handleEditPalette(selectedPalette)}
-                      className="h-8 px-3 text-xs flex items-center gap-1 border border-border hover:bg-hover rounded"
-                    >
-                      <I.Edit size={13} />
-                      Sửa bảng màu
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      onClick={() => void handleDeletePalette(selectedPalette)}
-                      className="h-8 px-3 text-xs flex items-center gap-1 border border-danger/20 hover:bg-danger/10 text-danger rounded"
-                    >
-                      <I.Trash size={13} />
-                      Xóa
-                    </Button>
-                  </div>
                 </div>
 
                 {/* Child Grid table panel */}
                 <div className="flex-1 flex flex-col overflow-hidden bg-panel/30 border border-border rounded-lg">
-                  <div className="px-4 py-3 border-b border-border bg-panel/70 flex items-center justify-between shrink-0">
-                    <span className="text-xs font-semibold uppercase tracking-wider text-muted">
-                      Quy trình lăn UV
-                    </span>
-                  </div>
-
-                  <div className="flex-1 overflow-auto">
-                    {loadingQuytrinh ? (
-                      <div className="flex flex-col items-center justify-center py-20 h-full">
-                        <div className="loader" />
-                        <span className="text-xs text-muted mt-3">Đang tải quy trình lăn UV…</span>
-                      </div>
-                    ) : quytrinhRows.length === 0 ? (
-                      <div className="flex flex-col items-center justify-center py-20 h-full text-center">
-                        <EmptyState
-                          title="Chưa có quy trình"
-                          hint="Bảng màu này chưa cấu hình các bước quy trình lăn sơn UV."
-                        />
-                      </div>
-                    ) : (
-                      <table className="w-full text-xs text-left border-collapse border border-border">
-                        <thead className="bg-panel border-b border-border text-muted sticky top-0 z-10">
-                          <tr>
-                            <th className="p-2 border border-border font-semibold text-center w-12">
-                              STT
-                            </th>
-                            <th className="p-2 border border-border font-semibold text-left min-w-[200px]">
-                              Tên quy trình
-                            </th>
-                            <th className="p-2 border border-border font-semibold text-left w-40">
-                              Mã chi tiết
-                            </th>
-                            <th className="p-2 border border-border font-semibold text-left min-w-[240px]">
-                              Tên chi tiết
-                            </th>
-                            <th className="p-2 border border-border font-semibold text-right w-36">
-                              Định lượng (g)
-                            </th>
-                            <th className="p-2 border border-border font-semibold text-center w-28">
-                              Số lớp cán/mặt
-                            </th>
-                            <th className="p-2 border border-border font-semibold text-left min-w-[200px]">
-                              Ghi chú
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-border/40">
-                          {quytrinhRows.map((r) => (
-                            <tr key={r.id} className="hover:bg-hover/20 transition-colors">
-                              <td className="p-2 border border-border/80 text-center font-mono font-medium text-muted">
-                                {r.stt}
-                              </td>
-                              <td className="p-2 border border-border/80 font-medium text-text">
-                                {r.quytrinh || ""}
-                              </td>
-                              <td className="p-2 border border-border/80 font-mono text-accent select-all">
-                                {r.mact || ""}
-                              </td>
-                              <td
-                                className="p-2 border border-border/80 text-text truncate max-w-[300px]"
-                                title={r.mact ? (productNameMap.get(r.mact) ?? "") : ""}
-                              >
-                                {r.mact ? (productNameMap.get(r.mact) ?? "") : ""}
-                              </td>
-                              <td className="p-2 border border-border/80 text-right font-medium">
-                                {(r.dinhluong ?? 0).toLocaleString("vi-VN")}
-                              </td>
-                              <td className="p-2 border border-border/80 text-center">
-                                {r.somat ?? 0}
-                              </td>
-                              <td
-                                className="p-2 border border-border/80 text-muted truncate max-w-[240px]"
-                                title={r.ghichu}
-                              >
-                                {r.ghichu || ""}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    )}
-                  </div>
+                  {loadingQuytrinh ? (
+                    <div className="flex flex-col items-center justify-center py-20 h-full">
+                      <div className="loader" />
+                      <span className="text-xs text-muted mt-3">Đang tải quy trình lăn UV…</span>
+                    </div>
+                  ) : (
+                    <DataGrid
+                      data={quytrinhRows}
+                      columns={columnsQuytrinh}
+                      toolbar={true}
+                      label="Quy trình lăn UV"
+                      emptyText="Bảng màu này chưa cấu hình các bước quy trình lăn sơn UV."
+                    />
+                  )}
                 </div>
               </div>
             ) : (
@@ -1220,14 +1377,13 @@ export function BangMauTypePage() {
                           <input
                             type="number"
                             placeholder="0"
-                            value={row.dinhluong ?? 0}
+                            value={getInputValue(row.dinhluong)}
                             onChange={(e) => {
                               const updated = [...gridRows];
                               const v = e.target.value;
                               const item = updated[idx];
                               if (item) {
-                                const numVal = v === "" ? 0 : Number(v);
-                                item.dinhluong = Number.isNaN(numVal) ? 0 : numVal;
+                                item.dinhluong = v === "" ? null : Number(v);
                               }
                               setGridRows(updated);
                             }}
@@ -1240,14 +1396,13 @@ export function BangMauTypePage() {
                           <input
                             type="number"
                             placeholder="0"
-                            value={row.somat ?? 0}
+                            value={getInputValue(row.somat)}
                             onChange={(e) => {
                               const updated = [...gridRows];
                               const v = e.target.value;
                               const item = updated[idx];
                               if (item) {
-                                const numVal = v === "" ? 0 : Number(v);
-                                item.somat = Number.isNaN(numVal) ? 0 : numVal;
+                                item.somat = v === "" ? null : Number(v);
                               }
                               setGridRows(updated);
                             }}
