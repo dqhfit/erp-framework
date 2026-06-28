@@ -85,7 +85,7 @@ function filterActions(
     const hasUserRestriction = a.visibleToUsers && a.visibleToUsers.length > 0;
     if (!hasGroupRestriction && !hasUserRestriction) return true;
     if (userId && a.visibleToUsers?.includes(userId)) return true;
-    if (hasGroupRestriction && groupIds.some((g) => a.visibleToGroups!.includes(g))) return true;
+    if (hasGroupRestriction && groupIds.some((g) => a.visibleToGroups?.includes(g))) return true;
     return false;
   });
 }
