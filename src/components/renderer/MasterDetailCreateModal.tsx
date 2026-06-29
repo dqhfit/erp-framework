@@ -660,7 +660,7 @@ export function MasterDetailCreateModal({ config, onClose, onCreated }: Props) {
             </p>
             <div className="flex-1 overflow-y-auto pr-0.5">{masterFormContent(true)}</div>
           </div>
-          <div className="flex-1 min-w-0 pl-4 flex flex-col gap-2 overflow-hidden">
+          <div className="flex-1 min-w-0 pl-4 flex flex-col gap-2 overflow-x-auto">
             <p className="text-xs font-semibold text-muted uppercase tracking-wide mb-1">
               {config.detailLabel ?? "Chi tiết"}
             </p>
