@@ -247,6 +247,8 @@ export interface ActionStepOpenPopup {
   saveOutputTo: string;
   /** Ghi đè type/label của field trong popup (vd url→file, text→image). */
   fieldOverrides?: Record<string, FieldOverride>;
+  columnLabels?: Record<string, string>;
+  linkedToState?: { field: string; stateKey: string } | Array<{ field: string; stateKey: string }>;
   /** (list) Chọn NHIỀU dòng: hiện checkbox + nút xác nhận. Kết quả trả về
    *  { __many: true, ids: string[], items: object[] } để step sau lặp cập nhật. */
   multiSelect?: boolean;
@@ -274,8 +276,33 @@ export interface ActionStepOpenPopup {
     entity?: string;
     valueField?: string;
     labelField?: string;
+    labelFields?: string[];
+    columnHeaders?: string[];
+    searchFields?: string[];
+    autofill?: Record<string, string>;
+    multiple?: boolean;
+    separator?: string;
+    preloadLimit?: number;
+    filters?: Record<
+      string,
+      {
+        op?: RecordFilterOp;
+        value?: unknown;
+        fromLinked?: string;
+        split?: string;
+      }
+    >;
     /** Options tĩnh — dùng thay cho fetch entity. */
     options?: Array<{ value: string; label: string }>;
+  }>;
+  imageAttachments?: Array<{
+    field: string;
+    entity: string;
+    itemField: string;
+    pathField: string;
+    nameField: string;
+    itemValueField?: string;
+    subfolder?: string;
   }>;
 }
 

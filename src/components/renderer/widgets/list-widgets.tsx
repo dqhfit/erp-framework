@@ -38,6 +38,7 @@ import type {
   LoadFilters,
   RefFillResult,
   RowDetailCfg,
+  VisibleRule,
 } from "@/components/renderer/page-types";
 import { RowActionsCell } from "@/components/renderer/RowActionsCell";
 import { Button, Modal, SearchableSelect } from "@/components/ui";
@@ -52,6 +53,29 @@ import { cn } from "@/lib/utils";
 import { useRbac } from "@/stores/rbac";
 import { useUserObjects } from "@/stores/userObjects";
 import type { ActionConfig, BindingValue, FilterNode } from "@/types/page";
+
+function actionVisibleByState(action: ActionBarItem, pageState: ReturnType<typeof usePageState>) {
+  const rule = (action as ActionBarItem & { visibleWhen?: VisibleRule }).visibleWhen;
+  if (!rule) return true;
+  const sv = pageState.get(rule.stateKey) == null ? "" : String(pageState.get(rule.stateKey));
+  const arr = Array.isArray(rule.value) ? rule.value.map(String) : [];
+  switch (rule.op) {
+    case "eq":
+      return sv === String(rule.value ?? "");
+    case "neq":
+      return sv !== String(rule.value ?? "");
+    case "in":
+      return arr.includes(sv);
+    case "nin":
+      return !arr.includes(sv);
+    case "set":
+      return sv !== "";
+    case "notset":
+      return sv === "";
+    default:
+      return true;
+  }
+}
 
 /* ── Cột TÍNH "status": đánh giá bộ luật → nhãn + sắc thái ─────────────────
    Luật đầu khớp thắng; không khớp → fallback (hoặc "—"). So 1 field theo op. */
@@ -486,6 +510,13 @@ interface EditableListWidgetProps {
   createDefaults?: Record<string, string>;
   /** Nút hành động nhúng trong toolbar (cùng hàng, tương tự read-only mode). */
   embeddedActions?: ActionBarItem[];
+  embeddedFilters?: Array<{
+    label?: string;
+    stateKey: string;
+    options?: string;
+    optionLabels?: Record<string, string>;
+  }>;
+  createForm?: { title?: string; embedded?: boolean };
   /** Override text khi lưới rỗng (vd hint "Chọn bộ lọc..." khi loadGate chưa mở). */
   emptyText?: string;
   /** loadGate chưa mở → bỏ qua DataGrid, render hint full-area (tránh text lạc trong
@@ -584,11 +615,15 @@ function EditableListWidget({
   addRowAtEnd,
   addRowPos,
   embeddedActions,
+  embeddedFilters,
   emptyText,
   gateClosed,
 }: EditableListWidgetProps) {
   const t = useT();
   const pageState = usePageState();
+  const visibleEmbeddedActions = embeddedActions?.filter((item) =>
+    actionVisibleByState(item, pageState),
+  );
   // Ref để cell renderer trong columns memo đọc pageState MỚI NHẤT mà không
   // đưa pageState vào deps (pageState thay identity mỗi khi có set → re-memo không cần thiết).
   const pageStateRef = useRef(pageState);
@@ -1032,10 +1067,28 @@ function EditableListWidget({
 
   return (
     <div className="h-full flex flex-col">
-      {embeddedActions && embeddedActions.length > 0 && (
+      {((visibleEmbeddedActions && visibleEmbeddedActions.length > 0) ||
+        (embeddedFilters && embeddedFilters.length > 0)) && (
         <div className="px-2 py-1.5 border-b border-border flex items-center gap-1.5 flex-wrap shrink-0">
-          {embeddedActions.map((item) => (
+          {visibleEmbeddedActions?.map((item) => (
             <ActionWidget key={item.id} config={item} pageState={pageState} inline />
+          ))}
+          {embeddedFilters?.map((f) => (
+            <div key={f.stateKey} className="flex items-center gap-1.5 ml-2">
+              {f.label && <span className="text-xs text-muted">{f.label}:</span>}
+              <select
+                className="input py-1 text-xs border-transparent hover:border-border min-w-[120px]"
+                value={(pageState.get(f.stateKey) as string) ?? ""}
+                onChange={(e) => pageState.set(f.stateKey, e.target.value)}
+              >
+                <option value="">Tất cả</option>
+                {f.options?.split(",").map((opt) => (
+                  <option key={opt} value={opt}>
+                    {f.optionLabels?.[opt] ?? opt}
+                  </option>
+                ))}
+              </select>
+            </div>
           ))}
         </div>
       )}
@@ -1816,6 +1869,9 @@ export function ListWidget({
   );
   const [createOpen, setCreateOpen] = useState(false);
   const pageState = usePageState();
+  const visibleEmbeddedActions = embeddedActions?.filter((item) =>
+    actionVisibleByState(item, pageState),
+  );
   const effectiveSearchStateKey = searchStateKey || (stateKey ? `__search:${stateKey}` : undefined);
   // searchFromState (explicit SearchWidget config) → server-side q refetch.
   // effectiveSearchStateKey (DataGrid inline) → client-side globalFilter only,
@@ -1987,6 +2043,9 @@ export function ListWidget({
               enableSorting: false,
               cell: ({ row }: { row: { original: Record<string, unknown> } }) => {
                 const bound = effectiveRowActions.map((a) => bindRowIdToAction(a, row.original));
+                const visibleBound = bound.filter((a) =>
+                  actionVisibleByState(a as ActionBarItem, pageStateRef.current),
+                );
                 if (rowActsInline) {
                   return (
                     <div
@@ -1994,10 +2053,10 @@ export function ListWidget({
                       className="flex items-center gap-1 w-fit"
                       onClick={(e) => e.stopPropagation()}
                     >
-                      {bound.map((a) => (
+                      {visibleBound.map((a) => (
                         <ActionWidget
                           key={a.label}
-                          config={a}
+                          config={a as ActionBarItem}
                           pageState={pageStateRef.current}
                           inline
                         />
@@ -2007,7 +2066,7 @@ export function ListWidget({
                 }
                 return (
                   <RowActionsCell
-                    actions={bound}
+                    actions={visibleBound}
                     pageState={pageStateRef.current}
                     row={row.original}
                     cols={_rafVisibleFields.current.map((f) => ({
@@ -2106,8 +2165,25 @@ export function ListWidget({
   const selectedId = selectionStateKey && !multiSelect ? selectedRaw : undefined;
 
   const onRowClick =
-    selectionStateKey || selectionEmits
-      ? (row: Record<string, unknown>) => {
+    selectionStateKey || selectionEmits || effectiveRowActions.length > 0
+      ? (row: Record<string, unknown>, e?: React.MouseEvent) => {
+          if (e && effectiveRowActions.length > 0) {
+            const tr = (e.currentTarget as HTMLElement).closest('div[role="row"], tr');
+            if (tr) {
+              let viewBtn = tr.querySelector(
+                'button[title="Xem chi tiết"], button[title="Xem"], button[title="Xem thông tin"], button[title="Sửa"], button[title="Sửa dòng"]',
+              ) as HTMLButtonElement;
+              if (!viewBtn) {
+                const btns = Array.from(tr.querySelectorAll("button"));
+                viewBtn = btns.find((b) =>
+                  b.textContent?.trim().match(/^(Xem|Xem chi tiết|Xem thông tin|Sửa|Sửa dòng)$/i),
+                ) as HTMLButtonElement;
+              }
+              if (viewBtn) {
+                viewBtn.click();
+              }
+            }
+          }
           // selectionEmits: lưu thêm giá trị field khác của dòng vào state (vd
           // ketcau → selKetcau) để widget khác ẩn/hiện theo (visibleWhen).
           if (selectionEmits) {
@@ -2460,6 +2536,8 @@ export function ListWidget({
         addRowAtEnd={addRowAtEnd}
         addRowPos={addRowPos}
         embeddedActions={embeddedActions}
+        embeddedFilters={_embeddedFilters}
+        createForm={createForm}
         emptyText={emptyTextResolved}
         gateClosed={gateClosed}
       />
@@ -2470,7 +2548,7 @@ export function ListWidget({
   return (
     <div className="h-full flex flex-col">
       {(createForm ||
-        (embeddedActions && embeddedActions.length > 0) ||
+        (visibleEmbeddedActions && visibleEmbeddedActions.length > 0) ||
         (_embeddedFilters && _embeddedFilters.length > 0)) && (
         <div className="px-2 py-1.5 border-b border-border flex items-center gap-1.5 flex-wrap shrink-0">
           {createForm && !createForm.embedded && (
@@ -2482,7 +2560,7 @@ export function ListWidget({
               {createForm.title ?? "Thêm mới đơn hàng"}
             </Button>
           )}
-          {embeddedActions?.map((item) => (
+          {visibleEmbeddedActions?.map((item) => (
             <ActionWidget
               key={item.id}
               config={item}

@@ -74,12 +74,21 @@ export function DetailWidget({ cfg, compId }: { cfg: Record<string, unknown>; co
   const entityId = cfg.entity as string | undefined;
   const recordIdFromState = cfg.recordIdFromState as string | undefined;
   const title = cfg.title as string | undefined;
-  const editable = cfg.editable === true;
+  const baseEditable = cfg.editable === true;
+  const editableFromState = cfg.editableFromState as string | undefined;
   const forwardRefs =
     (cfg.forwardRefs as Array<{ field: string; refEntityId: string }> | undefined) ?? [];
   const ent = useEntity(entityId);
   const { rows, fields: wdFields, isDataSource, update: dataUpdate } = useWidgetData(cfg);
   const pageState = usePageState();
+  const editableMode = editableFromState ? pageState.get(editableFromState) : undefined;
+  const editable =
+    baseEditable &&
+    (!editableFromState ||
+      editableMode === true ||
+      editableMode === "true" ||
+      editableMode === "edit" ||
+      editableMode === "editable");
   const ctxNavigate = useNavigateWithContext();
   const handleCancel = () => {
     if (recordIdFromState) {
@@ -101,6 +110,40 @@ export function DetailWidget({ cfg, compId }: { cfg: Record<string, unknown>; co
 
   const recordId = recordIdFromState ? pageState.get(recordIdFromState) : undefined;
   const record = rows.find((r) => r.id === recordId || String(r.id) === String(recordId));
+  const [fallbackRecord, setFallbackRecord] = useState<Record<string, unknown> | null>(null);
+  const [fallbackLoading, setFallbackLoading] = useState(false);
+
+  useEffect(() => {
+    const rid = recordId == null || recordId === "" ? "" : String(recordId);
+    if (!rid || record || isDataSource || !entityId) {
+      setFallbackRecord(null);
+      setFallbackLoading(false);
+      return;
+    }
+    let alive = true;
+    setFallbackLoading(true);
+    api
+      .getRecord(rid)
+      .then((row) => {
+        if (!alive) return;
+        if (!row || row.entityId !== entityId) {
+          setFallbackRecord(null);
+          return;
+        }
+        setFallbackRecord({ ...row.data, id: row.id, created_at: row.createdAt });
+      })
+      .catch(() => {
+        if (alive) setFallbackRecord(null);
+      })
+      .finally(() => {
+        if (alive) setFallbackLoading(false);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [recordId, record, isDataSource, entityId]);
+
+  const effectiveRecord = record ?? fallbackRecord;
 
   const allFields = isDataSource ? wdFields : (ent?.fields ?? []);
   const selectedFieldNames = (cfg.fields as string[] | undefined) ?? [];
@@ -117,29 +160,29 @@ export function DetailWidget({ cfg, compId }: { cfg: Record<string, unknown>; co
   // V2 P5: mirror từng field ra pageState để widget khác filter theo.
   // biome-ignore lint/correctness/useExhaustiveDependencies: compId + record identity đủ
   useEffect(() => {
-    if (!compId || !ent || !record) return;
+    if (!compId || !ent || !effectiveRecord) return;
     for (const f of allFields) {
-      pageState.set(`detail:${compId}:${f.name}`, record[f.name]);
+      pageState.set(`detail:${compId}:${f.name}`, effectiveRecord[f.name]);
     }
-  }, [compId, record?.id, ent?.id]);
+  }, [compId, effectiveRecord?.id, ent?.id]);
 
   // Pre-fill form khi record thay đổi (editable mode)
   // biome-ignore lint/correctness/useExhaustiveDependencies: record.id + editable đủ để reset
   useEffect(() => {
     if (!editable) return;
-    if (!record) {
+    if (!effectiveRecord) {
       setForm({});
       return;
     }
     const filled: Record<string, string> = {};
     for (const f of scalarFields) {
-      const v = record[f.name];
+      const v = effectiveRecord[f.name];
       filled[f.name] = v == null ? "" : String(v);
     }
     setForm(filled);
     setSaveMsg("");
     setSaveErr("");
-  }, [record?.id, editable]);
+  }, [effectiveRecord?.id, editable]);
 
   if (!entityId || !ent) {
     return <div className="p-3 text-xs text-muted">{t("widget.no_entity_detail")}</div>;
@@ -154,7 +197,10 @@ export function DetailWidget({ cfg, compId }: { cfg: Record<string, unknown>; co
       </div>
     );
   }
-  if (!record) {
+  if (!effectiveRecord) {
+    if (fallbackLoading) {
+      return <div className="p-3 text-xs text-muted">Đang tải bản ghi...</div>;
+    }
     return (
       <div className="p-3 text-xs text-muted">Không tìm thấy bản ghi (id={String(recordId)}).</div>
     );
@@ -170,9 +216,21 @@ export function DetailWidget({ cfg, compId }: { cfg: Record<string, unknown>; co
     setSaveMsg("");
     try {
       const data: Record<string, unknown> = {};
-      for (const [k, v] of Object.entries(form)) if (v !== "") data[k] = v;
-      if (isDataSource) await dataUpdate(String(record.id), data);
-      else await api.updateRecord(String(record.id), data, record.version as number | undefined);
+      for (const [k, v] of Object.entries(form)) data[k] = v;
+      let updatedRecord: Record<string, unknown> | null = null;
+      if (isDataSource) await dataUpdate(String(effectiveRecord.id), data);
+      else {
+        const updated = await api.updateRecord(
+          String(effectiveRecord.id),
+          data,
+          effectiveRecord.version as number | undefined,
+        );
+        updatedRecord = { ...updated.data, id: updated.id, created_at: updated.createdAt };
+      }
+      if (updatedRecord) setFallbackRecord(updatedRecord);
+      if (entityId) {
+        pageState.set(`__refresh:${entityId}`, Date.now());
+      }
       setSaveMsg(t("widget.saved_ok"));
       if (recordIdFromState) {
         pageState.set(recordIdFromState, "");
@@ -196,7 +254,7 @@ export function DetailWidget({ cfg, compId }: { cfg: Record<string, unknown>; co
       {collectionFields.map((f) => {
         const childEntityId = f.ref;
         const fkField = f.fkField;
-        const parentId = record.id as string | undefined;
+        const parentId = effectiveRecord.id as string | undefined;
         if (!childEntityId || !fkField || !parentId) {
           return (
             <div
@@ -317,7 +375,7 @@ export function DetailWidget({ cfg, compId }: { cfg: Record<string, unknown>; co
       )}
       <dl className="grid grid-cols-[140px_1fr] gap-x-3 gap-y-1.5 text-xs">
         {scalarFields.map((f) => {
-          const v = record[f.name];
+          const v = effectiveRecord[f.name];
           const isForward = fwdSet.has(f.name);
           return (
             <div key={f.name} className="contents">

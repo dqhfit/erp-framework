@@ -152,9 +152,13 @@ export function PageStateProvider({
   useEffect(() => {
     if (typeof window === "undefined") return;
     const params = new URLSearchParams(searchStr);
-    for (const [k, v] of params.entries()) store.set(k, v);
+    for (const [k, v] of params.entries()) {
+      store.set(k, v);
+    }
     for (const key of Object.keys(store.getSnapshot())) {
-      if (key.startsWith("sel_") && !params.has(key)) store.set(key, undefined);
+      if (key.startsWith("sel_") && !params.has(key)) {
+        store.set(key, "");
+      }
     }
   }, [searchStr, store]);
 
@@ -184,7 +188,7 @@ export function PageStateProvider({
         const s = store.getSnapshot();
         const clean: Record<string, PageStateValue> = {};
         for (const [k, v] of Object.entries(s)) {
-          if (!k.startsWith("__refresh:") && !k.startsWith("sel_")) clean[k] = v;
+          if (!k.startsWith("__refresh:")) clean[k] = v;
         }
         void idbSet(idbKey, clean);
       }, 400);
