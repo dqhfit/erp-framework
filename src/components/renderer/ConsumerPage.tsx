@@ -147,7 +147,15 @@ function PageLeaveHandler({
  *    ActionBarWidget để chúng ghi state trong event handler.
  *  - React.memo: tránh re-render khi ConsumerPage re-render vì lý do khác.
  *    Widget chỉ re-render khi comp/pageId đổi hoặc hook con (useActionFilter) fire. */
-const Widget = memo(function Widget({ comp, pageId }: { comp: PageComponent; pageId: string }) {
+const Widget = memo(function Widget({
+  comp,
+  pageId,
+  layoutEditing,
+}: {
+  comp: PageComponent;
+  pageId: string;
+  layoutEditing?: boolean;
+}) {
   const cfg = comp.config ?? {};
   const stateKey = `${pageId}:${comp.id}`;
   const pageState = usePageDispatch();

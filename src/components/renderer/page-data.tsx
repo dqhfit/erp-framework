@@ -143,24 +143,15 @@ export function PageStateProvider({
   useEffect(() => {
     if (typeof window === "undefined") return;
     const params = new URLSearchParams(searchStr);
-    setValues((prev) => {
-      let changed = false;
-      const next = { ...prev };
-      for (const [k, v] of params.entries()) {
-        if (next[k] !== v) {
-          next[k] = v;
-          changed = true;
-        }
+    for (const [k, v] of params.entries()) {
+      store.set(k, v);
+    }
+    for (const key of Object.keys(store.getSnapshot())) {
+      if (key.startsWith("sel_") && !params.has(key)) {
+        store.set(key, "");
       }
-      for (const key of Object.keys(prev)) {
-        if (key.startsWith("sel_") && !params.has(key)) {
-          delete next[key];
-          changed = true;
-        }
-      }
-      return changed ? next : prev;
-    });
-  }, [searchStr]);
+    }
+  }, [searchStr, store]);
 
   // Restore từ IDB 1 lần khi mount (chỉ các key không phải refresh signal).
   const restoredRef = useRef(false);
@@ -173,9 +164,6 @@ export function PageStateProvider({
       const clean: Record<string, PageStateValue> = {};
       for (const [k, v] of Object.entries(saved)) {
         if (!k.startsWith("__refresh:") && !k.startsWith("sel_")) clean[k] = v;
-      }
-      if (Object.keys(clean).length > 0) {
-        setValues((prev) => ({ ...clean, ...prev }));
       }
       if (Object.keys(clean).length > 0) store.init(clean);
     });
