@@ -8,19 +8,66 @@
    - form   : Form trống, người dùng nhập, "Xác nhận" → trả về object
    ========================================================== */
 import { createApiDataSource } from "@erp-framework/client";
-import { type ReactNode, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
+import type { FilterOp as RecordFilterOp } from "@erp-framework/core";
+import {
+  type ReactNode,
+  useCallback,
+  useDeferredValue,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { I } from "@/components/Icons";
 import { FileCell, ImageCell } from "@/components/renderer/FilePreviewModal";
-import { Button, Input, Modal, SearchableSelect } from "@/components/ui";
+import {
+  Button,
+  Input,
+  Modal,
+  SearchableSelect,
+  type SearchableSelectOption,
+} from "@/components/ui";
 import { normalizeVi } from "@/lib/text-utils";
+import { toast } from "@/lib/toast";
 import { useUserObjects } from "@/stores/userObjects";
 import type { ActionStepOpenPopup } from "@/types/page";
+import { MultiLookupPicker } from "./MultiLookupPicker";
 
 /** Tối đa dòng render trong bảng list — cap để DOM không lag khi tập kết quả lớn. */
 const LIST_ROW_CAP = 200;
 
 /** Ngưỡng bản ghi: nhỏ hơn → lọc client; lớn hơn → tìm server-side (debounce). */
 const LOOKUP_THRESHOLD = 300;
+
+type PopupImageFile = {
+  id: string;
+  url: string;
+  name: string;
+  saved?: boolean;
+  uploading?: boolean;
+};
+
+type DetailImageFile = {
+  id: string;
+  url: string;
+  name: string;
+};
+
+function isSelectOption(option: SearchableSelectOption | null): option is SearchableSelectOption {
+  return option !== null;
+}
+
+function splitLookupValues(value: unknown, separator = ","): string[] {
+  return String(value ?? "")
+    .split(separator)
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function filenameFromUrl(url: string): string {
+  const path = url.split("?")[0] ?? url;
+  return decodeURIComponent(path.split("/").filter(Boolean).at(-1) ?? url);
+}
 
 /** Combobox cho 1 field lookup trong form popup.
  *  Tự quyết small/large: tải sẵn ≤LOOKUP_THRESHOLD → lọc client (zero re-fetch);
@@ -137,37 +184,247 @@ function PopupLookupSelect({
 
 const api = createApiDataSource("");
 
+function PopupRichLookupSelect({
+  entity,
+  valueField,
+  labelField,
+  labelFields,
+  columnHeaders,
+  searchFields,
+  multiple,
+  separator,
+  preloadLimit,
+  filters,
+  linkedData,
+  value,
+  onChange,
+}: {
+  entity: string;
+  valueField: string;
+  labelField: string;
+  labelFields?: string[];
+  columnHeaders?: string[];
+  searchFields?: string[];
+  multiple?: boolean;
+  separator?: string;
+  preloadLimit?: number;
+  filters?: NonNullable<ActionStepOpenPopup["lookups"]>[number]["filters"];
+  linkedData?: Record<string, unknown>;
+  value: string;
+  onChange: (v: string, rec?: Record<string, unknown>) => void;
+}) {
+  const labels = useMemo(() => {
+    const unique = new Set([...(labelFields ?? []), labelField || valueField]);
+    return [...unique].filter(Boolean);
+  }, [labelFields, labelField, valueField]);
+  const multiCol = labels.length >= 2;
+  const [opts, setOpts] = useState<SearchableSelectOption[]>([]);
+  const rowsByValueRef = useRef<Record<string, Record<string, unknown>>>({});
+  const [isLarge, setIsLarge] = useState(false);
+  const [searching, setSearching] = useState(false);
+  const [q, setQ] = useState("");
+  const preloadRef = useRef<SearchableSelectOption[]>([]);
+  const queryFilters = useMemo(() => {
+    const out: Record<string, { op: RecordFilterOp; value: unknown }> = {};
+    for (const [field, cond] of Object.entries(filters ?? {})) {
+      const rawValue = cond.fromLinked ? linkedData?.[cond.fromLinked] : cond.value;
+      if (rawValue == null || rawValue === "") continue;
+      const values = cond.split ? splitLookupValues(rawValue, cond.split) : rawValue;
+      if (Array.isArray(values) && values.length === 0) continue;
+      out[field] = { op: cond.op ?? "=", value: values };
+    }
+    return Object.keys(out).length ? out : undefined;
+  }, [filters, linkedData]);
+
+  const toOption = useCallback(
+    (data: Record<string, unknown>): SearchableSelectOption | null => {
+      const rawValue = data[valueField];
+      if (rawValue == null || String(rawValue) === "") return null;
+      const valueText = String(rawValue);
+      const cells = multiCol ? labels.map((field) => String(data[field] ?? "")) : undefined;
+      const labelText =
+        labels
+          .map((field) => data[field])
+          .filter((item) => item != null && String(item) !== "")
+          .join(" — ") || valueText;
+      rowsByValueRef.current[valueText] = data;
+      return cells
+        ? { value: valueText, label: labelText, cells, searchText: cells.join(" ") }
+        : { value: valueText, label: labelText };
+    },
+    [labels, multiCol, valueField],
+  );
+
+  useEffect(() => {
+    if (!entity) return;
+    let alive = true;
+    const limit = preloadLimit ?? (multiple ? 2500 : LOOKUP_THRESHOLD + 1);
+    api
+      .getRecords(entity, { limit, ...(queryFilters ? { filters: queryFilters } : {}) })
+      .then((res) => {
+        if (!alive) return;
+        rowsByValueRef.current = {};
+        const large = !multiple && preloadLimit == null && res.rows.length > LOOKUP_THRESHOLD;
+        setIsLarge(large);
+        const preload = (large ? res.rows.slice(0, LOOKUP_THRESHOLD) : res.rows)
+          .map((r) => toOption(r.data as Record<string, unknown>))
+          .filter(isSelectOption)
+          .sort((a, b) => a.label.localeCompare(b.label, "vi"));
+        preloadRef.current = preload;
+        setOpts(preload);
+      })
+      .catch(() => {
+        if (alive) setOpts([]);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [entity, multiple, preloadLimit, queryFilters, toOption]);
+
+  useEffect(() => {
+    if (!isLarge) return;
+    const term = q.trim();
+    if (!term) {
+      setOpts(preloadRef.current);
+      return;
+    }
+    let alive = true;
+    const handle = setTimeout(() => {
+      setSearching(true);
+      Promise.all(
+        (searchFields?.length ? searchFields : [labelField]).map((field) =>
+          api
+            .getRecords(entity, {
+              filters: {
+                ...(queryFilters ?? {}),
+                [field]: { op: "contains", value: term },
+              },
+              limit: 40,
+            })
+            .then((res) => res.rows)
+            .catch(() => []),
+        ),
+      ).then((groups) => {
+        if (!alive) return;
+        const seen = new Set<string>();
+        const merged = groups.flat().filter((row) => {
+          const key = String((row.data as Record<string, unknown>)[valueField] ?? row.id);
+          if (!key || seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        });
+        setOpts(
+          merged.map((r) => toOption(r.data as Record<string, unknown>)).filter(isSelectOption),
+        );
+        setSearching(false);
+      });
+    }, 350);
+    return () => {
+      alive = false;
+      clearTimeout(handle);
+    };
+  }, [q, isLarge, entity, labelField, queryFilters, searchFields, toOption, valueField]);
+
+  const handlePick = (nextValue: string) => {
+    onChange(nextValue, rowsByValueRef.current[nextValue]);
+  };
+
+  if (multiple) {
+    return (
+      <MultiLookupPicker
+        value={value}
+        onChange={(nextValue) => {
+          const firstValue = nextValue
+            .split(separator ?? ",")
+            .map((item) => item.trim())
+            .filter(Boolean)[0];
+          onChange(nextValue, firstValue ? rowsByValueRef.current[firstValue] : undefined);
+        }}
+        options={opts}
+        title="đơn hàng"
+        separator={separator}
+        columnHeaders={columnHeaders ?? labels}
+      />
+    );
+  }
+
+  if (!labelFields?.length && !columnHeaders?.length && preloadLimit == null) {
+    return (
+      <PopupLookupSelect
+        entity={entity}
+        valueField={valueField}
+        labelField={labelField}
+        value={value}
+        onChange={(nextValue) => onChange(nextValue)}
+      />
+    );
+  }
+
+  return (
+    <SearchableSelect
+      className="w-full"
+      value={value}
+      onChange={handlePick}
+      options={opts}
+      emptyOption="â€” chá»n â€”"
+      onSearch={isLarge ? setQ : undefined}
+      loading={isLarge ? searching : undefined}
+      columnHeaders={multiCol ? (columnHeaders ?? labels) : undefined}
+    />
+  );
+}
+
 interface Props {
   step: ActionStepOpenPopup;
   recordId?: unknown;
   /** (list) Lọc server-side đã resolve: field → giá trị (op "="). */
   filters?: Record<string, unknown>;
+  linkedData?: Record<string, unknown>;
   onSelect: (value: Record<string, unknown>) => void;
   onCancel: () => void;
 }
 
-export function PopupPickerModal({ step, recordId, filters, onSelect, onCancel }: Props) {
+export function PopupPickerModal({
+  step,
+  recordId,
+  filters,
+  linkedData,
+  onSelect,
+  onCancel,
+}: Props) {
   const entities = useUserObjects((s) => s.entities);
   const entity = entities.find((e) => e.id === step.entity);
 
   const usableFields = (entity?.fields ?? []).filter(
     (f) => f.type !== "formula" && f.type !== "collection",
   );
+  const entityFieldNames = useMemo(() => new Set(usableFields.map((f) => f.name)), [usableFields]);
   // step.fields → đúng tập + thứ tự đó; không có → tối đa 7 field đầu.
   // step.fieldOverrides → ghi đè type/label (vd url→file, text→image).
   const visibleFields = (
     step.fields && step.fields.length > 0
       ? (step.fields
-          .map((n) => usableFields.find((f) => f.name === n))
+          .map((n) => {
+            const found = usableFields.find((f) => f.name === n);
+            if (found) return found;
+            const ov = step.fieldOverrides?.[n];
+            if (!ov) return null;
+            return {
+              id: `virtual_${n}`,
+              name: n,
+              type: ov.type ?? "text",
+              label: ov.label ?? step.columnLabels?.[n] ?? n,
+            };
+          })
           .filter(Boolean) as typeof usableFields)
       : usableFields.slice(0, 7)
   ).map((f) => {
     const ov = step.fieldOverrides?.[f.name];
-    if (!ov) return f;
     return {
       ...f,
-      ...(ov.type ? { type: ov.type } : {}),
-      ...(ov.label ? { label: ov.label } : {}),
+      ...(step.columnLabels?.[f.name] ? { label: step.columnLabels[f.name] } : {}),
+      ...(ov?.type ? { type: ov.type } : {}),
+      ...(ov?.label ? { label: ov.label } : {}),
     };
   });
 
@@ -180,11 +437,22 @@ export function PopupPickerModal({ step, recordId, filters, onSelect, onCancel }
   // (list) Map nhãn cho cột lookup: { fieldName → { giá trị lưu → nhãn } }.
   const [listLabels, setListLabels] = useState<Record<string, Record<string, string>>>({});
   const [detailRow, setDetailRow] = useState<Record<string, unknown> | null>(null);
+  const [detailImagesByField, setDetailImagesByField] = useState<Record<string, DetailImageFile[]>>(
+    {},
+  );
   const [formValues, setFormValues] = useState<Record<string, string>>({});
-  const handleFieldChange = (name: string, val: string) => {
+  const [imageFilesByField, setImageFilesByField] = useState<Record<string, PopupImageFile[]>>({});
+  const [uploadingImages, setUploadingImages] = useState<Record<string, boolean>>({});
+  const handleFieldChange = (name: string, val: string, lookupRow?: Record<string, unknown>) => {
     setFormValues((v) => {
       const next = { ...v, [name]: val };
-      if (name === "madonhang" && val) {
+      const lookup = lookupCfgByField[name];
+      if (lookup?.autofill && lookupRow) {
+        for (const [targetField, sourceField] of Object.entries(lookup.autofill)) {
+          const sourceValue = lookupRow[sourceField];
+          next[targetField] = sourceValue == null ? "" : String(sourceValue);
+        }
+      } else if (name === "madonhang" && val) {
         // Tự động map hệ hàng và khách hàng khi chọn mã đơn hàng
         const parts = val.split("-").map((p) => p.trim());
         if (parts.length >= 4) {
@@ -195,6 +463,83 @@ export function PopupPickerModal({ step, recordId, filters, onSelect, onCancel }
         }
       }
       return next;
+    });
+  };
+  const onPickMultipleImages = (
+    name: string,
+    files: FileList | null | undefined,
+    subfolder = "bao-cao-final",
+  ) => {
+    const picked = Array.from(files ?? []);
+    if (picked.length === 0) return;
+    const valid: Array<{ id: string; file: File; preview: string }> = [];
+    for (const file of picked) {
+      if (!file.type.startsWith("image/")) {
+        toast.error("Chá»‰ cháº¥p nháº­n file áº£nh");
+        continue;
+      }
+      if (file.size > 10 * 1024 * 1024) {
+        toast.error(`áº¢nh ${file.name} khÃ´ng Ä‘Æ°á»£c vÆ°á»£t quÃ¡ 10MB`);
+        continue;
+      }
+      valid.push({ id: crypto.randomUUID(), file, preview: URL.createObjectURL(file) });
+    }
+    if (valid.length === 0) return;
+    setFormValues((v) => ({ ...v, [name]: valid[0]?.preview ?? "" }));
+
+    setImageFilesByField((current) => ({
+      ...current,
+      [name]: [
+        ...(current[name] ?? []),
+        ...valid.map(({ id, file, preview }) => ({
+          id,
+          url: preview,
+          name: file.name,
+          uploading: true,
+        })),
+      ],
+    }));
+    setUploadingImages((v) => ({ ...v, [name]: true }));
+
+    const uploadOne = async ({ id, file }: { id: string; file: File }) => {
+      const fd = new FormData();
+      fd.append("file", file);
+      const url = subfolder ? `/upload/image/${encodeURIComponent(subfolder)}` : "/upload/image";
+      const res = await fetch(url, { method: "POST", body: fd });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: "Upload tháº¥t báº¡i" }));
+        throw new Error((err as { error?: string }).error ?? "Upload tháº¥t báº¡i");
+      }
+      const json = (await res.json()) as { url: string };
+      setFormValues((v) => (v[name]?.startsWith("blob:") ? { ...v, [name]: json.url } : v));
+      setImageFilesByField((current) => ({
+        ...current,
+        [name]: (current[name] ?? []).map((item) =>
+          item.id === id ? { ...item, url: json.url, uploading: false } : item,
+        ),
+      }));
+    };
+
+    Promise.allSettled(valid.map(uploadOne)).then((results) => {
+      const failed = new Set<string>();
+      results.forEach((result, index) => {
+        if (result.status === "rejected") {
+          const failedId = valid[index]?.id;
+          if (failedId) failed.add(failedId);
+          toast.error((result.reason as Error).message);
+        }
+      });
+      if (failed.size > 0) {
+        setImageFilesByField((current) => ({
+          ...current,
+          [name]: (current[name] ?? []).filter((item) => !failed.has(item.id)),
+        }));
+      }
+      setUploadingImages((v) => {
+        const next = { ...v };
+        delete next[name];
+        return next;
+      });
     });
   };
   // Dữ liệu record nạp sẵn cho form "Sửa" (có recordId). null = form thêm mới.
@@ -212,6 +557,59 @@ export function PopupPickerModal({ step, recordId, filters, onSelect, onCancel }
       else next.add(id);
       return next;
     });
+
+  const attachmentItemValues = (
+    owner: Record<string, unknown>,
+    att: NonNullable<ActionStepOpenPopup["imageAttachments"]>[number],
+  ) => {
+    const values = [owner[att.itemValueField ?? "item_id"], owner.item_id, owner.id];
+    return [...new Set(values.map((value) => String(value ?? "").trim()).filter(Boolean))];
+  };
+
+  const loadAttachmentImages = async (
+    owner: Record<string, unknown>,
+  ): Promise<Record<string, DetailImageFile[]>> => {
+    const pairs = await Promise.all(
+      (step.imageAttachments ?? []).map(async (att) => {
+        const itemValues = attachmentItemValues(owner, att);
+        if (itemValues.length === 0) return [att.field, []] as const;
+        const imageRows = await Promise.all(
+          itemValues.map((itemValue) =>
+            api
+              .getRecords(att.entity, {
+                limit: 100,
+                filters: {
+                  [att.itemField]: { op: "=", value: itemValue },
+                },
+              })
+              .then((res) => res.rows)
+              .catch(() => []),
+          ),
+        );
+        const seen = new Set<string>();
+        const images = imageRows
+          .flat()
+          .filter((row) => {
+            if (seen.has(row.id)) return false;
+            seen.add(row.id);
+            return true;
+          })
+          .map((row) => {
+            const data = row.data as Record<string, unknown>;
+            const url = String(data[att.pathField] ?? "");
+            if (!url) return null;
+            return {
+              id: row.id,
+              url,
+              name: String(data[att.nameField] ?? filenameFromUrl(url)),
+            };
+          })
+          .filter((item): item is DetailImageFile => item !== null);
+        return [att.field, images] as const;
+      }),
+    );
+    return Object.fromEntries(pairs);
+  };
 
   // Khoá ổn định cho filters (object đổi identity mỗi render) → tránh refetch loop.
   const filtersKey = JSON.stringify(filters ?? null);
@@ -262,6 +660,21 @@ export function PopupPickerModal({ step, recordId, filters, onSelect, onCancel }
     }
   }, [step.entity, step.popupMode, recordId, filtersKey]);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: loadAttachmentImages là helper nội bộ, effect chỉ cần chạy theo record/step hiện tại
+  useEffect(() => {
+    if (step.popupMode !== "detail" || !detailRow || !step.imageAttachments?.length) {
+      setDetailImagesByField({});
+      return;
+    }
+    let alive = true;
+    loadAttachmentImages(detailRow).then((imagesByField) => {
+      if (alive) setDetailImagesByField(imagesByField);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [step.popupMode, step.imageAttachments, detailRow]);
+
   /* Khởi tạo form: rỗng (thêm mới) hoặc đổ từ formSeed (sửa). */
   // biome-ignore lint/correctness/useExhaustiveDependencies: chu y chi reset form khi doi popupMode/entity/seed, khong reset khi visibleFields thay doi de tranh xoa input dang nhap
   useEffect(() => {
@@ -272,6 +685,30 @@ export function PopupPickerModal({ step, recordId, filters, onSelect, onCancel }
       init[f.name] = v == null ? "" : String(v);
     }
     setFormValues(init);
+    setImageFilesByField({});
+    if (!formSeed || !step.imageAttachments?.length) return;
+    let alive = true;
+    loadAttachmentImages(formSeed).then((imagesByField) => {
+      if (!alive) return;
+      setImageFilesByField(
+        Object.fromEntries(
+          Object.entries(imagesByField).map(([field, images]) => [
+            field,
+            images.map((image) => ({ ...image, saved: true })),
+          ]),
+        ),
+      );
+      setFormValues((current) => {
+        const next = { ...current };
+        for (const [field, images] of Object.entries(imagesByField)) {
+          if (!next[field] && images[0]?.url) next[field] = images[0].url;
+        }
+        return next;
+      });
+    });
+    return () => {
+      alive = false;
+    };
   }, [step.entity, step.popupMode, formSeed]); // eslint-disable-line react-hooks/exhaustive-deps
 
   /* (list) Nạp nhãn cho cột lookup (vd bom_son_version_id → mã phiên bản). */
@@ -308,6 +745,7 @@ export function PopupPickerModal({ step, recordId, filters, onSelect, onCancel }
   const onConfirmForm = async () => {
     const data: Record<string, unknown> = {};
     for (const f of visibleFields) {
+      if (!entityFieldNames.has(f.name)) continue;
       const raw = formValues[f.name] ?? "";
       if (f.type === "boolean" || f.type === "bool") data[f.name] = raw === "true";
       else if (f.type === "number" || f.type === "integer" || f.type === "currency") {
@@ -316,6 +754,24 @@ export function PopupPickerModal({ step, recordId, filters, onSelect, onCancel }
         data[f.name] = raw;
       }
     }
+
+    const saveImageAttachments = async (owner: Record<string, unknown>) => {
+      for (const att of step.imageAttachments ?? []) {
+        let itemValue = owner[att.itemValueField ?? "item_id"] ?? owner.id;
+        if (!itemValue && owner.id) itemValue = owner.id;
+        if (!itemValue) continue;
+        const images = imageFilesByField[att.field] ?? [];
+        for (const image of images) {
+          if (image.saved || image.uploading || image.url.startsWith("blob:")) continue;
+          await api.createRecord(att.entity, {
+            [att.itemField]: itemValue,
+            [att.pathField]: image.url,
+            [att.nameField]: image.name || filenameFromUrl(image.url),
+          });
+          image.saved = true;
+        }
+      }
+    };
 
     if (!step.persist) {
       onSelect(data);
@@ -326,10 +782,26 @@ export function PopupPickerModal({ step, recordId, filters, onSelect, onCancel }
     try {
       if (recordId != null) {
         await api.updateRecord(String(recordId), data);
-        onSelect({ ...(formSeed ?? {}), ...data, id: recordId });
+        const updated = { ...(formSeed ?? {}), ...data, id: recordId };
+        await saveImageAttachments(updated);
+        onSelect(updated);
       } else {
-        const created = await api.createRecord(step.entity, data);
-        onSelect({ ...data, id: created.id });
+        const linkedPayload = Object.fromEntries(
+          Object.entries(linkedData ?? {}).filter(([field]) => entityFieldNames.has(field)),
+        );
+        const payload = { ...data, ...linkedPayload };
+        const created = await api.createRecord(step.entity, payload);
+        const createdData: Record<string, unknown> = {
+          ...payload,
+          ...(created.data as Record<string, unknown>),
+          id: created.id,
+        };
+        if (step.imageAttachments?.length && !createdData.item_id) {
+          await api.updateRecord(created.id, { item_id: created.id });
+          createdData.item_id = created.id;
+        }
+        await saveImageAttachments(createdData);
+        onSelect(createdData);
       }
     } finally {
       setSaving(false);
@@ -370,6 +842,111 @@ export function PopupPickerModal({ step, recordId, filters, onSelect, onCancel }
   // Form rộng hơn để chứa 2 cột trên màn lớn; list 760; detail 520.
   // Modal cap theo viewport (w-full + maxWidth) nên màn nhỏ tự co lại.
   const modalWidth = step.popupMode === "list" ? 760 : step.popupMode === "form" ? 720 : 520;
+  const hasUploadingImage = Object.values(uploadingImages).some(Boolean);
+  const removePickedImage = (fieldName: string, imageId: string) => {
+    setImageFilesByField((current) => {
+      const nextImages = (current[fieldName] ?? []).filter((item) => item.id !== imageId);
+      setFormValues((values) => ({ ...values, [fieldName]: nextImages[0]?.url ?? "" }));
+      return { ...current, [fieldName]: nextImages };
+    });
+  };
+  const clearPickedImages = (fieldName: string) => {
+    setFormValues((values) => ({ ...values, [fieldName]: "" }));
+    setImageFilesByField((current) => ({ ...current, [fieldName]: [] }));
+  };
+
+  const renderDetailImages = (images: DetailImageFile[]) => (
+    <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+      {images.map((image, index) => (
+        <div key={image.id} className="overflow-hidden rounded border border-border bg-panel-2">
+          <ImageCell url={image.url} className="h-24 w-full object-contain" />
+          <div className="border-t border-border px-1.5 py-1 text-[10px] text-muted">
+            {index + 1}. {image.name}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+
+  const renderImageField = (f: (typeof visibleFields)[number]) => {
+    const images = imageFilesByField[f.name] ?? [];
+    const hasImages = images.length > 0 || !!formValues[f.name];
+    return (
+      <div className="space-y-2">
+        {images.length > 0 ? (
+          <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+            {images.map((image, index) => (
+              <div
+                key={image.id}
+                className="group relative overflow-hidden rounded border border-border bg-panel-2"
+              >
+                <img src={image.url} alt={image.name} className="h-24 w-full object-contain" />
+                {image.uploading && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-bg/70 text-xs text-muted">
+                    <I.Loader size={14} className="animate-spin" />
+                  </div>
+                )}
+                <button
+                  type="button"
+                  className="absolute right-1 top-1 rounded bg-bg/85 px-1.5 py-0.5 text-[10px] text-danger opacity-0 shadow-sm transition group-hover:opacity-100"
+                  onClick={() => removePickedImage(f.name, image.id)}
+                >
+                  Xoá
+                </button>
+                <div className="border-t border-border px-1.5 py-1 text-[10px] text-muted">
+                  {index + 1}. {image.name}
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : formValues[f.name] ? (
+          <img
+            src={formValues[f.name]}
+            alt=""
+            className="h-28 max-w-full object-contain rounded border border-border bg-panel-2"
+          />
+        ) : (
+          <div className="h-28 flex items-center justify-center text-xs text-muted border border-dashed border-border rounded">
+            Chưa có ảnh
+          </div>
+        )}
+        <div className="flex flex-wrap items-center gap-2">
+          <input
+            type="file"
+            accept="image/*"
+            multiple
+            className="text-xs"
+            onChange={(e) => {
+              onPickMultipleImages(
+                f.name,
+                e.target.files,
+                step.imageAttachments?.find((att) => att.field === f.name)?.subfolder,
+              );
+              e.currentTarget.value = "";
+            }}
+          />
+          {images.length > 0 && (
+            <span className="text-xs text-muted">Đã chọn {images.length} ảnh</span>
+          )}
+          {uploadingImages[f.name] && (
+            <span className="inline-flex items-center gap-1 text-xs text-muted">
+              <I.Loader size={12} className="animate-spin" />
+              Đang tải...
+            </span>
+          )}
+          {hasImages && (
+            <button
+              type="button"
+              className="text-xs text-danger hover:underline"
+              onClick={() => clearPickedImages(f.name)}
+            >
+              Xoá ảnh
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  };
 
   return (
     <Modal
@@ -383,7 +960,11 @@ export function PopupPickerModal({ step, recordId, filters, onSelect, onCancel }
             <Button variant="ghost" onClick={onCancel} disabled={saving}>
               Huỷ
             </Button>
-            <Button variant="primary" onClick={onConfirmForm} disabled={saving || loading}>
+            <Button
+              variant="primary"
+              onClick={onConfirmForm}
+              disabled={saving || loading || hasUploadingImage}
+            >
               {saving ? "Đang lưu..." : step.persist ? "Lưu" : "Xác nhận"}
             </Button>
           </>
@@ -550,8 +1131,11 @@ export function PopupPickerModal({ step, recordId, filters, onSelect, onCancel }
               {visibleFields.map((f) => {
                 const raw = detailRow[f.name];
                 const s = raw == null ? "" : String(raw);
+                const attachedImages = detailImagesByField[f.name] ?? [];
                 let cell: ReactNode;
-                if (
+                if (attachedImages.length > 0) {
+                  cell = renderDetailImages(attachedImages);
+                } else if (
                   f.type === "image" &&
                   s &&
                   (s.startsWith("data:image/") ||
@@ -600,44 +1184,7 @@ export function PopupPickerModal({ step, recordId, filters, onSelect, onCancel }
                   {f.required && <span className="text-danger ml-0.5">*</span>}
                 </label>
                 {f.type === "image" ? (
-                  <div className="space-y-1.5">
-                    {formValues[f.name] ? (
-                      // biome-ignore lint/performance/noImgElement: ảnh base64/URL preview trong modal, không cần tối ưu next/image
-                      <img
-                        src={formValues[f.name]}
-                        alt=""
-                        className="h-28 max-w-full object-contain rounded border border-border bg-panel-2"
-                      />
-                    ) : (
-                      <div className="h-28 flex items-center justify-center text-xs text-muted border border-dashed border-border rounded">
-                        No image data
-                      </div>
-                    )}
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="file"
-                        accept="image/*"
-                        className="text-xs"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (!file) return;
-                          const reader = new FileReader();
-                          reader.onload = () =>
-                            setFormValues((v) => ({ ...v, [f.name]: String(reader.result) }));
-                          reader.readAsDataURL(file);
-                        }}
-                      />
-                      {formValues[f.name] && (
-                        <button
-                          type="button"
-                          className="text-xs text-danger hover:underline"
-                          onClick={() => setFormValues((v) => ({ ...v, [f.name]: "" }))}
-                        >
-                          Xoá ảnh
-                        </button>
-                      )}
-                    </div>
-                  </div>
+                  renderImageField(f)
                 ) : lookupCfgByField[f.name]?.options?.length ? (
                   // Options tĩnh (value≠label) — không cần fetch
                   <SearchableSelect
@@ -649,12 +1196,20 @@ export function PopupPickerModal({ step, recordId, filters, onSelect, onCancel }
                   />
                 ) : lookupCfgByField[f.name]?.entity ? (
                   // Lookup từ entity: small → lọc client; large → tìm server-side debounce
-                  <PopupLookupSelect
+                  <PopupRichLookupSelect
                     entity={lookupCfgByField[f.name]?.entity ?? ""}
                     valueField={lookupCfgByField[f.name]?.valueField ?? "id"}
                     labelField={lookupCfgByField[f.name]?.labelField ?? "id"}
+                    labelFields={lookupCfgByField[f.name]?.labelFields}
+                    columnHeaders={lookupCfgByField[f.name]?.columnHeaders}
+                    searchFields={lookupCfgByField[f.name]?.searchFields}
+                    multiple={lookupCfgByField[f.name]?.multiple}
+                    separator={lookupCfgByField[f.name]?.separator}
+                    preloadLimit={lookupCfgByField[f.name]?.preloadLimit}
+                    filters={lookupCfgByField[f.name]?.filters}
+                    linkedData={linkedData}
                     value={formValues[f.name] ?? ""}
-                    onChange={(val) => handleFieldChange(f.name, val)}
+                    onChange={(val, row) => handleFieldChange(f.name, val, row)}
                   />
                 ) : f.type === "boolean" ? (
                   <label className="flex items-center gap-2 text-sm">

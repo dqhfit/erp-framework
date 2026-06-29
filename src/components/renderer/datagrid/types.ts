@@ -24,7 +24,7 @@ export interface DataGridProps<T> {
   /** Key IDB để persist sort/filter qua session. Format: "${pageId}:${widgetId}". */
   stateKey?: string;
   /** Callback khi user click 1 row — dùng cho master-detail pattern. */
-  onRowClick?: (row: T) => void;
+  onRowClick?: (row: T, e?: any) => void;
   /** Predicate đánh dấu row đang được chọn (highlight border + bg). */
   isRowSelected?: (row: T) => boolean;
   /** V2 P5: controlled globalFilter — khi pass, override state nội bộ.

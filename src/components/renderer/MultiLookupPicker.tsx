@@ -1,20 +1,19 @@
 import { useDeferredValue, useMemo, useState } from "react";
 import { I } from "@/components/Icons";
-import { Button, Input, Modal } from "@/components/ui";
+import { Button, Input, Modal, type SearchableSelectOption } from "@/components/ui";
 import { normalizeVi } from "@/lib/text-utils";
 
 /** Tối đa option render ra DOM/lần — danh sách lớn cap để không lag. */
 const RENDER_CAP = 150;
 
-type Option = { value: string; label: string };
-
 type Props = {
   value: string;
   onChange: (value: string) => void;
-  options: Option[];
+  options: SearchableSelectOption[];
   title: string;
   separator?: string;
   disabled?: boolean;
+  columnHeaders?: string[];
 };
 
 function splitValue(value: string, separator: string): string[] {
@@ -31,6 +30,7 @@ export function MultiLookupPicker({
   title,
   separator = ",",
   disabled,
+  columnHeaders,
 }: Props) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -48,6 +48,12 @@ export function MultiLookupPicker({
   }, [options, normIndex, deferredQuery]);
   const shown = filtered.length > RENDER_CAP ? filtered.slice(0, RENDER_CAP) : filtered;
   const overflow = filtered.length - shown.length;
+  const multiCol = !!columnHeaders && columnHeaders.length > 0;
+  const gridCols = multiCol
+    ? `minmax(64px,auto) ${Array((columnHeaders?.length ?? 1) - 1)
+        .fill("minmax(0,1fr)")
+        .join(" ")}`
+    : undefined;
 
   const show = () => {
     setDraft(splitValue(value, separator));
@@ -118,6 +124,23 @@ export function MultiLookupPicker({
                 <div className="p-6 text-center text-sm text-muted">Không có kết quả</div>
               ) : (
                 <>
+                  {multiCol && (
+                    <div
+                      className="sticky top-0 z-10 grid gap-2 border-b border-border bg-panel-2 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted"
+                      style={{ gridTemplateColumns: `20px ${gridCols}` }}
+                    >
+                      <span />
+                      {columnHeaders?.map((header, index) => (
+                        <span
+                          // biome-ignore lint/suspicious/noArrayIndexKey: cột cấu hình tĩnh, không reorder
+                          key={`${header}-${index}`}
+                          className="truncate"
+                        >
+                          {header}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                   {shown.map((option) => (
                     <label
                       key={option.value}
@@ -129,7 +152,25 @@ export function MultiLookupPicker({
                         checked={draft.includes(option.value)}
                         onChange={() => toggle(option.value)}
                       />
-                      <span className="min-w-0 flex-1 truncate">{option.label}</span>
+                      {multiCol && option.cells ? (
+                        <span
+                          className="grid min-w-0 flex-1 gap-2"
+                          style={{ gridTemplateColumns: gridCols }}
+                        >
+                          {option.cells.map((cell, index) => (
+                            <span
+                              // biome-ignore lint/suspicious/noArrayIndexKey: cột cấu hình tĩnh, không reorder
+                              key={`${option.value}-${index}`}
+                              className="truncate"
+                              title={cell}
+                            >
+                              {cell}
+                            </span>
+                          ))}
+                        </span>
+                      ) : (
+                        <span className="min-w-0 flex-1 truncate">{option.label}</span>
+                      )}
                     </label>
                   ))}
                   {overflow > 0 && (
