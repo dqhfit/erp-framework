@@ -3,6 +3,7 @@
    hook meta. ConsumerPage và mọi widget tách ra đều import từ đây. Chỉ DI CHUYỂN
    code từ ConsumerPage.tsx (Phase A2), KHÔNG đổi hành vi. */
 import { createApiDataSource } from "@erp-framework/client";
+import { useQuery } from "@tanstack/react-query";
 import {
   createContext,
   useCallback,
@@ -11,6 +12,7 @@ import {
   useMemo,
   useRef,
   useState,
+  useSyncExternalStore,
 } from "react";
 import type { ServerGridQuery } from "@/components/renderer/DataGrid";
 import type {
@@ -42,7 +44,85 @@ function cachedGetDataSourceMeta(dsId: string) {
   return _dsMetaCache.get(dsId)!;
 }
 
-const PageStateContext = createContext<PageStateCtx | null>(null);
+/* ── External store cho page state ─────────────────────────────────────────
+ * Tách khỏi React state để tránh re-render dây chuyền:
+ *   - Context value = store object STABLE (không đổi identity theo state).
+ *   - useSyncExternalStore cho subscriber chọn đúng granularity.
+ *   - usePageStateKey(key): chỉ re-render khi ĐỦ key đó đổi.
+ *   - usePageState(): subscribe ALL — backward-compat, không gây context cascade.
+ *   - usePageDispatch(): stable get/set, không subscribe → không gây re-render.
+ * ─────────────────────────────────────────────────────────────────────────── */
+
+type Listener = () => void;
+
+interface PageStore {
+  /** Đọc giá trị theo key (không subscribe, luôn trả giá trị mới nhất). */
+  get: (key: string) => PageStateValue;
+  /** Ghi giá trị; no-op nếu giá trị không đổi; notify listener theo key + all. */
+  set: (key: string, value: PageStateValue) => void;
+  /** Subscribe MỌI thay đổi → trả hàm unsubscribe. */
+  subscribe: (fn: Listener) => Listener;
+  /** Subscribe 1 key cụ thể → trả hàm unsubscribe. */
+  subscribeKey: (key: string, fn: Listener) => Listener;
+  /** Snapshot toàn bộ values (immutable ref mới mỗi lần set). */
+  getSnapshot: () => Record<string, PageStateValue>;
+  /** Nạp batch initial values — dùng cho restore từ IDB. */
+  init: (vals: Record<string, PageStateValue>) => void;
+}
+
+function createPageStore(): PageStore {
+  let snap: Record<string, PageStateValue> = {};
+  const all = new Set<Listener>();
+  const byKey = new Map<string, Set<Listener>>();
+
+  const notifyKey = (key: string) =>
+    byKey.get(key)?.forEach((f) => {
+      f();
+    });
+  const notifyAll = () =>
+    all.forEach((f) => {
+      f();
+    });
+
+  return {
+    get: (key) => snap[key],
+    getSnapshot: () => snap,
+    set: (key, value) => {
+      if (snap[key] === value) return;
+      snap = { ...snap, [key]: value };
+      notifyKey(key);
+      notifyAll();
+    },
+    subscribe: (fn) => {
+      all.add(fn);
+      return () => void all.delete(fn);
+    },
+    subscribeKey: (key, fn) => {
+      if (!byKey.has(key)) byKey.set(key, new Set());
+      // biome-ignore lint/style/noNonNullAssertion: vừa set nên chắc chắn có
+      byKey.get(key)!.add(fn);
+      return () => void byKey.get(key)?.delete(fn);
+    },
+    init: (vals) => {
+      snap = { ...snap, ...vals };
+      for (const k of Object.keys(vals)) notifyKey(k);
+      notifyAll();
+    },
+  };
+}
+
+/** Singleton fallback khi component render ngoài PageStateProvider (vd editor preview). */
+const _nullStore: PageStore = {
+  get: () => undefined,
+  set: () => {},
+  subscribe: () => () => {},
+  subscribeKey: () => () => {},
+  getSnapshot: () => ({}),
+  init: () => {},
+};
+
+/** Context chứa PageStore ổn định — identity KHÔNG đổi theo state, tránh context cascade. */
+const PageStateStoreCtx = createContext<PageStore>(_nullStore);
 
 export function PageStateProvider({
   children,
@@ -51,41 +131,32 @@ export function PageStateProvider({
   children: React.ReactNode;
   pageId?: string;
 }) {
-  const [values, setValues] = useState<Record<string, PageStateValue>>(() => {
-    const init: Record<string, PageStateValue> = {};
+  // Tạo store 1 lần (stable ref) — không đặt trong useState để không trigger re-render cha
+  const storeRef = useRef<PageStore | null>(null);
+  if (!storeRef.current) {
+    const s = createPageStore();
+    // Nạp URL params vào store ngay khi tạo (đồng bộ) để widget đọc đúng từ render đầu tiên
     if (typeof window !== "undefined") {
-      const params = new URLSearchParams(window.location.search);
-      for (const [k, v] of params.entries()) {
-        init[k] = v;
-      }
+      const init: Record<string, PageStateValue> = {};
+      for (const [k, v] of new URLSearchParams(window.location.search).entries()) init[k] = v;
+      if (Object.keys(init).length > 0) s.init(init);
     }
-    return init;
-  });
+    storeRef.current = s;
+  }
+  const store = storeRef.current;
+
   const idbKey = pageId ? `pageState:${pageId}` : null;
 
-  // Đồng bộ tham số URL query params vào pageState khi URL thay đổi
+  // Đồng bộ tham số URL query params vào store khi URL thay đổi
   const searchStr = typeof window !== "undefined" ? window.location.search : "";
   useEffect(() => {
     if (typeof window === "undefined") return;
     const params = new URLSearchParams(searchStr);
-    setValues((prev) => {
-      let changed = false;
-      const next = { ...prev };
-      for (const [k, v] of params.entries()) {
-        if (next[k] !== v) {
-          next[k] = v;
-          changed = true;
-        }
-      }
-      for (const key of Object.keys(prev)) {
-        if (key.startsWith("sel_") && !params.has(key)) {
-          delete next[key];
-          changed = true;
-        }
-      }
-      return changed ? next : prev;
-    });
-  }, [searchStr]);
+    for (const [k, v] of params.entries()) store.set(k, v);
+    for (const key of Object.keys(store.getSnapshot())) {
+      if (key.startsWith("sel_") && !params.has(key)) store.set(key, undefined);
+    }
+  }, [searchStr, store]);
 
   // Restore từ IDB 1 lần khi mount (chỉ các key không phải refresh signal).
   const restoredRef = useRef(false);
@@ -99,52 +170,70 @@ export function PageStateProvider({
       for (const [k, v] of Object.entries(saved)) {
         if (!k.startsWith("__refresh:") && !k.startsWith("sel_")) clean[k] = v;
       }
-      if (Object.keys(clean).length > 0) {
-        setValues((prev) => ({ ...clean, ...prev }));
-      }
+      if (Object.keys(clean).length > 0) store.init(clean);
     });
-  }, [idbKey]);
+  }, [idbKey, store]);
 
-  // Debounce save — bỏ __refresh:* để không lưu tín hiệu tạm thời.
-  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Debounce save khi store thay đổi — bỏ __refresh:* để không lưu tín hiệu tạm thời.
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
     if (!idbKey) return;
-    if (saveTimer.current) clearTimeout(saveTimer.current);
-    saveTimer.current = setTimeout(() => {
-      const clean: Record<string, PageStateValue> = {};
-      for (const [k, v] of Object.entries(values)) {
-        if (!k.startsWith("__refresh:") && !k.startsWith("sel_")) clean[k] = v;
-      }
-      void idbSet(idbKey, clean);
-    }, 400);
+    const unsub = store.subscribe(() => {
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = setTimeout(() => {
+        const s = store.getSnapshot();
+        const clean: Record<string, PageStateValue> = {};
+        for (const [k, v] of Object.entries(s)) {
+          if (!k.startsWith("__refresh:") && !k.startsWith("sel_")) clean[k] = v;
+        }
+        void idbSet(idbKey, clean);
+      }, 400);
+    });
     return () => {
-      if (saveTimer.current) clearTimeout(saveTimer.current);
+      unsub();
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     };
-  }, [idbKey, values]);
+  }, [idbKey, store]);
 
-  const ctx = useMemo<PageStateCtx>(
-    () => ({
-      values,
-      get: (key) => values[key],
-      set: (key, value) =>
-        setValues((prev) => (prev[key] === value ? prev : { ...prev, [key]: value })),
-    }),
-    [values],
-  );
-  return <PageStateContext.Provider value={ctx}>{children}</PageStateContext.Provider>;
+  return <PageStateStoreCtx.Provider value={store}>{children}</PageStateStoreCtx.Provider>;
 }
 
+/** Subscribe MỌI thay đổi — backward-compat, re-render khi BẤT KỲ key đổi.
+ *  Dùng cho widget đọc nhiều key động (useDataOpts, FilterItem, viz widgets…).
+ *  KHÔNG gây context cascade (store context stable; subscription qua useSyncExternalStore). */
 export function usePageState(): PageStateCtx {
-  const ctx = useContext(PageStateContext);
-  if (!ctx) {
-    // Fallback no-op khi component render ngoài provider (vd editor preview).
-    return {
-      values: {},
-      get: () => undefined,
-      set: () => undefined,
-    };
-  }
-  return ctx;
+  const store = useContext(PageStateStoreCtx);
+  const values = useSyncExternalStore(store.subscribe, store.getSnapshot);
+  // get/set stable từ store — memo chỉ tạo object mới khi values (snapshot) đổi
+  return useMemo<PageStateCtx>(() => ({ values, get: store.get, set: store.set }), [values, store]);
+}
+
+/** Subscribe CHỈ 1 key — chỉ re-render khi KEY ĐÓ thay đổi.
+ *  Dùng cho consumer nóng: VisibilityGate, input widgets, filter dropdowns.
+ *  Key rỗng ("") → subscribe key không-tồn-tại, không gây re-render phụ. */
+export function usePageStateKey(key: string): PageStateValue {
+  const store = useContext(PageStateStoreCtx);
+  const subscribe = useCallback((fn: () => void) => store.subscribeKey(key, fn), [store, key]);
+  const getSnapshot = useCallback(() => store.get(key), [store, key]);
+  return useSyncExternalStore(subscribe, getSnapshot);
+}
+
+/** Trả về stable dispatch {get, set, values} — KHÔNG subscribe, KHÔNG gây re-render.
+ *  values là getter đọc snapshot tức thì (dùng trong event handler, không reactive).
+ *  Dùng cho component chỉ ghi state trong event handler (Widget, PageLeaveHandler…). */
+export function usePageDispatch(): import("@/lib/run-action").PageStateLike {
+  const store = useContext(PageStateStoreCtx);
+  // store stable (ref trong provider) → useMemo chỉ tạo object 1 lần/page
+  return useMemo(
+    () => ({
+      get: store.get,
+      set: store.set,
+      get values() {
+        return store.getSnapshot();
+      },
+    }),
+    [store],
+  );
 }
 
 /* ── Tùy chọn tải dữ liệu (số dòng + điều kiện + cổng) ────────────────────── */
@@ -210,7 +299,9 @@ function useDataOpts(cfg: Record<string, unknown>): UseRecordsOpts {
             .filter(Boolean),
         };
       } else {
-        filters[field] = { op, value };
+        // value LUÔN có mặt (server zod yêu cầu). Op rỗng (is-empty/is-not-empty/
+        // is-true/is-not-true) không cần value → gửi null cho hợp lệ.
+        filters[field] = { op, value: value ?? null };
       }
     }
     if (Object.keys(filters).length === 0) filters = undefined;
@@ -234,58 +325,40 @@ function useDataOpts(cfg: Record<string, unknown>): UseRecordsOpts {
 
 /** Hook nhỏ — nạp record thật của một entity (số dòng + điều kiện cấu hình được).
  *  Khi ActionWidget gọi procedure xong, nó set pageState["__refresh:<entityId>"]
- *  = timestamp; ta đọc tag đó vào deps để useEffect re-run → refetch. */
+ *  = timestamp; đưa tag đó vào queryKey → TanStack Query refetch tự động.
+ *  Dedup: nhiều widget cùng entity/filters trên 1 trang chia sẻ 1 request. */
 function useRecords(entityId?: string, opts?: UseRecordsOpts) {
   const limit = opts?.limit ?? DEFAULT_ROW_LIMIT;
   const enabled = opts?.enabled !== false;
   const filters = opts?.filters;
   const q = opts?.q;
   const sort = opts?.sort;
-  // Khóa ổn định cho deps — tránh re-fetch vô hạn do object literal mới mỗi render.
+  // Khóa ổn định cho queryKey — tránh refetch vô hạn do object literal mới mỗi render.
   const filtersKey = filters ? JSON.stringify(filters) : "";
   const sortKey = sort ? JSON.stringify(sort) : "";
 
-  const [rows, setRows] = useState<Record<string, unknown>[]>([]);
-  const [loading, setLoading] = useState<boolean>(!!entityId && enabled);
-  const [err, setErr] = useState("");
-  const pageState = usePageState();
-  const refreshTag = entityId
-    ? (pageState.get(`__refresh:${entityId}`) as number | undefined)
-    : undefined;
-  // biome-ignore lint/correctness/useExhaustiveDependencies: deps cố ý dùng filtersKey/sortKey (chuỗi ổn định) thay cho object; refreshTag là tín hiệu reload thủ công
-  useEffect(() => {
-    if (!entityId || !enabled) {
-      setRows([]);
-      setLoading(false);
-      return;
-    }
-    let alive = true;
-    setLoading(true);
-    setErr("");
-    api
-      .getRecords(entityId, { limit, filters, q, sort })
-      .then((res) => {
-        if (alive) {
-          // id thật của record (uuid) PHẢI thắng — tránh field data.id (vd id
-          // cũ kiểu integer ở entity mirror) đè lên → recordId sai (Invalid
-          // UUID) khi select/sửa/xóa. Khớp đường datasource (useDataSourceRecords).
-          setRows(res.rows.map((r) => ({ ...r.data, id: r.id, created_at: r.createdAt })));
-          setLoading(false);
-        }
-      })
-      .catch((e) => {
-        if (alive) {
-          console.error("[useRecords] entity:", entityId, "filters:", filtersKey, "err:", e);
-          setErr((e as Error).message);
-          setLoading(false);
-        }
-      });
-    return () => {
-      alive = false;
-    };
-    // filtersKey/sortKey thay cho filters/sort object để deps ổn định.
-  }, [entityId, refreshTag, limit, enabled, filtersKey, q, sortKey]);
-  return { rows, loading, err };
+  // Subscribe CHỈ refresh tag của entity này — không re-render khi key khác đổi
+  const refreshTag = usePageStateKey(entityId ? `__refresh:${entityId}` : "") as number | undefined;
+
+  const { data, isLoading, error } = useQuery({
+    // refreshTag trong queryKey → thay đổi tag = query mới → TQ refetch tự động;
+    // filtersKey/sortKey (chuỗi) thay cho object để queryKey ổn định giữa các render.
+    queryKey: ["records", entityId, filtersKey, limit, q, sortKey, refreshTag],
+    queryFn: async () => {
+      const res = await api.getRecords(entityId!, { limit, filters, q, sort });
+      // id thật của record (uuid) PHẢI thắng — tránh field data.id (vd id cũ
+      // kiểu integer ở entity mirror) đè lên → recordId sai khi select/sửa/xóa.
+      return res.rows.map((r) => ({ ...r.data, id: r.id, created_at: r.createdAt }));
+    },
+    // loadGate: enabled=false → không fetch, trả rows=[] (giữ hành vi useEffect cũ)
+    enabled: !!entityId && enabled,
+  });
+
+  return {
+    rows: data ?? [],
+    loading: isLoading,
+    err: error?.message ?? "",
+  };
 }
 
 export function useEntity(entityId?: string): MockEntity | undefined {
@@ -303,81 +376,65 @@ function useDataSourceRecords(dataSourceId: string | undefined, opts: UseRecords
   const filters = opts.filters;
   const q = opts.q;
   const sort = opts.sort;
+  // Khóa ổn định cho queryKey — tránh refetch vô hạn do object literal mới mỗi render.
   const filtersKey = filters ? JSON.stringify(filters) : "";
   const sortKey = sort ? JSON.stringify(sort) : "";
-  const [rows, setRows] = useState<Record<string, unknown>[]>([]);
-  const [fields, setFields] = useState<EntityField[]>([]);
-  const [loading, setLoading] = useState<boolean>(!!dataSourceId && enabled);
-  const [err, setErr] = useState("");
-  // Giữ meta thô (fields có sourceField/sourceRelationId + relations) để map
-  // field ref → cột projection khi đổi giá trị (auto điền Tên vật tư…).
-  const metaRef = useRef<Awaited<ReturnType<typeof api.getDataSourceMeta>> | null>(null);
-  const pageState = usePageState();
-  const refreshTag = dataSourceId
-    ? (pageState.get(`__refresh:ds:${dataSourceId}`) as number | undefined)
-    : undefined;
-  // Meta effect: chỉ chạy khi dataSourceId đổi — dùng cache để tránh fetch lặp.
-  useEffect(() => {
-    if (!dataSourceId) {
-      setFields([]);
-      return;
-    }
-    let alive = true;
-    cachedGetDataSourceMeta(dataSourceId)
-      .then((meta) => {
-        if (!alive) return;
-        metaRef.current = meta;
-        setFields(
-          meta.fields.map((f) => ({
-            id: f.key,
-            name: f.key,
-            label: f.label,
-            type: f.type,
-            ref: f.ref,
-            refValueField: f.refValueField,
-            writable: f.sourceRelationId === "base" && f.writable !== false,
-          })),
-        );
-      })
-      .catch(() => undefined);
-    return () => {
-      alive = false;
-    };
-  }, [dataSourceId]);
 
-  // Data effect: chạy lại khi filter/sort/refreshTag đổi — KHÔNG refetch meta.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: deps cố ý dùng filtersKey/sortKey (chuỗi ổn định) thay cho object; refreshTag là tín hiệu reload thủ công
-  useEffect(() => {
-    if (!dataSourceId || !enabled) {
-      setRows([]);
-      setLoading(false);
-      return;
-    }
-    let alive = true;
-    setLoading(true);
-    setErr("");
-    api
-      .getDataSourceRecords(dataSourceId, {
+  // Subscribe CHỈ refresh tag của datasource này — không re-render khi key khác đổi
+  const refreshTag = usePageStateKey(dataSourceId ? `__refresh:ds:${dataSourceId}` : "") as
+    | number
+    | undefined;
+
+  // --- Meta query (tách khỏi data — chỉ refetch khi dataSourceId đổi) ---
+  // queryFn dùng module-level _dsMetaCache: Promise được giữ → widget mount muộn
+  // không thêm round-trip; TQ cũng dedup in-flight requests theo queryKey.
+  const { data: meta } = useQuery({
+    queryKey: ["ds-meta", dataSourceId],
+    queryFn: () => cachedGetDataSourceMeta(dataSourceId!),
+    enabled: !!dataSourceId,
+    staleTime: Number.POSITIVE_INFINITY, // meta không đổi trong phiên làm việc
+  });
+
+  // Ref đồng bộ để refFill đọc đồng bộ mà không cần await
+  const metaRef = useRef<Awaited<ReturnType<typeof api.getDataSourceMeta>> | null>(null);
+  // Gán trong render (không phải side-effect — ref là container mutable)
+  if (meta) metaRef.current = meta;
+
+  // fields phẳng từ meta — chỉ tính lại khi meta đổi (thực tế = khi dataSourceId đổi)
+  const fields = useMemo<EntityField[]>(() => {
+    if (!meta) return [];
+    return meta.fields.map((f) => ({
+      id: f.key,
+      name: f.key,
+      label: f.label,
+      type: f.type,
+      ref: f.ref,
+      refValueField: f.refValueField,
+      writable: f.sourceRelationId === "base" && f.writable !== false,
+    }));
+  }, [meta]);
+
+  // --- Data query: refetch khi filter/sort/refreshTag đổi — KHÔNG refetch meta ---
+  const {
+    data: rowData,
+    isLoading,
+    error,
+  } = useQuery({
+    // refreshTag trong queryKey → thay đổi tag = query mới → TQ refetch tự động;
+    // filtersKey/sortKey (chuỗi) thay cho object để queryKey ổn định giữa các render.
+    queryKey: ["ds-records", dataSourceId, filtersKey, limit, q, sortKey, refreshTag],
+    queryFn: async () => {
+      const res = await api.getDataSourceRecords(dataSourceId!, {
         limit,
         filters,
         q,
         sort: sort ? { key: sort.field, dir: sort.dir } : undefined,
-      })
-      .then((res) => {
-        if (!alive) return;
-        setRows(res.rows as Record<string, unknown>[]);
-        setLoading(false);
-      })
-      .catch((e) => {
-        if (alive) {
-          setErr((e as Error).message);
-          setLoading(false);
-        }
       });
-    return () => {
-      alive = false;
-    };
-  }, [dataSourceId, refreshTag, limit, enabled, filtersKey, q, sortKey]);
+      return res.rows as Record<string, unknown>[];
+    },
+    // loadGate: enabled=false → không fetch, trả rows=[] (giữ hành vi useEffect cũ)
+    enabled: !!dataSourceId && enabled,
+  });
 
   // Đổi 1 field REF (vd mã vật tư) → trả overlay các cột PROJECTION của relation
   // tương ứng (Tên VT, Quy cách…) lấy từ record master mới chọn. Cho hiển thị
@@ -428,7 +485,13 @@ function useDataSourceRecords(dataSourceId: string | undefined, opts: UseRecords
     return { overlay, snapshot };
   }, []);
 
-  return { rows, fields, loading, err, refFill };
+  return {
+    rows: rowData ?? [],
+    fields,
+    loading: isLoading,
+    err: error?.message ?? "",
+    refFill,
+  };
 }
 
 /* ── Server-side paging hook (cho bảng LỚN) — grid phát query (trang/sắp/lọc),
@@ -607,7 +670,8 @@ export function useWidgetData(cfg: Record<string, unknown>): WidgetData {
   const ent = useEntity(entityId);
   const entRecs = useRecords(entityId, opts);
   const ds = useDataSourceRecords(dataSourceId, opts);
-  const pageState = usePageState();
+  // Chỉ cần ghi refresh tag (event handler) → dispatch stable, không gây re-render
+  const dispatch = usePageDispatch();
 
   if (dataSourceId) {
     return {
@@ -627,8 +691,8 @@ export function useWidgetData(cfg: Record<string, unknown>): WidgetData {
           );
           if (touchedRef) {
             const key = `__refresh:ds:${dataSourceId}`;
-            const tag = (pageState.get(key) as number | undefined) ?? 0;
-            pageState.set(key, tag + 1);
+            const tag = (dispatch.get(key) as number | undefined) ?? 0;
+            dispatch.set(key, tag + 1);
           }
         }),
       remove: (id) => api.deleteDataSourceRecord(dataSourceId, id),

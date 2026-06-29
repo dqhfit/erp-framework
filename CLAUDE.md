@@ -297,6 +297,44 @@ vấn đề hay nhầm lẫn — luôn tách bạch:
 Bối cảnh chi tiết: memory `project_prod_deploy_vfmgroup`,
 `project_dinhmuc_govan_prod_cutover_pending`.
 
+## 12. Lean code — ưu tiên tối giản (distilled từ ponytail, MIT; instruction-only)
+
+> Áp cho MỌI thay đổi code (kể cả subagent). KHÔNG cài plugin/hook — chỉ là bộ
+> nguyên tắc. Củng cố convention sẵn có (DataSource-first, tái dùng primitive/
+> Icons, in-tree artifacts, không MATRIX song song) bằng 1 thang quyết định rõ.
+
+**Hiểu trước khi leo thang**: đọc task + code nó chạm, trace luồng thực end-to-end
+rồi mới quyết viết gì. "Shortest working diff wins — nhưng chỉ SAU khi hiểu vấn đề."
+
+**Thang quyết định** (dừng ở nấc ĐẦU TIÊN áp dụng được, trước khi viết code mới):
+1. Có cần làm không? (YAGNI — đừng làm thứ chưa ai yêu cầu).
+2. Đã có sẵn trong codebase chưa? → tái dùng helper/util/pattern (vd DataSource,
+   `proc-table`, `extractPageActions`, `filterActions`, primitive `components/ui/`, `I.*`).
+3. Stdlib / JS built-in làm được chưa? → dùng.
+4. Tính năng native nền tảng (React/Fastify/Postgres/Drizzle) có sẵn? → dùng.
+5. Dependency ĐÃ cài giải quyết được? → dùng (KHÔNG thêm dep mới nếu tránh được).
+6. Có thể 1 dòng? → 1 dòng.
+7. Chỉ KHI ĐÓ: viết lượng code TỐI THIỂU chạy được.
+
+**Sửa bug**: trị GỐC, không trị triệu chứng — sửa hàm dùng-chung 1 lần thay vì vá
+từng caller.
+
+**Quy tắc**: không abstraction / boilerplate / dep không-được-yêu-cầu; ưu tiên XOÁ
+hơn THÊM, boring hơn clever; đánh dấu chỗ cố ý đơn giản hoá bằng comment `ponytail:`
+(ghi rõ trần hiện tại + đường nâng cấp).
+
+**TUYỆT ĐỐI KHÔNG lười ở** (non-negotiable — trùng tinh thần §4 RBAC + §6 AI fail-safe):
+hiểu vấn đề trọn vẹn · validate input ở trust boundary · error handling chống mất
+data · security/RBAC fail-closed + scope `company_id` đa-tenant · a11y · đúng chức
+năng được yêu cầu (đừng "tối giản" mất tính năng).
+
+**Test**: logic non-trivial để lại 1 check chạy được (case fail nhỏ nhất); one-liner
+tầm thường khỏi test (khớp §8).
+
+> Bộ rule gốc đầy đủ: github.com/DietrichGebert/ponytail. Nếu sau này muốn lệnh
+> `/ponytail-review` `/ponytail-audit` + chuyển mode → cài full plugin (chạy 2 hook
+> Node trong máy, review trước khi cài).
+
 ---
 
 ## Bài học từ session trước (đừng lặp lại)

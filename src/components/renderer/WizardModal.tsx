@@ -52,8 +52,40 @@ function WizardLookupField({
   const [q, setQ] = useState("");
   const [remote, setRemote] = useState<Record<string, unknown>[]>([]);
   const [searching, setSearching] = useState(false);
+  // Record của GIÁ TRỊ đang chọn (serverSearch) — để hiện nhãn khi prefill/sửa
+  // (lúc remote còn rỗng vì chưa gõ tìm). Nạp theo valueField = value.
+  const [valueRec, setValueRec] = useState<Record<string, unknown> | null>(null);
 
   const labels = lk.labelFields ?? [lk.valueField];
+  // biome-ignore lint/correctness/useExhaustiveDependencies: chỉ phụ thuộc value/remote; lk ổn định theo cấu hình.
+  useEffect(() => {
+    if (!lk.serverSearch) {
+      setValueRec(null);
+      return;
+    }
+    const v = String(value ?? "");
+    if (!v) {
+      setValueRec(null);
+      return;
+    }
+    // Đã có trong kết quả tìm → không cần nạp riêng.
+    if (remote.some((r) => String(r[lk.valueField] ?? "") === v)) return;
+    let alive = true;
+    api
+      .getRecords(lk.entity, {
+        filters: { ...(lk.filters ?? {}), [lk.valueField]: { op: "=", value: v } },
+        limit: 1,
+      })
+      .then((res) => {
+        if (alive) setValueRec(res.rows[0]?.data ?? null);
+      })
+      .catch(() => {
+        if (alive) setValueRec(null);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [value, remote]);
   // biome-ignore lint/correctness/useExhaustiveDependencies: chỉ chạy lại khi đổi q (debounce); lk ổn định theo cấu hình.
   useEffect(() => {
     if (!lk.serverSearch) return;
@@ -102,7 +134,13 @@ function WizardLookupField({
   }, [q]);
 
   // Nguồn option: serverSearch → kết quả query; ngược lại → danh sách preload.
-  const pool = lk.serverSearch ? remote : src;
+  // Bổ sung record của value đang chọn (valueRec) nếu chưa có trong pool — để
+  // combobox hiện đúng nhãn khi prefill/sửa (remote rỗng lúc chưa gõ).
+  const basePool = lk.serverSearch ? remote : src;
+  const pool =
+    valueRec && value && !basePool.some((r) => String(r[lk.valueField] ?? "") === String(value))
+      ? [valueRec, ...basePool]
+      : basePool;
   // >=2 label field → hiển thị lookup NHIỀU CỘT (cells + headers) thay vì gộp
   // một chuỗi — khôi phục tính năng lookup đa cột của bản main.
   const multiCol = labels.length >= 2;
@@ -117,6 +155,21 @@ function WizardLookupField({
       ? { value: val, label: lbl || val, cells, searchText: cells.join(" ") }
       : { value: val, label: lbl || val };
   });
+  // Fallback hiển thị: value đang chọn KHÔNG có trong pool (vd mã fill từ nguồn khác
+  // hệ — masp đơn hàng không phải mã vật tư) → thêm option mã thô để ô không trống.
+  const vStr = String(value ?? "");
+  if (vStr && !opts.some((o) => o.value === vStr)) {
+    opts.unshift(
+      multiCol
+        ? {
+            value: vStr,
+            label: vStr,
+            cells: labels.map((_, i) => (i === 0 ? vStr : "")),
+            searchText: vStr,
+          }
+        : { value: vStr, label: vStr },
+    );
+  }
   const ent = entities.find((e) => e.id === lk.entity);
   const srcLabel = ent?.name ?? "mục";
   const headers = multiCol
@@ -1192,7 +1245,41 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
           setActiveIdx((i) => i + 1);
           return;
         }
-        const shared = forms[SINGLE_FORM_KEY] ?? {};
+        const shared = { ...(forms[SINGLE_FORM_KEY] ?? {}) };
+        // Tự sinh SỐ chứng từ (vd sophieu) khi để TRỐNG lúc TẠO MỚI: format token
+        // MM/yyyy/dd theo ngày hiện tại + {seq} = max(seq cùng prefix)+1. Gán vào
+        // `shared` để dùng cho cả payload master LẪN khoá liên kết detail (keyOf).
+        if (step.autoNumber && !editId) {
+          const an = step.autoNumber;
+          if (!(shared[an.field] ?? "").trim()) {
+            const now = new Date();
+            const tpl = an.format
+              .replace(/yyyy/g, String(now.getFullYear()))
+              .replace(/yy/g, String(now.getFullYear()).slice(-2))
+              .replace(/MM/g, String(now.getMonth() + 1).padStart(2, "0"))
+              .replace(/dd/g, String(now.getDate()).padStart(2, "0"));
+            const prefix = tpl.split("{seq}")[0] ?? tpl;
+            let maxSeq = 0;
+            try {
+              const res = await api.getRecords(wizardEntityId, {
+                filters: { [an.field]: { op: "contains", value: prefix } },
+                limit: 2000,
+              });
+              for (const row of res.rows) {
+                const sv = String((row.data as Record<string, unknown>)[an.field] ?? "");
+                if (!sv.startsWith(prefix)) continue;
+                const n = Number.parseInt(sv.slice(prefix.length), 10);
+                if (Number.isFinite(n) && n > maxSeq) maxSeq = n;
+              }
+            } catch {
+              // Lỗi query → vẫn sinh từ 1 để không chặn lưu.
+            }
+            const seq = String(maxSeq + 1).padStart(an.pad ?? 2, "0");
+            const generated = tpl.replace("{seq}", seq);
+            shared[an.field] = generated;
+            setField(an.field, generated); // phản ánh lên form nếu đang hiện
+          }
+        }
         // Field date/datetime: "YYYY-MM-DD" → ISO (đồng nhất định dạng đã lưu).
         const mFields = applyFieldOverrides(
           entities.find((e) => e.id === wizardEntityId)?.fields ?? [],
@@ -1360,7 +1447,7 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
         const keyOf = (dc: NonNullable<typeof current.detail>) =>
           dc.parentKeyField === "id"
             ? String(saved.id ?? editId ?? "")
-            : (forms[SINGLE_FORM_KEY]?.[dc.parentKeyField] ?? "").trim();
+            : (shared[dc.parentKeyField] ?? "").trim();
         // (SỬA) xoá các dòng cũ bị bỏ trước.
         for (const rid of deletedDetail) await api.deleteRecord(rid);
         for (const s of wizardSteps) {
@@ -1664,6 +1751,35 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
               setField(tgt, val == null ? "" : String(val));
             }
           }
+          // fillDetail: nạp dòng entity con vào lưới chi tiết (vd chọn Đơn mua hàng
+          // → fill chi tiết phiếu nhập từ tr_dondathang_chitiet). Ghi đè dòng hiện có.
+          const fd = lk.fillDetail;
+          const detailStep = fd ? wizardSteps.find((s) => s.detail) : undefined;
+          if (fd && detailStep && v) {
+            void api
+              .getRecords(fd.entity, {
+                filters: { [fd.matchField]: { op: "=", value: v } },
+                limit: 2000,
+              })
+              .then((res) => {
+                const mapped = res.rows.map((rr) => {
+                  const d = rr.data as Record<string, unknown>;
+                  const row: Record<string, string> = interpRowDefaults(
+                    detailStep.detail?.rowDefaults,
+                    pageState.get,
+                  );
+                  for (const [tgt, srcF] of Object.entries(fd.map)) {
+                    const val = d[srcF];
+                    row[tgt] = val == null ? "" : String(val);
+                  }
+                  return row;
+                });
+                if (mapped.length > 0) {
+                  setDetailRows((prev) => ({ ...prev, [detailStep.id]: mapped }));
+                }
+              })
+              .catch(() => {});
+          }
         };
         return (
           <WizardLookupField
@@ -1773,7 +1889,11 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
                 ? "email"
                 : "text"
         }
-        value={form[f.name] ?? ""}
+        value={
+          f.type === "date" || f.type === "datetime"
+            ? String(form[f.name] ?? "").slice(0, 10)
+            : (form[f.name] ?? "")
+        }
         onChange={(e) => setField(f.name, e.target.value)}
         placeholder={f.label}
       />

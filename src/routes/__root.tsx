@@ -86,6 +86,11 @@ function AppShell() {
   const isMobile = useIsMobile();
   const agentOpen = useUI((s) => s.agentOpen);
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  // Đọc query `?from=portal` của route hiện tại — mở chat từ portal thì
+  // render bare (kiểu portal), bất kể role.
+  const fromPortal = useRouterState({
+    select: (s) => (s.location.search as { from?: string })?.from === "portal",
+  });
   const role = useAuth((s) => s.user?.role);
   const navigate = useNavigate();
 
@@ -119,12 +124,13 @@ function AppShell() {
     };
   }, []);
 
-  // Viewer được vào /portal, /view + trang xưởng standalone (bản vẽ, sản
-  // lượng) — route khác redirect sang portal.
+  // Viewer được vào /portal, /view, /chat + trang xưởng standalone (bản vẽ,
+  // sản lượng) — route khác redirect sang portal.
   useEffect(() => {
     const allowed =
       pathname.startsWith("/portal") ||
       pathname.startsWith("/view") ||
+      pathname === "/chat" ||
       STANDALONE_PREFIXES.some((p) => pathname.startsWith(p));
     if (role === "viewer" && !allowed) {
       void navigate({ to: "/portal", search: { page: undefined } });
@@ -133,10 +139,15 @@ function AppShell() {
 
   // /view/*, /portal + trang xưởng standalone tự render full-screen layout —
   // bỏ qua AppShell chrome (Topbar/Sidebar) cho gọn trên mobile.
+  // /chat bỏ chrome admin khi: role viewer HOẶC mở từ portal (?from=portal) —
+  // ChatPage tự quản lý layout + nút "Quay về Portal". Admin mở /chat từ
+  // Topbar app chính (không from=portal) → giữ full chrome như cũ.
+  const isStandaloneChat = pathname === "/chat" && (role === "viewer" || fromPortal);
   if (
     pathname.startsWith("/view/") ||
     pathname.startsWith("/portal") ||
-    STANDALONE_PREFIXES.some((p) => pathname.startsWith(p))
+    STANDALONE_PREFIXES.some((p) => pathname.startsWith(p)) ||
+    isStandaloneChat
   )
     // Standalone/portal/view bỏ AppShell chrome — NHƯNG vẫn cần DialogHost +
     // ToastHost, nếu không confirm/alert/toast (vd nút Thêm/Sửa/Xóa) không có

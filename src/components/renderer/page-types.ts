@@ -41,7 +41,10 @@ export type LoadFilterOp =
   | "contains"
   | "in"
   | "is-not-true"
-  | "is-true";
+  | "is-true"
+  | "is-empty"
+  | "is-not-empty"
+  | "between";
 /** Điều kiện lọc server-side: map field → {op, value} (khớp QueryParams.filters). */
 export type LoadFilters = Record<string, { op: LoadFilterOp; value: unknown }>;
 
@@ -113,6 +116,30 @@ export type RowDetailCfg = {
   columnLabels?: Record<string, string>;
 };
 
+/** Sắc thái màu cho cột trạng thái (map sang token semantic). */
+export type DerivedColumnTone = "success" | "danger" | "warning" | "muted" | "accent";
+
+/** Cột TÍNH read-only (không phải field entity). 2 kind:
+ *  - "percentDelta": % chênh lệch (row[to] − row[from]) / row[from] × 100.
+ *  - "status": gán nhãn trạng thái theo bộ luật, luật đầu khớp thắng; không khớp
+ *    luật nào → fallback. Mỗi luật so 1 field theo op (is-empty/is-not-empty/
+ *    is-true/is-not-true/=/!=). */
+export type DerivedColumn =
+  | { field: string; label?: string; kind: "percentDelta"; from: string; to: string }
+  | {
+      field: string;
+      label?: string;
+      kind: "status";
+      rules: Array<{
+        field: string;
+        op: "is-empty" | "is-not-empty" | "is-true" | "is-not-true" | "=" | "!=";
+        value?: unknown;
+        label: string;
+        tone?: DerivedColumnTone;
+      }>;
+      fallback?: { label: string; tone?: DerivedColumnTone };
+    };
+
 export type EmbeddedFilter = {
   label?: string;
   stateKey: string;
@@ -183,8 +210,14 @@ export type SplitGridCell = SplitPanelCfg & {
 
 export type FItemCfg = {
   id: string;
-  kind: "combobox" | "tagbox" | "search";
+  kind: "combobox" | "tagbox" | "search" | "daterange";
   label?: string;
+  /** Hiện nhãn (label) BÊN NGOÀI control (bên trái) thay vì chỉ làm placeholder/
+   *  empty-option bên trong. Mặc định false (giữ hành vi cũ). */
+  showLabel?: boolean;
+  /** Combobox: BỎ mục "tất cả" (empty option) → bắt buộc chọn 1 trong các giá trị
+   *  (kết hợp defaultValue để luôn có giá trị). Mặc định false. */
+  noEmpty?: boolean;
   entity?: string;
   dataSourceId?: string;
   field?: string;
@@ -201,6 +234,9 @@ export type FItemCfg = {
   /** Giá trị chọn sẵn khi mở trang (seed vào pageState 1 lần nếu state chưa có).
    *  string cho single, string[] cho multiSelect. */
   defaultValue?: string | string[];
+  /** daterange: khoảng ngày mặc định seed khi mở trang (nếu state chưa có).
+   *  "currentMonth" = đầu tháng → cuối tháng hiện tại. */
+  defaultRange?: "currentMonth";
   width?: number;
   /** Lọc options theo field này khi filterFromState có giá trị (cascade 1 cha — legacy). */
   filterField?: string;

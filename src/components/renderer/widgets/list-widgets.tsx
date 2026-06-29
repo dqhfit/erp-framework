@@ -34,6 +34,7 @@ import {
 import type {
   ActionBarItem,
   AggSpec,
+  DerivedColumn,
   LoadFilters,
   RefFillResult,
   RowDetailCfg,
@@ -51,6 +52,79 @@ import { cn } from "@/lib/utils";
 import { useRbac } from "@/stores/rbac";
 import { useUserObjects } from "@/stores/userObjects";
 import type { ActionConfig, BindingValue, FilterNode } from "@/types/page";
+
+/* ── Cột TÍNH "status": đánh giá bộ luật → nhãn + sắc thái ─────────────────
+   Luật đầu khớp thắng; không khớp → fallback (hoặc "—"). So 1 field theo op. */
+function isEmptyVal(v: unknown): boolean {
+  return v == null || v === "" || (typeof v === "string" && v.trim() === "");
+}
+function isTrueVal(v: unknown): boolean {
+  return v === true || v === 1 || v === "true" || v === "1";
+}
+function evalStatusRule(
+  op: "is-empty" | "is-not-empty" | "is-true" | "is-not-true" | "=" | "!=",
+  left: unknown,
+  value: unknown,
+): boolean {
+  switch (op) {
+    case "is-empty":
+      return isEmptyVal(left);
+    case "is-not-empty":
+      return !isEmptyVal(left);
+    case "is-true":
+      return isTrueVal(left);
+    case "is-not-true":
+      return !isTrueVal(left);
+    case "=":
+      return String(left ?? "") === String(value ?? "");
+    case "!=":
+      return String(left ?? "") !== String(value ?? "");
+    default:
+      return false;
+  }
+}
+const STATUS_TONE_CLASS: Record<string, string> = {
+  success: "bg-success/15 text-success",
+  danger: "bg-danger/15 text-danger",
+  warning: "bg-warning/15 text-warning",
+  accent: "bg-accent/15 text-accent",
+  muted: "bg-hover text-muted",
+};
+function StatusBadge({ label, tone }: { label: string; tone?: string }) {
+  const cls = STATUS_TONE_CLASS[tone ?? "muted"] ?? STATUS_TONE_CLASS.muted;
+  return (
+    <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${cls}`}>
+      {label}
+    </span>
+  );
+}
+/** Render 1 ô cột derived (percentDelta | status). Dùng chung cả nhánh editable
+ *  lẫn read-only để khỏi nuôi 2 bản logic. */
+function renderDerivedCell(dc: DerivedColumn, row: Record<string, unknown>) {
+  if (dc.kind === "status") {
+    for (const rule of dc.rules) {
+      if (evalStatusRule(rule.op, row[rule.field], rule.value)) {
+        return <StatusBadge label={rule.label} tone={rule.tone} />;
+      }
+    }
+    if (dc.fallback) return <StatusBadge label={dc.fallback.label} tone={dc.fallback.tone} />;
+    return <span className="text-muted">—</span>;
+  }
+  const from = Number(row[dc.from]);
+  const to = Number(row[dc.to]);
+  if (!Number.isFinite(from) || from === 0 || !Number.isFinite(to)) {
+    return <span className="block text-right text-muted">—</span>;
+  }
+  const pct = ((to - from) / from) * 100;
+  const cls = pct > 0 ? "text-danger" : pct < 0 ? "text-success" : "text-muted";
+  const sign = pct > 0 ? "+" : "";
+  return (
+    <span className={`block text-right tabular-nums ${cls}`}>
+      {sign}
+      {pct.toLocaleString("vi-VN", { maximumFractionDigits: 1 })}%
+    </span>
+  );
+}
 
 /* ── Date/DateTime trong ô grid ──────────────────────────────────────────
    Giá trị lưu = chuỗi ISO (datetime, vd "2020-03-10T12:41:21Z") hoặc YYYY-MM-DD
@@ -393,6 +467,9 @@ interface EditableListWidgetProps {
   /** Cột tính client-side: field = tích các factor (vd thành tiền = sl_can × dongia).
    *  Khi sửa 1 factor → cập nhật overlay NGAY (không cần refetch). */
   computedColumns?: Array<{ field: string; product: string[] }>;
+  /** Cột TÍNH read-only (không phải field entity). kind "percentDelta" (% chênh
+   *  lệch) hoặc "status" (nhãn trạng thái theo luật). Xem DerivedColumn. */
+  derivedColumns?: DerivedColumn[];
   onSave: (rowId: unknown, changes: Record<string, unknown>) => Promise<void>;
   /** Bulk + dry-run validate (entity-backed) — ListWidget truyền khi không phải
    *  datasource. Có thì "Lưu tất cả" dùng validate→confirm→bulk thay tuần tự. */
@@ -490,6 +567,7 @@ function EditableListWidget({
   editableFields,
   highlightEmptyFields,
   computedColumns,
+  derivedColumns,
   onSave,
   batchOps,
   onRowClick,
@@ -778,7 +856,19 @@ function EditableListWidget({
         );
       },
     }));
-    // Cột ✕ RIÊNG để bỏ dòng MỚI nháp — CHỈ khi lưới KHÔNG có cột hành động.
+    // Cột TÍNH read-only (derivedColumns): % chênh lệch 2 cột số HOẶC nhãn trạng
+    // thái theo luật — xem renderDerivedCell.
+    for (const dc of derivedColumns ?? []) {
+      cols.push({
+        id: dc.field,
+        header: columnLabels?.[dc.field] ?? dc.label ?? dc.field,
+        enableGrouping: false,
+        enableSorting: false,
+        meta: { techName: dc.field, noSummary: true },
+        cell: (ctx) => renderDerivedCell(dc, ctx.row.original as Record<string, unknown>),
+      });
+    }
+    // Cột ✕ RIÊNG để bỏ dòng MỚI nháp — CHỉ khi lưới KHÔNG có cột hành động.
     // Có cột hành động (__rowacts__) → ✕ nằm TRONG cột đó (cell __isNew bên dưới).
     const hasActionCol = !!(rowActions && rowActions.length > 0);
     if (newRows.length > 0 && !hasActionCol) {
@@ -884,6 +974,7 @@ function EditableListWidget({
     title,
     rowActionsHidden,
     rowActionsStyle,
+    derivedColumns,
   ]);
 
   const saveAll = async () => {
@@ -1575,6 +1666,7 @@ export function ListWidget({
   editableFields,
   highlightEmptyFields,
   computedColumns,
+  derivedColumns,
   batchEdit,
   excelMode,
   rowLimit,
@@ -1650,6 +1742,8 @@ export function ListWidget({
   /** Cột tính client-side (vd thành tiền = sl_can × dongia) — cập nhật tức thì
    *  khi sửa factor, không cần refetchOnSave. */
   computedColumns?: Array<{ field: string; product: string[] }>;
+  /** Cột TÍNH read-only (% chênh lệch / nhãn trạng thái) — pass-through xuống lưới. */
+  derivedColumns?: DerivedColumn[];
   /** Tích lũy thay đổi, hiện nút "Lưu tất cả" thay vì auto-save. */
   batchEdit?: boolean;
   /** Chế độ bảng tính kiểu Excel với hỗ trợ công thức. */
@@ -2093,6 +2187,17 @@ export function ListWidget({
     },
   }));
 
+  // Cột TÍNH read-only (derivedColumns): % chênh lệch 2 cột số HOẶC nhãn trạng
+  // thái theo luật — xem renderDerivedCell.
+  const derivedFieldColumns = (derivedColumns ?? []).map((dc) => ({
+    accessorKey: dc.field,
+    header: columnLabels?.[dc.field] ?? dc.label ?? dc.field,
+    enableSorting: false,
+    meta: { techName: dc.field, noSummary: true as const },
+    cell: (c: { row: { original: Record<string, unknown> } }) =>
+      renderDerivedCell(dc, c.row.original),
+  }));
+
   const checkboxCol =
     multiSelect && selectionStateKey
       ? [
@@ -2257,6 +2362,7 @@ export function ListWidget({
     ...actionCol,
     ...checkboxCol,
     ...fieldColumns,
+    ...derivedFieldColumns,
     ...systemHiddenCols,
   ];
 
@@ -2337,6 +2443,7 @@ export function ListWidget({
         editableFields={editableFields}
         highlightEmptyFields={highlightEmptyFields}
         computedColumns={computedColumns}
+        derivedColumns={derivedColumns}
         onSave={saveRecord}
         batchOps={editBatchOps}
         onRowClick={onRowClick}

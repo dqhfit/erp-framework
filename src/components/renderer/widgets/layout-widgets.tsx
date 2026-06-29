@@ -31,6 +31,7 @@ import { DetailWidget, FormWidget } from "@/components/renderer/widgets/FormDeta
 import { ListWidget, ServerPagedListWidget } from "@/components/renderer/widgets/list-widgets";
 import { ChartWidget, KanbanWidget } from "@/components/renderer/widgets/viz-widgets";
 import { useT } from "@/hooks/useT";
+import type { PageStateLike } from "@/lib/run-action";
 import { cn } from "@/lib/utils";
 import type { ActionConfig } from "@/types/page";
 
@@ -758,7 +759,7 @@ function ActionOverflowBar({
   items: ActionBarItem[];
   compact: boolean;
   justify?: string;
-  pageState: ReturnType<typeof usePageState>;
+  pageState: PageStateLike;
   wrapClass?: string;
 }) {
   const outerRef = useRef<HTMLDivElement>(null);
@@ -912,7 +913,7 @@ function EmbeddedActionStrip({
   pageState,
 }: {
   items: ActionBarItem[];
-  pageState: ReturnType<typeof usePageState>;
+  pageState: PageStateLike;
 }) {
   return (
     <ActionOverflowBar
@@ -928,7 +929,7 @@ function EmbeddedActionStrip({
 export function withEmbeddedActions(
   content: ReactElement,
   items: ActionBarItem[],
-  pageState: ReturnType<typeof usePageState>,
+  pageState: PageStateLike,
 ): ReactElement {
   if (items.length === 0) return content;
   return (
@@ -945,7 +946,7 @@ export function ActionBarWidget({
   pageState,
 }: {
   cfg: Record<string, unknown>;
-  pageState: ReturnType<typeof usePageState>;
+  pageState: PageStateLike;
 }) {
   const t = useT();
   const items = (cfg.items ?? []) as ActionBarItem[];
