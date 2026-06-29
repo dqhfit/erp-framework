@@ -58,6 +58,8 @@ export interface ActionContext {
   /** Mở form Tạo mới master-detail của list (createForm). Do list widget cấp khi
    *  render embeddedActions → cho nút "Tạo đơn hàng" nằm trong thanh hành động. */
   openCreateForm?: () => void;
+  /** Mở form Sửa master-detail của list (editForm) theo record ID. */
+  openEditForm?: (id: string, readOnly?: boolean) => void;
   /** Xuất toàn bộ record của entity ra file (xlsx/csv). */
   exportRecords?: (entityId: string, format: "xlsx" | "csv", title?: string) => Promise<void>;
   /** In danh sách record của entity (mở cửa sổ in). */
@@ -293,6 +295,17 @@ export async function runActionSteps(
     }
     if (step.kind === "open-create-form") {
       ctx.openCreateForm?.();
+      continue;
+    }
+    if (step.kind === "open-edit-form") {
+      const rid = resolveBinding(step.recordIdBinding, rs.get);
+      if (rid == null || rid === "") {
+        await ctx.dialog.alert("Vui lòng chọn một dòng trong danh sách trước.", {
+          title: "Chưa chọn dòng",
+        });
+        return { completed: false, procedureRuns };
+      }
+      ctx.openEditForm?.(String(rid), step.readOnly);
       continue;
     }
     if (step.kind === "open-wizard") {

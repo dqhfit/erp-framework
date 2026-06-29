@@ -169,7 +169,8 @@ export function MasterDetailEditModal({
         for (const f of masterFields) mInit[f.name] = toStr(mdata[f.name], f.type);
         if (alive) setMaster(mInit);
 
-        const keyVal = String(mdata[keyField] ?? "");
+        // f_id (logical "id") NULL ở record mới → dùng PK UUID (rec.id) làm fallback.
+        const keyVal = String(mdata[keyField] ?? "").trim() || String(rec?.id ?? "");
         if (keyVal) {
           const res = await api
             .getRecords(config.detail.entity, {
@@ -376,7 +377,8 @@ export function MasterDetailEditModal({
         throw new Error(`Dòng chi tiết ${invalidRow + 1} chưa nhập đủ thông tin bắt buộc.`);
       }
       await api.updateRecord(recordId, buildData(master, masterFields));
-      const keyVal = (master[config.detail.parentKeyField] ?? "").trim();
+      // parentKeyField thường là "id" (không có trong form state) → dùng recordId.
+      const keyVal = (master[config.detail.parentKeyField] ?? "").trim() || recordId;
       const computed = config.detail.computed;
       // Xóa các dòng bị bỏ trước.
       for (const rid of deleted) await api.deleteRecord(rid);

@@ -1691,6 +1691,11 @@ function bindRowIdToAction(action: ActionConfig, row: Record<string, unknown>): 
         }
         return { ...s, value: subSentinel(val) as any };
       }
+      if (s.kind === "open-edit-form") {
+        return keepRid(s.recordIdBinding)
+          ? s
+          : { ...s, recordIdBinding: { source: "const" as const, value: rowId } };
+      }
       return s.kind === "delete-record" || s.kind === "open-wizard"
         ? { ...s, recordIdBinding: { source: "const" as const, value: rowId } }
         : s;
@@ -1927,17 +1932,26 @@ export function ListWidget({
         icon: "Eye",
         iconOnly: true,
         variant: "default",
-        steps: [
-          {
-            id: "v",
-            kind: "open-popup",
-            title: "Xem chi tiết",
-            entity: entityId,
-            fields,
-            popupMode: "detail",
-            saveOutputTo: "_viewed",
-          },
-        ],
+        steps: editForm
+          ? [
+              {
+                id: "v",
+                kind: "open-edit-form",
+                readOnly: true,
+                recordIdBinding: { source: "const" as const, value: null },
+              },
+            ]
+          : [
+              {
+                id: "v",
+                kind: "open-popup",
+                title: "Xem chi tiết",
+                entity: entityId,
+                fields,
+                popupMode: "detail",
+                saveOutputTo: "_viewed",
+              },
+            ],
       },
       {
         id: "__ra_edit",
@@ -1945,19 +1959,28 @@ export function ListWidget({
         icon: "Edit",
         iconOnly: true,
         variant: "default",
-        steps: [
-          {
-            id: "e",
-            kind: "open-popup",
-            title: "Sửa",
-            entity: entityId,
-            fields: editFields ?? fields,
-            popupMode: "form",
-            persist: true,
-            invalidateEntities: [entityId],
-            saveOutputTo: "_edited",
-          },
-        ],
+        steps: editForm
+          ? [
+              {
+                id: "e",
+                kind: "open-edit-form",
+                readOnly: false,
+                recordIdBinding: { source: "const" as const, value: null },
+              },
+            ]
+          : [
+              {
+                id: "e",
+                kind: "open-popup",
+                title: "Sửa",
+                entity: entityId,
+                fields: editFields ?? fields,
+                popupMode: "form",
+                persist: true,
+                invalidateEntities: [entityId],
+                saveOutputTo: "_edited",
+              },
+            ],
       },
       {
         id: "__ra_del",
@@ -1994,7 +2017,7 @@ export function ListWidget({
         return true;
       }),
     ];
-  }, [rowActions, rowActionsBuiltin, entityId, fields, editFields]);
+  }, [rowActions, rowActionsBuiltin, entityId, fields, editFields, editForm]);
 
   // Field cố định cho dòng TẠO MỚI (dán thêm hàng loạt): suy từ loadFilters op
   // "=" (resolve fromState qua pageState) — vd masp = sản phẩm đang chọn ở bộ
@@ -2026,6 +2049,7 @@ export function ListWidget({
   // Mặc định INLINE; chỉ "popover" khi đặt rõ.
   // useMemo phải khai báo TRƯỚC early return để tuân thủ rules of hooks.
   const rowActsInline = rowActionsStyle !== "popover";
+  // biome-ignore lint/correctness/useExhaustiveDependencies: setEditModal là setter ổn định, không cần deps
   const rowActionCol = useMemo(
     () =>
       effectiveRowActions.length > 0
@@ -2059,6 +2083,11 @@ export function ListWidget({
                           config={a as ActionBarItem}
                           pageState={pageStateRef.current}
                           inline
+                          onOpenEditForm={
+                            editForm
+                              ? (id, ro) => setEditModal({ id, readOnly: ro ?? false })
+                              : undefined
+                          }
                         />
                       ))}
                     </div>
@@ -2075,13 +2104,16 @@ export function ListWidget({
                     }))}
                     title={_rafTitle.current}
                     hidden={rowActionsHidden}
+                    onOpenEditForm={
+                      editForm ? (id, ro) => setEditModal({ id, readOnly: ro ?? false }) : undefined
+                    }
                   />
                 );
               },
             },
           ]
         : [],
-    [effectiveRowActions, rowActsInline, rowActionsHidden],
+    [effectiveRowActions, rowActsInline, rowActionsHidden, editForm, setEditModal],
   );
 
   if (!entityId && !dataSourceId) {
@@ -2319,7 +2351,8 @@ export function ListWidget({
                   className="p-1 rounded hover:bg-hover text-muted hover:text-accent"
                   onClick={(e) => {
                     e.stopPropagation();
-                    if (editForm && rid != null) setEditModal({ id: String(rid), readOnly: true });
+                    if (editForm && !editForm.embedded && rid != null)
+                      setEditModal({ id: String(rid), readOnly: true });
                     else setDetailModal({ value: pv, editable: false });
                   }}
                 >
@@ -2333,7 +2366,8 @@ export function ListWidget({
                   className="p-1 rounded hover:bg-hover text-muted hover:text-accent"
                   onClick={(e) => {
                     e.stopPropagation();
-                    if (editForm && rid != null) setEditModal({ id: String(rid), readOnly: false });
+                    if (editForm && !editForm.embedded && rid != null)
+                      setEditModal({ id: String(rid), readOnly: false });
                     else setDetailModal({ value: pv, editable: true });
                   }}
                 >
@@ -2347,9 +2381,9 @@ export function ListWidget({
     : [];
 
   // Cột nút "Sửa đơn" độc lập — CHỈ khi có editForm mà KHÔNG có rowDetail
-  // (có rowDetail thì nút Sửa trong cột Hành động đã mở dialog edit này).
+  // và KHÔNG có embedded (embedded → user dùng embeddedActions thay thế).
   const editFormCol =
-    editForm && entityId && !rowDetail
+    editForm && entityId && !rowDetail && !editForm.embedded
       ? [
           {
             id: "__editform__",
@@ -2567,6 +2601,11 @@ export function ListWidget({
               pageState={pageState}
               inline
               onOpenCreateForm={createForm ? () => setCreateOpen(true) : undefined}
+              onOpenEditForm={
+                editForm
+                  ? (id, readOnly) => setEditModal({ id, readOnly: readOnly ?? false })
+                  : undefined
+              }
             />
           ))}
           {_embeddedFilters?.map((ef) => {

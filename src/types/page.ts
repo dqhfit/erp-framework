@@ -452,6 +452,15 @@ export interface ActionStepOpenCreateForm {
   kind: "open-create-form";
 }
 
+export interface ActionStepOpenEditForm {
+  id: string;
+  kind: "open-edit-form";
+  /** Lấy record ID từ state (vd {"key":"sel","source":"state"}). */
+  recordIdBinding: BindingValue;
+  /** true → mở ở chế độ chỉ-đọc. */
+  readOnly?: boolean;
+}
+
 export interface ActionStepOpenWizard {
   id: string;
   kind: "open-wizard";
@@ -512,6 +521,7 @@ export type ActionStep =
   | ActionStepPrintRecords
   | ActionStepOpenPopup
   | ActionStepOpenCreateForm
+  | ActionStepOpenEditForm
   | ActionStepOpenWizard
   | ActionStepUploadFile;
 

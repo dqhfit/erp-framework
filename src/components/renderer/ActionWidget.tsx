@@ -102,6 +102,8 @@ interface Props {
   /** Mở form Tạo mới master-detail của list (createForm) — list widget cấp khi
    *  render embeddedActions, cho step "open-create-form". */
   onOpenCreateForm?: () => void;
+  /** Mở form Sửa master-detail của list (editForm) — cho step "open-edit-form". */
+  onOpenEditForm?: (id: string, readOnly?: boolean) => void;
   /** Gọi sau khi chuỗi action chạy xong, dùng để refresh lookup trong wizard cha. */
   onComplete?: (output?: any) => void;
 }
@@ -113,6 +115,7 @@ export function ActionWidget({
   compact = false,
   menuItem = false,
   onOpenCreateForm,
+  onOpenEditForm,
   onComplete,
 }: Props) {
   const user = useAuth((s) => s.user);
@@ -251,6 +254,7 @@ export function ActionWidget({
         openWizard: (s: ActionStepOpenWizard, getter: (key: string) => unknown) =>
           openWizard(s, getter),
         openCreateForm: onOpenCreateForm,
+        openEditForm: onOpenEditForm,
         exportRecords: async (entityId: string, format: "xlsx" | "csv", title?: string) => {
           const r = await recordsApi.exportRecords(entityId, "csv");
           const name = title || "export";

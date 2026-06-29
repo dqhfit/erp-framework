@@ -362,9 +362,19 @@ function RenderSubWidget({
     );
   }
   if (kind === "detail")
-    return withEmbeddedActions(<DetailWidget cfg={cfg} />, embeddedActions, pageState);
+    return withEmbeddedActions(
+      // compId = stateKey (comp.id:cell.id) để DetailWidget mirror field bản ghi ra
+      // pageState (`detail:<compId>:<field>`); widget khác cùng trang lọc theo đó.
+      <DetailWidget cfg={cfg} compId={stateKey} />,
+      embeddedActions,
+      pageState,
+    );
   if (kind === "form")
-    return withEmbeddedActions(<FormWidget cfg={cfg} />, embeddedActions, pageState);
+    return withEmbeddedActions(
+      <FormWidget cfg={cfg} compId={stateKey} />,
+      embeddedActions,
+      pageState,
+    );
   if (kind === "chart") return <ChartWidget cfg={cfg} />;
   if (kind === "kanban") return <KanbanWidget cfg={cfg} />;
   return null;

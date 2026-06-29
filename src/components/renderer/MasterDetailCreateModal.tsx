@@ -404,8 +404,12 @@ export function MasterDetailCreateModal({ config, onClose, onCreated }: Props) {
         setTab("detail");
         throw new Error(`Dòng chi tiết ${invalidRow + 1} chưa nhập đủ thông tin bắt buộc.`);
       }
-      await api.createRecord(config.master.entity, buildData(master, masterFields));
-      const keyVal = (master[config.detail.parentKeyField] ?? "").trim();
+      const masterRecord = await api.createRecord(
+        config.master.entity,
+        buildData(master, masterFields),
+      );
+      // parentKeyField thường là "id" (không có trong form) → lấy từ record trả về.
+      const keyVal = (master[config.detail.parentKeyField] ?? "").trim() || masterRecord.id;
       const computed = config.detail.computed;
       for (const [rowIndex, r] of validRows.entries()) {
         const data = buildData(r, detailFields);

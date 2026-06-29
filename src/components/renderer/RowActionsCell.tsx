@@ -38,6 +38,8 @@ interface Props {
   /** Danh sách KEY nút bị ẩn (cài đặt list) — entity theo label (Xem/Sửa/Xoá +
    *  label cấu hình), quick-action theo key (vd "copy-json"). */
   hidden?: string[];
+  /** Mở MasterDetailEditModal khi step "open-edit-form" — cấp bởi list widget. */
+  onOpenEditForm?: (id: string, readOnly?: boolean) => void;
 }
 
 /** Key built-in entity (= label) — để cài đặt bật/tắt nút. */
@@ -124,7 +126,16 @@ export const ROW_ACTION_OPTIONS: ReadonlyArray<{ key: string; label: string }> =
   ...QUICK_META.map((q) => ({ key: q.key, label: q.label })),
 ];
 
-export function RowActionsCell({ actions, pageState, row, cols, idField, title, hidden }: Props) {
+export function RowActionsCell({
+  actions,
+  pageState,
+  row,
+  cols,
+  idField,
+  title,
+  hidden,
+  onOpenEditForm,
+}: Props) {
   const [open, setOpen] = useState(false);
   const [rect, setRect] = useState<DOMRect | null>(null);
   const btnRef = useRef<HTMLButtonElement>(null);
@@ -217,7 +228,13 @@ export function RowActionsCell({ actions, pageState, row, cols, idField, title, 
               // dàn đều — vài nút sẽ không bị kéo cách xa giữa các cột.
               <div className="flex flex-wrap items-center gap-1 pb-1 mb-1 border-b border-border">
                 {shownActions.map((a) => (
-                  <ActionWidget key={a.label} config={a} pageState={pageState} inline />
+                  <ActionWidget
+                    key={a.label}
+                    config={a}
+                    pageState={pageState}
+                    inline
+                    onOpenEditForm={onOpenEditForm}
+                  />
                 ))}
               </div>
             )}
