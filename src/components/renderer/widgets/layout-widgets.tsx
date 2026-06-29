@@ -26,6 +26,7 @@ import type {
   RowDetailCfg,
   SplitGridCell,
   SplitPanelCfg,
+  VisibleRule,
 } from "@/components/renderer/page-types";
 import { DetailWidget, FormWidget } from "@/components/renderer/widgets/FormDetailWidget";
 import { ListWidget, ServerPagedListWidget } from "@/components/renderer/widgets/list-widgets";
@@ -161,6 +162,8 @@ function buildSubCfg(
     columnGroups: panel.columnGroups,
     serverPaging: panel.serverPaging,
     editable: panel.editable,
+    editableFromState: (panel as Record<string, unknown>).editableFromState,
+    visibleWhen: (panel as Record<string, unknown>).visibleWhen,
     batchEdit: panel.batchEdit,
     excelMode: panel.excelMode,
     multiSelect: panel.multiSelect,
@@ -169,6 +172,9 @@ function buildSubCfg(
     rowLimit: panel.rowLimit,
     pageSize: panel.pageSize,
     defaultSort: panel.defaultSort,
+    fieldOverrides: (panel as Record<string, unknown>).fieldOverrides,
+    fieldLookups: (panel as Record<string, unknown>).fieldLookups,
+    linkedToState: (panel as Record<string, unknown>).linkedToState,
     embeddedActions: panel.embeddedActions,
     rowActionsBuiltin: panel.rowActionsBuiltin,
     rowActionsHidden: panel.rowActionsHidden,
@@ -227,6 +233,28 @@ function buildSubCfg(
   };
 }
 
+function isVisibleByRule(rule: VisibleRule | undefined, value: unknown): boolean {
+  if (!rule) return true;
+  const sv = value == null ? "" : String(value);
+  const arr = Array.isArray(rule.value) ? rule.value.map(String) : [];
+  switch (rule.op) {
+    case "eq":
+      return sv === String(rule.value ?? "");
+    case "neq":
+      return sv !== String(rule.value ?? "");
+    case "in":
+      return arr.includes(sv);
+    case "nin":
+      return !arr.includes(sv);
+    case "set":
+      return sv !== "";
+    case "notset":
+      return sv === "";
+    default:
+      return true;
+  }
+}
+
 function RenderSubWidget({
   kind,
   cfg,
@@ -237,6 +265,12 @@ function RenderSubWidget({
   stateKey: string;
 }) {
   const pageState = usePageState();
+  const visibleWhen = cfg.visibleWhen as VisibleRule | undefined;
+  if (
+    !isVisibleByRule(visibleWhen, visibleWhen ? pageState.get(visibleWhen.stateKey) : undefined)
+  ) {
+    return null;
+  }
   const embeddedActions = (cfg.embeddedActions ?? []) as ActionBarItem[];
 
   // Split widget lồng nhau bên trong tab panel — dùng stateKey làm id để namespace state

@@ -74,12 +74,21 @@ export function DetailWidget({ cfg, compId }: { cfg: Record<string, unknown>; co
   const entityId = cfg.entity as string | undefined;
   const recordIdFromState = cfg.recordIdFromState as string | undefined;
   const title = cfg.title as string | undefined;
-  const editable = cfg.editable === true;
+  const baseEditable = cfg.editable === true;
+  const editableFromState = cfg.editableFromState as string | undefined;
   const forwardRefs =
     (cfg.forwardRefs as Array<{ field: string; refEntityId: string }> | undefined) ?? [];
   const ent = useEntity(entityId);
   const { rows, fields: wdFields, isDataSource, update: dataUpdate } = useWidgetData(cfg);
   const pageState = usePageState();
+  const editableMode = editableFromState ? pageState.get(editableFromState) : undefined;
+  const editable =
+    baseEditable &&
+    (!editableFromState ||
+      editableMode === true ||
+      editableMode === "true" ||
+      editableMode === "edit" ||
+      editableMode === "editable");
   const ctxNavigate = useNavigateWithContext();
   const handleCancel = () => {
     if (recordIdFromState) {

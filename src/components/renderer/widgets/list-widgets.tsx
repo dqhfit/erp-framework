@@ -38,6 +38,7 @@ import type {
   LoadFilters,
   RefFillResult,
   RowDetailCfg,
+  VisibleRule,
 } from "@/components/renderer/page-types";
 import { RowActionsCell } from "@/components/renderer/RowActionsCell";
 import { Button, Modal, SearchableSelect } from "@/components/ui";
@@ -52,6 +53,29 @@ import { cn } from "@/lib/utils";
 import { useRbac } from "@/stores/rbac";
 import { useUserObjects } from "@/stores/userObjects";
 import type { ActionConfig, BindingValue, FilterNode } from "@/types/page";
+
+function actionVisibleByState(action: ActionBarItem, pageState: ReturnType<typeof usePageState>) {
+  const rule = (action as ActionBarItem & { visibleWhen?: VisibleRule }).visibleWhen;
+  if (!rule) return true;
+  const sv = pageState.get(rule.stateKey) == null ? "" : String(pageState.get(rule.stateKey));
+  const arr = Array.isArray(rule.value) ? rule.value.map(String) : [];
+  switch (rule.op) {
+    case "eq":
+      return sv === String(rule.value ?? "");
+    case "neq":
+      return sv !== String(rule.value ?? "");
+    case "in":
+      return arr.includes(sv);
+    case "nin":
+      return !arr.includes(sv);
+    case "set":
+      return sv !== "";
+    case "notset":
+      return sv === "";
+    default:
+      return true;
+  }
+}
 
 /* ── Cột TÍNH "status": đánh giá bộ luật → nhãn + sắc thái ─────────────────
    Luật đầu khớp thắng; không khớp → fallback (hoặc "—"). So 1 field theo op. */
@@ -589,6 +613,9 @@ function EditableListWidget({
 }: EditableListWidgetProps) {
   const t = useT();
   const pageState = usePageState();
+  const visibleEmbeddedActions = embeddedActions?.filter((item) =>
+    actionVisibleByState(item, pageState),
+  );
   // Ref để cell renderer trong columns memo đọc pageState MỚI NHẤT mà không
   // đưa pageState vào deps (pageState thay identity mỗi khi có set → re-memo không cần thiết).
   const pageStateRef = useRef(pageState);
@@ -1032,9 +1059,9 @@ function EditableListWidget({
 
   return (
     <div className="h-full flex flex-col">
-      {embeddedActions && embeddedActions.length > 0 && (
+      {visibleEmbeddedActions && visibleEmbeddedActions.length > 0 && (
         <div className="px-2 py-1.5 border-b border-border flex items-center gap-1.5 flex-wrap shrink-0">
-          {embeddedActions.map((item) => (
+          {visibleEmbeddedActions.map((item) => (
             <ActionWidget key={item.id} config={item} pageState={pageState} inline />
           ))}
         </div>
@@ -1816,6 +1843,9 @@ export function ListWidget({
   );
   const [createOpen, setCreateOpen] = useState(false);
   const pageState = usePageState();
+  const visibleEmbeddedActions = embeddedActions?.filter((item) =>
+    actionVisibleByState(item, pageState),
+  );
   const effectiveSearchStateKey = searchStateKey || (stateKey ? `__search:${stateKey}` : undefined);
   // searchFromState (explicit SearchWidget config) → server-side q refetch.
   // effectiveSearchStateKey (DataGrid inline) → client-side globalFilter only,
@@ -2470,7 +2500,7 @@ export function ListWidget({
   return (
     <div className="h-full flex flex-col">
       {(createForm ||
-        (embeddedActions && embeddedActions.length > 0) ||
+        (visibleEmbeddedActions && visibleEmbeddedActions.length > 0) ||
         (_embeddedFilters && _embeddedFilters.length > 0)) && (
         <div className="px-2 py-1.5 border-b border-border flex items-center gap-1.5 flex-wrap shrink-0">
           {createForm && !createForm.embedded && (
@@ -2482,7 +2512,7 @@ export function ListWidget({
               {createForm.title ?? "Thêm mới đơn hàng"}
             </Button>
           )}
-          {embeddedActions?.map((item) => (
+          {visibleEmbeddedActions?.map((item) => (
             <ActionWidget
               key={item.id}
               config={item}
