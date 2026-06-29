@@ -354,6 +354,8 @@ function RenderSubWidget({
         addRowAtEnd={cfg.addRowAtEnd === true}
         addRowPos={cfg.addRowPos === "top" ? "top" : "bottom"}
         defaultSort={cfg.defaultSort as { field: string; dir: "asc" | "desc" } | undefined}
+        embeddedActions={embeddedActions.length > 0 ? embeddedActions : undefined}
+        embeddedFilters={cfg.embeddedFilters as any}
       />,
       [],
       pageState,
