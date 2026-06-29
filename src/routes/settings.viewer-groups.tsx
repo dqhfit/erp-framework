@@ -11,8 +11,10 @@ import { I } from "@/components/Icons";
 import { Button, Input } from "@/components/ui";
 import { dialog } from "@/lib/dialog";
 import type { EntityField } from "@/lib/object-types";
+import { normalizeVi } from "@/lib/text-utils";
 import { cn } from "@/lib/utils";
 import { useUserObjects } from "@/stores/userObjects";
+import type { ActionConfig } from "@/types/page";
 
 const api = createObjectsClient("");
 const companiesApi = createCompaniesClient("");
@@ -38,6 +40,243 @@ const PRESET_COLORS = [
   "#64748b",
   "#a16207",
 ];
+
+/* ── Helpers: phân quyền nút hành động theo nhóm ──────────── */
+
+/** Kiểu mô tả 1 nút action trích từ content trang.
+ *  (compId, arrayKey, index) là đường dẫn ổn định để ghi lại. */
+interface ActionEntry {
+  compId: string;
+  compKind: string;
+  compLabel: string;
+  arrayKey: "rowActions" | "embeddedActions" | "items" | "action";
+  /** −1 cho widget "action" đơn (cả config là 1 action). */
+  index: number;
+  label: string;
+  icon?: string;
+  /** Allowlist designer (cơ chế riêng — đọc để hiện dấu "có giới hạn thiết kế"). */
+  visibleToGroups?: string[];
+  /** Danh sách userId được phép thấy nút (song song visibleToGroups). */
+  visibleToUsers?: string[];
+  /** Denylist ẩn-riêng theo nhóm (model phân quyền nút mặc-định-thấy). */
+  hiddenForGroups?: string[];
+  /** Denylist ẩn-riêng theo tài khoản. */
+  hiddenForUsers?: string[];
+}
+
+/** Chuyển raw content (2 format: array cũ / {meta,components}) thành mảng component. */
+function parsePageComponents(
+  raw: unknown,
+): Array<{ id: string; kind: string; config: Record<string, unknown> }> {
+  if (!raw) return [];
+  if (Array.isArray(raw))
+    return raw as Array<{ id: string; kind: string; config: Record<string, unknown> }>;
+  const obj = raw as {
+    components?: Array<{ id: string; kind: string; config: Record<string, unknown> }>;
+  };
+  return obj.components ?? [];
+}
+
+/** Duyệt mọi component, trả danh sách phẳng tất cả action button. */
+function extractPageActions(rawContent: unknown): ActionEntry[] {
+  const comps = parsePageComponents(rawContent);
+  const result: ActionEntry[] = [];
+
+  for (const comp of comps) {
+    const cfg = comp.config ?? {};
+
+    if (comp.kind === "action") {
+      /* Widget đơn — toàn bộ config là 1 ActionConfig. */
+      result.push({
+        compId: comp.id,
+        compKind: "action",
+        compLabel: "Action",
+        arrayKey: "action",
+        index: -1,
+        label: (cfg.label as string) || "(nút không tên)",
+        icon: cfg.icon as string | undefined,
+        visibleToGroups: cfg.visibleToGroups as string[] | undefined,
+        visibleToUsers: cfg.visibleToUsers as string[] | undefined,
+        hiddenForGroups: cfg.hiddenForGroups as string[] | undefined,
+        hiddenForUsers: cfg.hiddenForUsers as string[] | undefined,
+      });
+    } else if (comp.kind === "actionbar") {
+      /* Thanh hành động — config.items[]. */
+      const barTitle = (cfg.title as string) || "Thanh hành động";
+      const items = (cfg.items ?? []) as Array<ActionConfig & { id?: string }>;
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+        if (!item) continue;
+        result.push({
+          compId: comp.id,
+          compKind: "actionbar",
+          compLabel: barTitle,
+          arrayKey: "items",
+          index: i,
+          label: item.label || "(nút không tên)",
+          icon: item.icon,
+          visibleToGroups: item.visibleToGroups,
+          visibleToUsers: item.visibleToUsers,
+          hiddenForGroups: item.hiddenForGroups,
+          hiddenForUsers: item.hiddenForUsers,
+        });
+      }
+    } else if (comp.kind === "list" || comp.kind === "form" || comp.kind === "detail") {
+      /* List / Form / Detail — rowActions[] (list-only) + embeddedActions[]. */
+      const widgetLabel = (cfg.title as string) || (cfg.entity as string) || comp.kind;
+
+      if (comp.kind === "list") {
+        const rowActions = (cfg.rowActions ?? []) as ActionConfig[];
+        for (let i = 0; i < rowActions.length; i++) {
+          const ra = rowActions[i];
+          if (!ra) continue;
+          result.push({
+            compId: comp.id,
+            compKind: "list",
+            compLabel: `${widgetLabel} — nút dòng`,
+            arrayKey: "rowActions",
+            index: i,
+            label: ra.label || "(nút không tên)",
+            icon: ra.icon,
+            visibleToGroups: ra.visibleToGroups,
+            visibleToUsers: ra.visibleToUsers,
+            hiddenForGroups: ra.hiddenForGroups,
+            hiddenForUsers: ra.hiddenForUsers,
+          });
+        }
+      }
+
+      const embActs = (cfg.embeddedActions ?? []) as Array<ActionConfig & { id?: string }>;
+      for (let i = 0; i < embActs.length; i++) {
+        const ea = embActs[i];
+        if (!ea) continue;
+        result.push({
+          compId: comp.id,
+          compKind: comp.kind,
+          compLabel: `${widgetLabel} — nút nhúng`,
+          arrayKey: "embeddedActions",
+          index: i,
+          label: ea.label || "(nút không tên)",
+          icon: ea.icon,
+          visibleToGroups: ea.visibleToGroups,
+          visibleToUsers: ea.visibleToUsers,
+          hiddenForGroups: ea.hiddenForGroups,
+          hiddenForUsers: ea.hiddenForUsers,
+        });
+      }
+    }
+  }
+
+  return result;
+}
+
+/** Tính danh sách id mới sau khi thêm/bỏ 1 id.
+ *  add=true → thêm id; add=false → bỏ id. Trả null = xoá field (list rỗng). */
+function computeNewGroups(
+  current: string[] | undefined,
+  groupId: string,
+  add: boolean,
+): string[] | null {
+  if (add) {
+    const list = [...(current ?? [])];
+    if (!list.includes(groupId)) list.push(groupId);
+    return list;
+  }
+  const list = (current ?? []).filter((id) => id !== groupId);
+  return list.length > 0 ? list : null;
+}
+
+/** Áp dụng thay đổi DENYLIST hiddenForGroups vào raw content (giữ cấu trúc gốc).
+ *  Model mặc-định-thấy: `turnOn` = checkbox CHECKED = THẤY = KHÔNG ẩn.
+ *  → turnOn → GỠ groupId khỏi hiddenForGroups; !turnOn → THÊM vào hiddenForGroups. */
+function applyGroupToggle(
+  rawContent: unknown,
+  entry: ActionEntry,
+  groupId: string,
+  turnOn: boolean,
+): unknown {
+  /* checked(thấy) → bỏ khỏi denylist (add=false); bỏ tích → thêm vào denylist (add=true). */
+  const addToHidden = !turnOn;
+  const comps = parsePageComponents(rawContent).map((comp) => {
+    if (comp.id !== entry.compId) return comp;
+    const cfg = { ...(comp.config ?? {}) };
+
+    if (entry.arrayKey === "action") {
+      /* Widget đơn — sửa trực tiếp trên config. */
+      const newHidden = computeNewGroups(
+        cfg.hiddenForGroups as string[] | undefined,
+        groupId,
+        addToHidden,
+      );
+      const updated = { ...cfg };
+      if (newHidden === null) delete updated.hiddenForGroups;
+      else updated.hiddenForGroups = newHidden;
+      return { ...comp, config: updated };
+    }
+
+    /* Mảng rowActions / embeddedActions / items */
+    const arr = [...((cfg[entry.arrayKey] as unknown[]) ?? [])];
+    const item = arr[entry.index];
+    if (!item) return comp;
+    const currHidden = (item as { hiddenForGroups?: string[] }).hiddenForGroups;
+    const newHidden = computeNewGroups(currHidden, groupId, addToHidden);
+    const updatedItem = { ...(item as object) } as Record<string, unknown>;
+    if (newHidden === null) delete updatedItem.hiddenForGroups;
+    else updatedItem.hiddenForGroups = newHidden;
+    arr[entry.index] = updatedItem;
+    return { ...comp, config: { ...cfg, [entry.arrayKey]: arr } };
+  });
+
+  /* Giữ nguyên shape: array → array; {meta, components} → {meta, components}. */
+  if (Array.isArray(rawContent)) return comps;
+  const obj = rawContent as { meta?: unknown; components?: unknown };
+  return { ...obj, components: comps };
+}
+
+/** Áp dụng thay đổi DENYLIST hiddenForUsers vào raw content (giữ cấu trúc gốc).
+ *  Song song applyGroupToggle nhưng patch hiddenForUsers thay vì hiddenForGroups. */
+function applyUserToggle(
+  rawContent: unknown,
+  entry: ActionEntry,
+  userId: string,
+  turnOn: boolean,
+): unknown {
+  const addToHidden = !turnOn;
+  const comps = parsePageComponents(rawContent).map((comp) => {
+    if (comp.id !== entry.compId) return comp;
+    const cfg = { ...(comp.config ?? {}) };
+
+    if (entry.arrayKey === "action") {
+      /* Widget đơn — sửa trực tiếp trên config. */
+      const newHidden = computeNewGroups(
+        cfg.hiddenForUsers as string[] | undefined,
+        userId,
+        addToHidden,
+      );
+      const updated = { ...cfg };
+      if (newHidden === null) delete updated.hiddenForUsers;
+      else updated.hiddenForUsers = newHidden;
+      return { ...comp, config: updated };
+    }
+
+    /* Mảng rowActions / embeddedActions / items */
+    const arr = [...((cfg[entry.arrayKey] as unknown[]) ?? [])];
+    const item = arr[entry.index];
+    if (!item) return comp;
+    const currHidden = (item as { hiddenForUsers?: string[] }).hiddenForUsers;
+    const newHidden = computeNewGroups(currHidden, userId, addToHidden);
+    const updatedItem = { ...(item as object) } as Record<string, unknown>;
+    if (newHidden === null) delete updatedItem.hiddenForUsers;
+    else updatedItem.hiddenForUsers = newHidden;
+    arr[entry.index] = updatedItem;
+    return { ...comp, config: { ...cfg, [entry.arrayKey]: arr } };
+  });
+
+  /* Giữ nguyên shape: array → array; {meta, components} → {meta, components}. */
+  if (Array.isArray(rawContent)) return comps;
+  const obj = rawContent as { meta?: unknown; components?: unknown };
+  return { ...obj, components: comps };
+}
 
 /* ── ColorPicker ──────────────────────────────────────────── */
 function ColorPicker({ value, onChange }: { value: string; onChange: (c: string) => void }) {
@@ -431,6 +670,320 @@ function FieldPermissionsTab({ groupId }: { groupId: string }) {
   );
 }
 
+/* ── Bảng phân quyền nút đa-trang (dùng chung cho group + user) ─── */
+
+/** Số dòng tối đa render trong bảng (overflow → gợi ý tìm kiếm thu hẹp). */
+const RENDER_CAP = 200;
+
+type ScopeFilter = "assigned" | "unassigned" | "all";
+
+interface PageActionRow {
+  pageId: string;
+  pageName: string;
+  entry: ActionEntry;
+  /** Key duy nhất cho React. */
+  rowKey: string;
+}
+
+/** Gom action của nhiều trang thành danh sách phẳng, sắp theo tên trang → tên nút. */
+function collectMultiPageActions(
+  scopePageIds: string[],
+  pageMap: Map<string, string>,
+  pageContent: Record<string, unknown>,
+): PageActionRow[] {
+  const rows: PageActionRow[] = [];
+  for (const pageId of scopePageIds) {
+    const pageName = pageMap.get(pageId) ?? pageId;
+    const entries = extractPageActions(pageContent[pageId]);
+    for (const entry of entries) {
+      rows.push({
+        pageId,
+        pageName,
+        entry,
+        rowKey: `${pageId}|${entry.compId}|${entry.arrayKey}|${entry.index}`,
+      });
+    }
+  }
+  rows.sort((a, b) => {
+    const pc = a.pageName.localeCompare(b.pageName, "vi");
+    return pc !== 0 ? pc : a.entry.label.localeCompare(b.entry.label, "vi");
+  });
+  return rows;
+}
+
+/** Bảng đa-trang phân quyền nút hành động.
+ *  Dùng chung cho cả group (visibleToGroups) và user (visibleToUsers).
+ *  Scope: "Được phép" / "Chưa được phép" / "Tất cả". Tìm kiếm không dấu. */
+function MultiPageActionButtonTable({
+  subjectKind,
+  assignedPageIds,
+  allPages,
+  getIsOn,
+  onToggle,
+}: {
+  /** "group" hay "user" — ảnh hưởng nhãn footer. */
+  subjectKind: "group" | "user";
+  /** Trang "được phép" của subject — scope mặc định + badge cảnh báo dòng. */
+  assignedPageIds: string[];
+  allPages: { id: string; name: string }[];
+  /** Trả true nếu subject đang được phép thấy nút này. */
+  getIsOn: (entry: ActionEntry) => boolean;
+  /** Áp dụng toggle. Trả true = đã lưu; false = user huỷ dialog. */
+  onToggle: (pageId: string, entry: ActionEntry, turnOn: boolean) => Promise<boolean>;
+}) {
+  const pageContent = useUserObjects((s) => s.pageContent);
+
+  const [scope, setScope] = useState<ScopeFilter>("assigned");
+  const [search, setSearch] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [savedMsg, setSavedMsg] = useState("");
+
+  const assignedSet = useMemo(() => new Set(assignedPageIds), [assignedPageIds]);
+
+  const pageMap = useMemo(() => new Map(allPages.map((p) => [p.id, p.name])), [allPages]);
+
+  /* Danh sách pageId thuộc scope hiện tại. */
+  const scopePageIds = useMemo(() => {
+    if (scope === "assigned") return assignedPageIds;
+    if (scope === "unassigned")
+      return allPages.filter((p) => !assignedSet.has(p.id)).map((p) => p.id);
+    return allPages.map((p) => p.id);
+  }, [scope, assignedPageIds, allPages, assignedSet]);
+
+  /* Gom tất cả row; tái tính khi pageContent thay đổi (store immutable). */
+  const allRows = useMemo(
+    () => collectMultiPageActions(scopePageIds, pageMap, pageContent),
+    [scopePageIds, pageMap, pageContent],
+  );
+
+  /* Lọc theo ô tìm (không dấu, không phân biệt hoa/thường). */
+  const filteredRows = useMemo(() => {
+    const q = normalizeVi(search.trim());
+    if (!q) return allRows;
+    return allRows.filter(
+      (r) => normalizeVi(r.entry.label).includes(q) || normalizeVi(r.pageName).includes(q),
+    );
+  }, [allRows, search]);
+
+  const visibleRows = filteredRows.slice(0, RENDER_CAP);
+  const overflow = filteredRows.length - visibleRows.length;
+
+  const handleToggle = async (row: PageActionRow, turnOn: boolean) => {
+    setSaving(true);
+    try {
+      const saved = await onToggle(row.pageId, row.entry, turnOn);
+      if (saved) {
+        setSavedMsg("Đã lưu");
+        setTimeout(() => setSavedMsg(""), 2000);
+      }
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const unassignedCount = allPages.length - assignedPageIds.length;
+
+  return (
+    <div className="flex-1 overflow-hidden flex flex-col">
+      {/* Toolbar: scope chips + ô tìm */}
+      <div className="px-3 pt-3 pb-2 border-b border-border shrink-0 space-y-2">
+        <div className="flex items-center gap-1.5 flex-wrap">
+          {(
+            [
+              { key: "assigned", label: `Được phép (${assignedPageIds.length} trang)` },
+              { key: "unassigned", label: `Chưa được phép (${unassignedCount} trang)` },
+              { key: "all", label: `Tất cả (${allPages.length} trang)` },
+            ] as const
+          ).map(({ key, label }) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => setScope(key)}
+              className={cn(
+                "px-2.5 py-0.5 rounded text-[11px] transition-colors",
+                scope === key ? "bg-accent text-white" : "bg-bg-soft hover:bg-hover text-muted",
+              )}
+            >
+              {label}
+            </button>
+          ))}
+          {savedMsg && (
+            <span className="text-[11px] text-success ml-auto shrink-0">{savedMsg}</span>
+          )}
+        </div>
+        <Input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Tìm tên nút hoặc tên trang…"
+          className="text-xs"
+        />
+      </div>
+
+      {/* Bảng nút — cột: Nút | Trang | Hạn chế | Thấy */}
+      <div className="flex-1 overflow-y-auto">
+        {/* Header cột */}
+        <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_5rem_3rem] gap-x-2 px-3 py-1.5 border-b border-border sticky top-0 bg-bg-soft/80 backdrop-blur-sm">
+          <span className="text-[10px] font-semibold text-muted/60 uppercase tracking-wide">
+            Nút
+          </span>
+          <span className="text-[10px] font-semibold text-muted/60 uppercase tracking-wide">
+            Trang
+          </span>
+          <span className="text-[10px] font-semibold text-muted/60 uppercase tracking-wide text-center">
+            Hạn chế
+          </span>
+          <span className="text-[10px] font-semibold text-muted/60 uppercase tracking-wide text-center">
+            Thấy
+          </span>
+        </div>
+
+        {visibleRows.length === 0 ? (
+          <div className="text-xs text-muted/60 text-center py-10">
+            {search.trim()
+              ? "Không tìm thấy nút nào."
+              : "Không có nút hành động nào trong phạm vi này."}
+          </div>
+        ) : (
+          visibleRows.map((row) => {
+            const { entry } = row;
+            /* Số subject (nhóm/tài khoản) đang bị ẩn-riêng theo loại tab. */
+            const hiddenCount =
+              subjectKind === "group"
+                ? (entry.hiddenForGroups?.length ?? 0)
+                : (entry.hiddenForUsers?.length ?? 0);
+            /* Allowlist designer (lớp khác) — chỉ để gợi ý cho admin. */
+            const hasDesignerLimit =
+              (entry.visibleToGroups?.length ?? 0) > 0 || (entry.visibleToUsers?.length ?? 0) > 0;
+            /* checked = THẤY = subject KHÔNG nằm trong denylist (mặc định không có → checked). */
+            const isOn = getIsOn(entry);
+
+            return (
+              <div
+                key={row.rowKey}
+                className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_5rem_3rem] gap-x-2 px-3 py-2 border-b border-border/50 items-center hover:bg-hover/30"
+              >
+                {/* Cột Nút */}
+                <div className="min-w-0">
+                  <div className="text-sm font-medium truncate leading-tight">{entry.label}</div>
+                  <div className="text-[10px] text-muted/60 truncate leading-tight">
+                    {entry.compKind} · {entry.compLabel}
+                  </div>
+                </div>
+
+                {/* Cột Trang — badge nhỏ khi trang ngoài scope "được phép" */}
+                <div className="min-w-0">
+                  <div className="text-xs truncate">{row.pageName}</div>
+                  {!assignedSet.has(row.pageId) && (
+                    <div className="text-[10px] text-warning/70 truncate leading-tight">
+                      chưa được phép
+                    </div>
+                  )}
+                </div>
+
+                {/* Cột Hạn chế — denylist: "Mọi người" hoặc "Ẩn N nhóm/người" */}
+                <div className="flex flex-col items-center justify-center gap-0.5">
+                  {hiddenCount === 0 ? (
+                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-success/15 text-success font-medium whitespace-nowrap">
+                      Mọi người
+                    </span>
+                  ) : (
+                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-warning/15 text-warning font-medium whitespace-nowrap">
+                      {subjectKind === "group"
+                        ? `Ẩn ${hiddenCount} nhóm`
+                        : `Ẩn ${hiddenCount} người`}
+                    </span>
+                  )}
+                  {hasDesignerLimit && (
+                    <span
+                      className="text-[8px] text-muted/50 whitespace-nowrap"
+                      title="Nút còn allowlist do người thiết kế đặt (lớp giới hạn riêng)"
+                    >
+                      giới hạn thiết kế
+                    </span>
+                  )}
+                </div>
+
+                {/* Cột Thấy — checkbox toggle denylist (mặc định tích = thấy) */}
+                <div className="flex items-center justify-center">
+                  <input
+                    type="checkbox"
+                    checked={isOn}
+                    disabled={saving}
+                    title={
+                      isOn
+                        ? `Bỏ tích để ẩn nút RIÊNG ${subjectKind === "group" ? "nhóm này" : "tài khoản này"} (người khác vẫn thấy)`
+                        : `Tích lại để bỏ ẩn — ${subjectKind === "group" ? "nhóm này" : "tài khoản này"} thấy nút trở lại`
+                    }
+                    onChange={(e) => void handleToggle(row, e.target.checked)}
+                    className="w-3.5 h-3.5 accent-accent"
+                  />
+                </div>
+              </div>
+            );
+          })
+        )}
+
+        {/* Hint khi vượt RENDER_CAP */}
+        {overflow > 0 && (
+          <div className="text-[11px] text-muted/60 text-center py-3 border-t border-border bg-bg-soft/30">
+            … còn {overflow} dòng — dùng ô tìm để thu hẹp kết quả.
+          </div>
+        )}
+      </div>
+
+      {/* Footer ghi chú nghiệp vụ — model ẩn-riêng (denylist) */}
+      <div className="shrink-0 px-3 py-1.5 border-t border-border bg-bg-soft/30">
+        <p className="text-[10px] text-muted/50 leading-relaxed">
+          Mặc định MỌI {subjectKind === "group" ? "nhóm" : "tài khoản"} đều thấy nút (tích
+          sẵn).&nbsp;
+          <strong>Bỏ tích</strong> = ẩn nút RIÊNG {subjectKind === "group" ? "nhóm" : "tài khoản"}{" "}
+          đó, người khác vẫn thấy.&nbsp; <strong>Tích lại</strong> = bỏ ẩn.&nbsp;
+          <strong>Mọi người</strong> = không ai bị ẩn.&nbsp; Admin/editor luôn thấy mọi nút.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+/* ── ActionButtonPermissionsTab ─────────────────────────── */
+/** Tab "Phân quyền nút" trong GroupDetail: bảng đa-trang, lọc theo scope nhóm. */
+function ActionButtonPermissionsTab({
+  group,
+  allPages,
+}: {
+  group: { id: string; name: string; pageIds: string[] };
+  allPages: { id: string; name: string }[];
+}) {
+  const pageContent = useUserObjects((s) => s.pageContent);
+  const setPageContent = useUserObjects((s) => s.setPageContent);
+
+  /* Checked = THẤY = nhóm này KHÔNG nằm trong denylist (mặc định không có → checked). */
+  const getIsOn = (entry: ActionEntry): boolean => !entry.hiddenForGroups?.includes(group.id);
+
+  const onToggle = async (
+    pageId: string,
+    entry: ActionEntry,
+    turnOn: boolean,
+  ): Promise<boolean> => {
+    /* Ẩn-riêng 1 nhóm không ảnh hưởng nhóm khác → an toàn, không cần confirm.
+     *  turnOn=true (tích lại) → bỏ nhóm khỏi hidden; false → thêm vào hidden. */
+    const rawContent = pageContent[pageId];
+    const newContent = applyGroupToggle(rawContent, entry, group.id, turnOn);
+    setPageContent(pageId, newContent);
+    return true;
+  };
+
+  return (
+    <MultiPageActionButtonTable
+      subjectKind="group"
+      assignedPageIds={group.pageIds}
+      allPages={allPages}
+      getIsOn={getIsOn}
+      onToggle={onToggle}
+    />
+  );
+}
+
 /* ── GroupDetail (cột phải) ───────────────────────────────── */
 function GroupDetail({
   group,
@@ -448,7 +1001,7 @@ function GroupDetail({
   const hydrate = useUserObjects((s) => s.hydrate);
 
   /* ── Tab ── */
-  const [tab, setTab] = useState<"members" | "pages" | "fields" | "meta">("members");
+  const [tab, setTab] = useState<"members" | "pages" | "actions" | "fields" | "meta">("members");
 
   /* ── Rename / color ── */
   const [editName, setEditName] = useState(group.name);
@@ -577,6 +1130,7 @@ function GroupDetail({
           [
             { key: "members", label: "Thành viên", count: group.memberIds.length },
             { key: "pages", label: "Trang được phép", count: group.pageIds.length },
+            { key: "actions", label: "Phân quyền nút", count: null },
             { key: "fields", label: "Quyền trường", count: null },
             { key: "meta", label: "Cài đặt", count: null },
           ] as const
@@ -752,6 +1306,9 @@ function GroupDetail({
             </div>
           </>
         )}
+
+        {/* ── Tab: Phân quyền nút hành động ── */}
+        {tab === "actions" && <ActionButtonPermissionsTab group={group} allPages={allPages} />}
 
         {/* ── Tab: Quyền trường ── */}
         {tab === "fields" && <FieldPermissionsTab groupId={group.id} />}
@@ -999,6 +1556,48 @@ function UserFieldPermissionsTab({ userId }: { userId: string }) {
   );
 }
 
+/* ── UserActionButtonPermissionsTab ─────────────────────── */
+/** Tab "Phân quyền nút" trong UserPageAccessPanel: bảng đa-trang, lọc theo scope user. */
+function UserActionButtonPermissionsTab({
+  user,
+  allPages,
+  assignedPageIds,
+}: {
+  user: CompanyMember;
+  allPages: { id: string; name: string }[];
+  /** Trang đã cấp quyền cá nhân cho user — dùng làm scope "Được phép". */
+  assignedPageIds: string[];
+}) {
+  const pageContent = useUserObjects((s) => s.pageContent);
+  const setPageContent = useUserObjects((s) => s.setPageContent);
+
+  /* Checked = THẤY = user này KHÔNG nằm trong denylist (mặc định không có → checked). */
+  const getIsOn = (entry: ActionEntry): boolean => !entry.hiddenForUsers?.includes(user.userId);
+
+  const onToggle = async (
+    pageId: string,
+    entry: ActionEntry,
+    turnOn: boolean,
+  ): Promise<boolean> => {
+    /* Ẩn-riêng 1 tài khoản không ảnh hưởng người khác → an toàn, không cần confirm.
+     *  turnOn=true (tích lại) → bỏ user khỏi hidden; false → thêm vào hidden. */
+    const rawContent = pageContent[pageId];
+    const newContent = applyUserToggle(rawContent, entry, user.userId, turnOn);
+    setPageContent(pageId, newContent);
+    return true;
+  };
+
+  return (
+    <MultiPageActionButtonTable
+      subjectKind="user"
+      assignedPageIds={assignedPageIds}
+      allPages={allPages}
+      getIsOn={getIsOn}
+      onToggle={onToggle}
+    />
+  );
+}
+
 /* ── UserPageAccessPanel (cột phải khi chọn user ở tab Tài khoản) ── */
 function UserPageAccessPanel({
   user,
@@ -1010,7 +1609,7 @@ function UserPageAccessPanel({
   onClose: () => void;
 }) {
   const hydrate = useUserObjects((s) => s.hydrate);
-  const [tab, setTab] = useState<"pages" | "fields">("pages");
+  const [tab, setTab] = useState<"pages" | "actions" | "fields">("pages");
   const [pageIds, setPageIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -1064,6 +1663,7 @@ function UserPageAccessPanel({
         {(
           [
             { key: "pages", label: "Trang" },
+            { key: "actions", label: "Phân quyền nút" },
             { key: "fields", label: "Quyền trường" },
           ] as const
         ).map(({ key, label }) => (
@@ -1176,6 +1776,11 @@ function UserPageAccessPanel({
             </>
           )}
         </>
+      )}
+
+      {/* Tab: Phân quyền nút hành động theo tài khoản */}
+      {tab === "actions" && (
+        <UserActionButtonPermissionsTab user={user} allPages={allPages} assignedPageIds={pageIds} />
       )}
 
       {/* Tab: Quyền trường */}

@@ -122,6 +122,13 @@ function matchOp(val: unknown, op: FilterOp, target: unknown): boolean {
       return val !== true && val !== "true";
     case "is-true":
       return val === true || val === "true";
+    case "between": {
+      const arr = Array.isArray(target) ? target : [];
+      const s = String(val ?? "");
+      if (arr[0] != null && arr[0] !== "" && s < String(arr[0])) return false;
+      if (arr[1] != null && arr[1] !== "" && s > String(arr[1])) return false;
+      return true;
+    }
     default:
       return true;
   }

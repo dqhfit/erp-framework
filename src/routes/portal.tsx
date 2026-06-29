@@ -1,6 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AgentPanel } from "@/components/AgentPanel";
+import { ChatNavButton } from "@/components/ChatNavButton";
 import { DialogHost } from "@/components/DialogHost";
 import { I } from "@/components/Icons";
 import { labelOf, MenuBrowser } from "@/components/MenuBrowser";
@@ -351,6 +352,10 @@ function PortalRoute() {
             <span className="hidden sm:inline">Sửa</span>
           </Button>
         )}
+
+        {/* Nút chat nội bộ — badge số tin chưa đọc, bấm → /chat?from=portal
+            (giữ kiểu portal: render gọn + nút "Quay về Portal", bất kể role) */}
+        <ChatNavButton fromPortal />
 
         <Button
           variant={agentOpen ? "primary" : "ghost"}

@@ -370,6 +370,8 @@ function StepRow({
     navigate: "Điều hướng",
     "set-state": "Đặt page state",
     refresh: "Nạp lại lưới",
+    "export-records": "Xuất dữ liệu (Excel/CSV)",
+    "print-records": "In danh sách",
     "open-popup": "Mở popup",
     "open-create-form": "Mở form tạo mới (list)",
     "open-wizard": "Mở wizard",
