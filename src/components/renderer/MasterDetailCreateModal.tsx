@@ -46,7 +46,7 @@ export type CreateFormCfg = {
   viewTitle?: string;
   editTitle?: string;
   subjectLabel?: string;
-  layout?: "tabs" | "single";
+  layout?: "tabs" | "single" | "split";
   width?: number;
   /** true → KHÔNG render nút mặc định của list; nút mở form do embeddedAction
    *  (step "open-create-form") cung cấp → nút "Tạo đơn hàng" nằm trong thanh
@@ -69,6 +69,12 @@ export type CreateFormCfg = {
     fieldLabels?: Record<string, string>;
     requiredFields?: string[];
     fullWidthFields?: string[];
+    /** Field chỉ-đọc (vd ngaydexuat tự điền hôm nay). */
+    readonlyFields?: string[];
+    /** Giá trị mặc định khi tạo mới. "__today__" → ngày hôm nay (YYYY-MM-DD). */
+    defaultValues?: Record<string, string>;
+    /** Các field text render textarea nhiều dòng (rows=3) dù type="text". */
+    longtextFields?: string[];
   };
   /** Entity con + cách nối với cha. */
   detail: {
@@ -181,7 +187,15 @@ export function MasterDetailCreateModal({ config, onClose, onCreated }: Props) {
   );
 
   const [tab, setTab] = useState<"master" | "detail">("master");
-  const [master, setMaster] = useState<Record<string, string>>({});
+  const [master, setMaster] = useState<Record<string, string>>(() => {
+    const today = new Date().toISOString().slice(0, 10);
+    return Object.fromEntries(
+      Object.entries(config.master.defaultValues ?? {}).map(([k, v]) => [
+        k,
+        v === "__today__" ? today : v,
+      ]),
+    );
+  });
   const [rows, setRows] = useState<DetailInputRow[]>([
     {
       _key: crypto.randomUUID(),
@@ -234,7 +248,15 @@ export function MasterDetailCreateModal({ config, onClose, onCreated }: Props) {
     lookup?: FieldLookup,
     setField?: (name: string, value: string) => void,
     optionsOverride?: { value: string; label: string }[],
+    readonly?: boolean,
   ) => {
+    if (readonly) {
+      return (
+        <div className="input w-full bg-bg-soft text-muted cursor-not-allowed min-h-[32px] flex items-center">
+          {value || "—"}
+        </div>
+      );
+    }
     if (!lookup && optionsOverride && optionsOverride.length > 0) {
       return (
         <SearchableSelect
@@ -409,6 +431,204 @@ export function MasterDetailCreateModal({ config, onClose, onCreated }: Props) {
     }
   };
 
+  const renderDetailTable = (inSplit = false) => (
+    <div
+      className={
+        inSplit
+          ? "flex flex-col gap-2 flex-1 overflow-hidden min-h-0"
+          : config.layout === "single"
+            ? "mt-4 space-y-2"
+            : "mt-3 space-y-2"
+      }
+    >
+      <div
+        className={
+          inSplit
+            ? "overflow-x-auto border border-border rounded-md flex-1 overflow-y-auto min-h-0"
+            : "overflow-x-auto border border-border rounded-md max-h-[420px] overflow-y-auto"
+        }
+      >
+        <table className="text-sm w-full table-fixed">
+          <thead className="bg-panel-2 sticky top-0">
+            <tr>
+              {detailFields.map((f) => (
+                <th
+                  key={f.id ?? f.name}
+                  style={detailLookups?.[f.name] ? { width: 190 } : undefined}
+                  className="px-2 py-1.5 text-left text-xs font-semibold text-muted whitespace-nowrap"
+                >
+                  {config.detail.fieldLabels?.[f.name] ?? f.label}
+                  {config.detail.requiredFields?.includes(f.name) && (
+                    <span className="text-danger ml-0.5">*</span>
+                  )}
+                </th>
+              ))}
+              <th className="w-8" />
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((r, i) => (
+              <tr
+                key={r._key}
+                className={
+                  detailErrors[i] ? "border-t border-danger bg-danger/5" : "border-t border-border"
+                }
+              >
+                {detailFields.map((f) => {
+                  const factors = config.detail.computed?.[f.name];
+                  return (
+                    <td key={f.id ?? f.name} className="px-1.5 py-1 overflow-hidden">
+                      {factors ? (
+                        <div className="px-2 py-1 text-right tabular-nums text-muted">
+                          {computeProduct(r, factors).toLocaleString("vi-VN")}
+                        </div>
+                      ) : (
+                        renderInput(
+                          f,
+                          r[f.name] ?? "",
+                          (v) => {
+                            setRow(i, f.name, v);
+                            if (v.trim()) {
+                              setDetailErrors((current) => {
+                                const next = { ...current };
+                                const rowErrors = { ...(next[i] ?? {}) };
+                                delete rowErrors[f.name];
+                                if (Object.keys(rowErrors).length) next[i] = rowErrors;
+                                else delete next[i];
+                                return next;
+                              });
+                            }
+                          },
+                          true,
+                          detailLookups?.[f.name],
+                          (name, val) => setRow(i, name, val),
+                          config.detail.fieldOptions?.[f.name],
+                        )
+                      )}
+                      {detailErrors[i]?.[f.name] && (
+                        <p className="px-1 pt-0.5 text-[11px] text-danger">
+                          {detailErrors[i][f.name]}
+                        </p>
+                      )}
+                    </td>
+                  );
+                })}
+                <td className="text-center">
+                  <button
+                    type="button"
+                    title="Xoá dòng"
+                    className="p-1 text-muted hover:text-danger"
+                    onClick={() => setRows((rs) => rs.filter((_, idx) => idx !== i))}
+                  >
+                    <I.Trash size={13} />
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+          {config.detail.footerSums && config.detail.footerSums.length > 0 && (
+            <tfoot className="sticky bottom-0 bg-panel-2 border-t-2 border-border">
+              <tr>
+                {detailFields.map((f, idx) => {
+                  const isSum = config.detail.footerSums?.includes(f.name);
+                  return (
+                    <td
+                      key={f.id ?? f.name}
+                      className={
+                        isSum
+                          ? "px-2 py-1.5 text-right text-xs font-semibold tabular-nums"
+                          : "px-2 py-1.5 text-xs font-semibold text-muted"
+                      }
+                    >
+                      {isSum
+                        ? sumField(rows, f.name, config.detail.computed).toLocaleString("vi-VN")
+                        : idx === 0
+                          ? "Tổng"
+                          : ""}
+                    </td>
+                  );
+                })}
+                <td />
+              </tr>
+            </tfoot>
+          )}
+        </table>
+      </div>
+      <Button
+        variant="ghost"
+        onClick={() =>
+          setRows((rs) => [
+            ...rs,
+            {
+              _key: crypto.randomUUID(),
+              ...(config.detail.autoSequenceField
+                ? { [config.detail.autoSequenceField]: String(rs.length + 1) }
+                : {}),
+            },
+          ])
+        }
+        icon={<I.Plus size={13} />}
+      >
+        Thêm dòng
+      </Button>
+      {!inSplit && config.layout !== "single" && (
+        <p className="text-xs text-muted">
+          Mỗi dòng chi tiết sẽ tự gán {config.detail.linkField} = giá trị{" "}
+          {config.detail.parentKeyField} ở phần thông tin.
+        </p>
+      )}
+    </div>
+  );
+
+  const masterFormContent = (stacked = false) => (
+    <div className={stacked ? "space-y-3" : "mt-3 grid grid-cols-2 gap-x-4 gap-y-3"}>
+      {masterFields.map((f) => {
+        const fResolved = config.master.longtextFields?.includes(f.name)
+          ? { ...f, type: "longtext" as EntityField["type"] }
+          : f;
+        return (
+          <div
+            key={f.id ?? f.name}
+            className={
+              !stacked && config.master.fullWidthFields?.includes(f.name)
+                ? "space-y-1 col-span-2"
+                : "space-y-1"
+            }
+          >
+            <label className="text-xs font-medium">
+              {config.master.fieldLabels?.[f.name] ?? f.label}
+              {(f.required || config.master.requiredFields?.includes(f.name)) && (
+                <span className="text-danger ml-0.5">*</span>
+              )}
+            </label>
+            <div className={masterErrors[f.name] ? "rounded-md ring-1 ring-danger" : undefined}>
+              {renderInput(
+                fResolved,
+                master[f.name] ?? "",
+                (v) => {
+                  setMaster((s) => ({ ...s, [f.name]: v }));
+                  if (v.trim()) {
+                    setMasterErrors((current) => {
+                      const next = { ...current };
+                      delete next[f.name];
+                      return next;
+                    });
+                  }
+                },
+                false,
+                masterLookups?.[f.name],
+                (name, val) => setMaster((s) => ({ ...s, [name]: val })),
+                config.master.fieldOptions?.[f.name],
+                config.master.readonlyFields?.includes(f.name),
+              )}
+            </div>
+            {masterErrors[f.name] && <p className="text-xs text-danger">{masterErrors[f.name]}</p>}
+          </div>
+        );
+      })}
+    </div>
+  );
+
   return (
     <Modal
       open
@@ -431,199 +651,37 @@ export function MasterDetailCreateModal({ config, onClose, onCreated }: Props) {
           Vui lòng điền đầy đủ các trường bắt buộc được đánh dấu bên dưới.
         </div>
       )}
-      {config.layout !== "single" && (
-        <Tabs
-          value={tab}
-          onChange={setTab}
-          options={[
-            { value: "master", label: config.masterLabel ?? "Thông tin" },
-            { value: "detail", label: config.detailLabel ?? "Chi tiết" },
-          ]}
-        />
-      )}
 
-      {(config.layout === "single" || tab === "master") && (
-        <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-3">
-          {masterFields.map((f) => (
-            <div
-              key={f.id}
-              className={
-                config.master.fullWidthFields?.includes(f.name)
-                  ? "space-y-1 col-span-2"
-                  : "space-y-1"
-              }
-            >
-              <label className="text-xs font-medium">
-                {config.master.fieldLabels?.[f.name] ?? f.label}
-                {(f.required || config.master.requiredFields?.includes(f.name)) && (
-                  <span className="text-danger ml-0.5">*</span>
-                )}
-              </label>
-              <div className={masterErrors[f.name] ? "rounded-md ring-1 ring-danger" : undefined}>
-                {renderInput(
-                  f,
-                  master[f.name] ?? "",
-                  (v) => {
-                    setMaster((s) => ({ ...s, [f.name]: v }));
-                    if (v.trim()) {
-                      setMasterErrors((current) => {
-                        const next = { ...current };
-                        delete next[f.name];
-                        return next;
-                      });
-                    }
-                  },
-                  false,
-                  masterLookups?.[f.name],
-                  (name, val) => setMaster((s) => ({ ...s, [name]: val })),
-                  config.master.fieldOptions?.[f.name],
-                )}
-              </div>
-              {masterErrors[f.name] && (
-                <p className="text-xs text-danger">{masterErrors[f.name]}</p>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
-      {(config.layout === "single" || tab === "detail") && (
-        <div className={config.layout === "single" ? "mt-4 space-y-2" : "mt-3 space-y-2"}>
-          <div className="overflow-x-auto border border-border rounded-md max-h-[420px] overflow-y-auto">
-            <table className="text-sm w-full table-fixed">
-              <thead className="bg-panel-2 sticky top-0">
-                <tr>
-                  {detailFields.map((f) => (
-                    <th
-                      key={f.id}
-                      // Cột lookup (Mã SP/Mã chi tiết): width CỐ ĐỊNH, không giãn theo
-                      // nội dung; các cột khác chia đều phần còn lại (table-fixed).
-                      style={detailLookups?.[f.name] ? { width: 190 } : undefined}
-                      className="px-2 py-1.5 text-left text-xs font-semibold text-muted whitespace-nowrap"
-                    >
-                      {config.detail.fieldLabels?.[f.name] ?? f.label}
-                      {config.detail.requiredFields?.includes(f.name) && (
-                        <span className="text-danger ml-0.5">*</span>
-                      )}
-                    </th>
-                  ))}
-                  <th className="w-8" />
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((r, i) => (
-                  <tr
-                    key={r._key}
-                    className={
-                      detailErrors[i]
-                        ? "border-t border-danger bg-danger/5"
-                        : "border-t border-border"
-                    }
-                  >
-                    {detailFields.map((f) => {
-                      const factors = config.detail.computed?.[f.name];
-                      return (
-                        <td key={f.id} className="px-1.5 py-1 overflow-hidden">
-                          {factors ? (
-                            // Field tự tính (read-only) — hiển thị tích live.
-                            <div className="px-2 py-1 text-right tabular-nums text-muted">
-                              {computeProduct(r, factors).toLocaleString("vi-VN")}
-                            </div>
-                          ) : (
-                            renderInput(
-                              f,
-                              r[f.name] ?? "",
-                              (v) => {
-                                setRow(i, f.name, v);
-                                if (v.trim()) {
-                                  setDetailErrors((current) => {
-                                    const next = { ...current };
-                                    const rowErrors = { ...(next[i] ?? {}) };
-                                    delete rowErrors[f.name];
-                                    if (Object.keys(rowErrors).length) next[i] = rowErrors;
-                                    else delete next[i];
-                                    return next;
-                                  });
-                                }
-                              },
-                              true,
-                              detailLookups?.[f.name],
-                              (name, val) => setRow(i, name, val),
-                              config.detail.fieldOptions?.[f.name],
-                            )
-                          )}
-                          {detailErrors[i]?.[f.name] && (
-                            <p className="px-1 pt-0.5 text-[11px] text-danger">
-                              {detailErrors[i][f.name]}
-                            </p>
-                          )}
-                        </td>
-                      );
-                    })}
-                    <td className="text-center">
-                      <button
-                        type="button"
-                        title="Xoá dòng"
-                        className="p-1 text-muted hover:text-danger"
-                        onClick={() => setRows((rs) => rs.filter((_, idx) => idx !== i))}
-                      >
-                        <I.Trash size={13} />
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-              {config.detail.footerSums && config.detail.footerSums.length > 0 && (
-                <tfoot className="sticky bottom-0 bg-panel-2 border-t-2 border-border">
-                  <tr>
-                    {detailFields.map((f, idx) => {
-                      const isSum = config.detail.footerSums?.includes(f.name);
-                      return (
-                        <td
-                          key={f.id}
-                          className={
-                            isSum
-                              ? "px-2 py-1.5 text-right text-xs font-semibold tabular-nums"
-                              : "px-2 py-1.5 text-xs font-semibold text-muted"
-                          }
-                        >
-                          {isSum
-                            ? sumField(rows, f.name, config.detail.computed).toLocaleString("vi-VN")
-                            : idx === 0
-                              ? "Tổng"
-                              : ""}
-                        </td>
-                      );
-                    })}
-                    <td />
-                  </tr>
-                </tfoot>
-              )}
-            </table>
-          </div>
-          <Button
-            variant="ghost"
-            onClick={() =>
-              setRows((rs) => [
-                ...rs,
-                {
-                  _key: crypto.randomUUID(),
-                  ...(config.detail.autoSequenceField
-                    ? { [config.detail.autoSequenceField]: String(rs.length + 1) }
-                    : {}),
-                },
-              ])
-            }
-            icon={<I.Plus size={13} />}
-          >
-            Thêm dòng
-          </Button>
-          {config.layout !== "single" && (
-            <p className="text-xs text-muted">
-              Mỗi dòng chi tiết sẽ tự gán {config.detail.linkField} = giá trị{" "}
-              {config.detail.parentKeyField} ở phần thông tin.
+      {config.layout === "split" ? (
+        <div className="flex gap-0 mt-1" style={{ height: 520 }}>
+          <div className="w-[360px] shrink-0 flex flex-col border-r border-border pr-4">
+            <p className="text-xs font-semibold text-muted uppercase tracking-wide mb-3">
+              {config.masterLabel ?? "Thông tin chung"}
             </p>
-          )}
+            <div className="flex-1 overflow-y-auto pr-0.5">{masterFormContent(true)}</div>
+          </div>
+          <div className="flex-1 min-w-0 pl-4 flex flex-col gap-2 overflow-hidden">
+            <p className="text-xs font-semibold text-muted uppercase tracking-wide mb-1">
+              {config.detailLabel ?? "Chi tiết"}
+            </p>
+            {renderDetailTable(true)}
+          </div>
         </div>
+      ) : (
+        <>
+          {config.layout !== "single" && (
+            <Tabs
+              value={tab}
+              onChange={setTab}
+              options={[
+                { value: "master", label: config.masterLabel ?? "Thông tin" },
+                { value: "detail", label: config.detailLabel ?? "Chi tiết" },
+              ]}
+            />
+          )}
+          {(config.layout === "single" || tab === "master") && masterFormContent()}
+          {(config.layout === "single" || tab === "detail") && renderDetailTable(false)}
+        </>
       )}
     </Modal>
   );
