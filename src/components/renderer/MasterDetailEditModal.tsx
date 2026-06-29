@@ -528,6 +528,15 @@ export function MasterDetailEditModal({
                         {detailFields.map((f) => (
                           <th
                             key={f.id ?? f.name}
+                            style={{
+                              width:
+                                config.detail.fieldWidths?.[f.name] ??
+                                (detailLookups?.[f.name]
+                                  ? 190
+                                  : f.type === "number"
+                                    ? 90
+                                    : undefined),
+                            }}
                             className="px-2 py-1.5 text-left text-xs font-semibold text-muted whitespace-nowrap"
                           >
                             {config.detail.fieldLabels?.[f.name] ?? f.label}
@@ -554,11 +563,16 @@ export function MasterDetailEditModal({
                             return (
                               <td
                                 key={f.id ?? f.name}
-                                className={
-                                  detailLookups?.[f.name]
-                                    ? "px-1.5 py-1 min-w-[220px]"
-                                    : "px-1.5 py-1 min-w-[130px]"
-                                }
+                                className="px-1.5 py-1"
+                                style={{
+                                  minWidth:
+                                    config.detail.fieldWidths?.[f.name] ??
+                                    (detailLookups?.[f.name]
+                                      ? 190
+                                      : f.type === "number"
+                                        ? 90
+                                        : 110),
+                                }}
                               >
                                 {factors ? (
                                   <div className="px-2 py-1 text-right tabular-nums text-muted">

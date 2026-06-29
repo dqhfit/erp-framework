@@ -86,6 +86,8 @@ export type CreateFormCfg = {
     fields?: string[];
     /** Map fieldName → liên kết entity (picker). Vd item_number → tr_sanpham. */
     fieldLookups?: Record<string, FieldLookup>;
+    /** Chiều rộng cột (px) trong bảng chi tiết. Mặc định: lookup=190, số=90, text=130. */
+    fieldWidths?: Record<string, number>;
     /** Combobox TĨNH cho field con (enum): map fieldName → {value,label}[]. */
     fieldOptions?: Record<string, { value: string; label: string }[]>;
     /** Field tự tính = TÍCH các field nguồn (vd amount = order_qty × price).
@@ -454,7 +456,11 @@ export function MasterDetailCreateModal({ config, onClose, onCreated }: Props) {
               {detailFields.map((f) => (
                 <th
                   key={f.id ?? f.name}
-                  style={detailLookups?.[f.name] ? { width: 190 } : undefined}
+                  style={{
+                    width:
+                      config.detail.fieldWidths?.[f.name] ??
+                      (detailLookups?.[f.name] ? 190 : f.type === "number" ? 90 : undefined),
+                  }}
                   className="px-2 py-1.5 text-left text-xs font-semibold text-muted whitespace-nowrap"
                 >
                   {config.detail.fieldLabels?.[f.name] ?? f.label}
@@ -477,7 +483,15 @@ export function MasterDetailCreateModal({ config, onClose, onCreated }: Props) {
                 {detailFields.map((f) => {
                   const factors = config.detail.computed?.[f.name];
                   return (
-                    <td key={f.id ?? f.name} className="px-1.5 py-1 overflow-hidden">
+                    <td
+                      key={f.id ?? f.name}
+                      className="px-1.5 py-1"
+                      style={{
+                        minWidth:
+                          config.detail.fieldWidths?.[f.name] ??
+                          (detailLookups?.[f.name] ? 190 : f.type === "number" ? 90 : 110),
+                      }}
+                    >
                       {factors ? (
                         <div className="px-2 py-1 text-right tabular-nums text-muted">
                           {computeProduct(r, factors).toLocaleString("vi-VN")}
