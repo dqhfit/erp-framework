@@ -216,14 +216,21 @@ export function DetailWidget({ cfg, compId }: { cfg: Record<string, unknown>; co
     setSaveMsg("");
     try {
       const data: Record<string, unknown> = {};
-      for (const [k, v] of Object.entries(form)) if (v !== "") data[k] = v;
+      for (const [k, v] of Object.entries(form)) data[k] = v;
+      let updatedRecord: Record<string, unknown> | null = null;
       if (isDataSource) await dataUpdate(String(effectiveRecord.id), data);
-      else
-        await api.updateRecord(
+      else {
+        const updated = await api.updateRecord(
           String(effectiveRecord.id),
           data,
           effectiveRecord.version as number | undefined,
         );
+        updatedRecord = { ...updated.data, id: updated.id, created_at: updated.createdAt };
+      }
+      if (updatedRecord) setFallbackRecord(updatedRecord);
+      if (entityId) {
+        pageState.set(`__refresh:${entityId}`, Date.now());
+      }
       setSaveMsg(t("widget.saved_ok"));
       if (recordIdFromState) {
         pageState.set(recordIdFromState, "");
