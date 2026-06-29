@@ -435,7 +435,7 @@ export function MasterDetailCreateModal({ config, onClose, onCreated }: Props) {
     <div
       className={
         inSplit
-          ? "flex flex-col gap-2 flex-1 overflow-hidden min-h-0"
+          ? "flex flex-col gap-2 flex-1 min-h-0"
           : config.layout === "single"
             ? "mt-4 space-y-2"
             : "mt-3 space-y-2"
@@ -444,11 +444,11 @@ export function MasterDetailCreateModal({ config, onClose, onCreated }: Props) {
       <div
         className={
           inSplit
-            ? "overflow-x-auto border border-border rounded-md flex-1 overflow-y-auto min-h-0"
+            ? "overflow-auto border border-border rounded-md flex-1 min-h-0"
             : "overflow-x-auto border border-border rounded-md max-h-[420px] overflow-y-auto"
         }
       >
-        <table className="text-sm w-full table-fixed">
+        <table className={`text-sm${inSplit ? " min-w-max" : " w-full table-fixed"}`}>
           <thead className="bg-panel-2 sticky top-0">
             <tr>
               {detailFields.map((f) => (
@@ -660,7 +660,7 @@ export function MasterDetailCreateModal({ config, onClose, onCreated }: Props) {
             </p>
             <div className="flex-1 overflow-y-auto pr-0.5">{masterFormContent(true)}</div>
           </div>
-          <div className="flex-1 min-w-0 pl-4 flex flex-col gap-2 overflow-x-auto">
+          <div className="flex-1 min-w-0 pl-4 flex flex-col gap-2 overflow-hidden">
             <p className="text-xs font-semibold text-muted uppercase tracking-wide mb-1">
               {config.detailLabel ?? "Chi tiết"}
             </p>
