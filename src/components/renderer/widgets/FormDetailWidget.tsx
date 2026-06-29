@@ -85,6 +85,8 @@ export function DetailWidget({ cfg, compId }: { cfg: Record<string, unknown>; co
   const editable =
     baseEditable &&
     (!editableFromState ||
+      editableMode === undefined ||
+      editableMode === "" ||
       editableMode === true ||
       editableMode === "true" ||
       editableMode === "edit" ||

@@ -1307,7 +1307,7 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
           const t = typeOf(k);
           // Multiselect: form lưu CSV "a,b" → server yêu cầu MẢNG.
           if (t === "multiselect" || t === "multienum" || t === "multilookup") {
-            if (k === "bemat_sanpham") {
+            if (k === "bemat_sanpham" || k === "madonhang") {
               payload[k] = v; // Gửi nguyên chuỗi "Trơn láng/ Giả cổ/ Da" cho DB text column
             } else {
               payload[k] = v
