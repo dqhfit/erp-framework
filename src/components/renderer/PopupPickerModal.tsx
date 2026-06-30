@@ -366,7 +366,7 @@ function PopupRichLookupSelect({
       value={value}
       onChange={handlePick}
       options={opts}
-      emptyOption="â€” chá»n â€”"
+      emptyOption="— chọn —"
       onSearch={isLarge ? setQ : undefined}
       loading={isLarge ? searching : undefined}
       columnHeaders={multiCol ? (columnHeaders ?? labels) : undefined}
@@ -475,11 +475,11 @@ export function PopupPickerModal({
     const valid: Array<{ id: string; file: File; preview: string }> = [];
     for (const file of picked) {
       if (!file.type.startsWith("image/")) {
-        toast.error("Chá»‰ cháº¥p nháº­n file áº£nh");
+        toast.error("Chỉ chấp nhận file ảnh");
         continue;
       }
       if (file.size > 10 * 1024 * 1024) {
-        toast.error(`áº¢nh ${file.name} khÃ´ng Ä‘Æ°á»£c vÆ°á»£t quÃ¡ 10MB`);
+        toast.error(`Ảnh ${file.name} không được vượt quá 10MB`);
         continue;
       }
       valid.push({ id: crypto.randomUUID(), file, preview: URL.createObjectURL(file) });
@@ -507,8 +507,8 @@ export function PopupPickerModal({
       const url = subfolder ? `/upload/image/${encodeURIComponent(subfolder)}` : "/upload/image";
       const res = await fetch(url, { method: "POST", body: fd });
       if (!res.ok) {
-        const err = await res.json().catch(() => ({ error: "Upload tháº¥t báº¡i" }));
-        throw new Error((err as { error?: string }).error ?? "Upload tháº¥t báº¡i");
+        const err = await res.json().catch(() => ({ error: "Upload thất bại" }));
+        throw new Error((err as { error?: string }).error ?? "Upload thất bại");
       }
       const json = (await res.json()) as { url: string };
       setFormValues((v) => (v[name]?.startsWith("blob:") ? { ...v, [name]: json.url } : v));
