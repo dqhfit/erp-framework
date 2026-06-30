@@ -203,6 +203,46 @@ export const recordsRouter = router({
       };
     }),
 
+  // Như `get` nhưng định tuyến theo entityId (KHÔNG qua record_locator) — đọc được
+  // record bảng thật do delta-sync/mirror nạp (không có locator). Dùng cho form/wizard
+  // SỬA đã biết entity. Chỉ trả record ĐANG hoạt động (active, chưa soft-delete).
+  getInEntity: rbacProcedure("view", "entity")
+    .input(z.object({ entityId: z.string().uuid(), recordId: z.string().uuid() }))
+    .query(async ({ ctx, input }) => {
+      const row = await getRecordStore(ctx.db).getActiveById(
+        ctx.user.companyId,
+        input.entityId,
+        input.recordId,
+      );
+      if (!row) return null;
+      const proc = await resolveProcBinding(ctx.db, ctx.user.companyId, input.entityId, "get");
+      if (proc) {
+        const r = await makeInvokeProcedure({
+          db: ctx.db,
+          companyId: ctx.user.companyId,
+          callTool: makeCallTool(ctx.db, ctx.user.companyId),
+          actorUserId: ctx.user.id,
+        })(proc, { id: input.recordId, row });
+        return r.output ?? row;
+      }
+      const fields = await loadEntityFields(ctx.db, ctx.user.companyId, input.entityId);
+      const decoded = decryptDataOut(fields, row.data as Record<string, unknown>);
+      const withRollups = await applyRollups(ctx.db, ctx.user.companyId, fields, row.id, decoded, {
+        rollupCache: row.rollupCache,
+        rollupInvalidated: row.rollupInvalidated,
+      });
+      return {
+        ...row,
+        data: stripUnreadableFields(
+          fields,
+          withRollups,
+          ctx.user.role,
+          await loadUserGroupIds(ctx.db, ctx.user.id),
+          ctx.user.id,
+        ),
+      };
+    }),
+
   create: rbacProcedure("create", "entity")
     .input(z.object({ entityId: z.string().uuid(), data: z.record(z.string(), z.unknown()) }))
     .mutation(async ({ ctx, input }) => {

@@ -197,6 +197,12 @@ export class ApiDataSource implements DataSource {
     const row = await this.trpc.records.get.query(recordId);
     return row ? toRecord(row as RawRecord) : null;
   }
+  /** Đọc record theo entityId + recordId (KHÔNG qua record_locator) — đọc được
+   *  bản ghi bảng thật do mirror/delta-sync nạp. Dùng cho form/wizard SỬA. */
+  async getRecordInEntity(entityId: string, recordId: string): Promise<EntityRecord | null> {
+    const row = await this.trpc.records.getInEntity.query({ entityId, recordId });
+    return row ? toRecord(row as RawRecord) : null;
+  }
   async createRecord(entityId: string, data: Record<string, unknown>): Promise<EntityRecord> {
     const row = await this.trpc.records.create.mutate({ entityId, data });
     return toRecord(row as RawRecord);

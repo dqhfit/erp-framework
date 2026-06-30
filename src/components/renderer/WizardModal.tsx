@@ -611,8 +611,10 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
   useEffect(() => {
     if (!wizardEntityId || !editId) return;
     setLoading(true);
+    // getRecordInEntity (theo entityId) — đọc được cả record bảng thật do
+    // mirror/delta-sync nạp (không có record_locator nên getRecord theo id trả null).
     api
-      .getRecord(editId)
+      .getRecordInEntity(wizardEntityId, editId)
       .then(async (rec) => {
         const data = (rec?.data ?? {}) as Record<string, unknown>;
         // Format theo kiểu field (date/datetime → "YYYY-MM-DD" cho input date).

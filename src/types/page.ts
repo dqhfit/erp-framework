@@ -506,4 +506,17 @@ export interface ActionConfig {
   /** Giới hạn nút chỉ hiển thị với tài khoản cụ thể (user ids).
    *  Ưu tiên nhóm: user có trong danh sách này thấy nút kể cả không thuộc nhóm. */
   visibleToUsers?: string[];
+  /** Vô hiệu nút theo điều kiện page-state (vd dòng đang chọn đã ghi kho →
+   *  cấm Sửa). 1 rule hoặc mảng rule — disabled khi BẤT KỲ rule nào đúng.
+   *  Đọc state reactive nên đổi selection là cập nhật ngay. */
+  disabledWhen?: ActionDisableRule | ActionDisableRule[];
+  /** Tooltip hiển thị khi nút bị disabledWhen vô hiệu (giải thích lý do). */
+  disabledHint?: string;
+}
+
+/** Điều kiện vô hiệu nút theo 1 state key — cùng ngữ nghĩa VisibleRule của renderer. */
+export interface ActionDisableRule {
+  stateKey: string;
+  op: "eq" | "neq" | "in" | "nin" | "set" | "notset";
+  value?: string | string[];
 }
