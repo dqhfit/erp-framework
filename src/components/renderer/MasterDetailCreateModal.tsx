@@ -15,6 +15,7 @@ import { Button, Input, Modal, SearchableSelect, Tabs } from "@/components/ui";
 import type { EntityField } from "@/lib/object-types";
 import { toast } from "@/lib/toast";
 import { useUserObjects } from "@/stores/userObjects";
+import { LookupPicker } from "./LookupPicker";
 import { MultiLookupPicker } from "./MultiLookupPicker";
 
 const api = createApiDataSource("");
@@ -391,6 +392,19 @@ export function MasterDetailCreateModal({ config, onClose, onCreated }: Props) {
       // Placeholder suy từ nhãn entity nguồn → dùng chung cho mọi lookup
       // (khách hàng, sản phẩm, …) thay vì cố định "sản phẩm".
       const srcLabel = entities.find((e) => e.id === lookup.entity)?.name ?? "mục";
+      // Bảng lớn (vd tr_dondathang 14k): serverSearch → LookupPicker ILIKE
+      // server-side thay vì lọc trong 2000 record preload (tìm không thấy).
+      if (lookup.serverSearch && !lookup.multiple) {
+        return (
+          <LookupPicker
+            className="w-full"
+            refEntityId={lookup.entity}
+            value={value ?? ""}
+            onChange={handleChange}
+            valueField={lookup.valueField}
+          />
+        );
+      }
       if (lookup.multiple) {
         return (
           <MultiLookupPicker
