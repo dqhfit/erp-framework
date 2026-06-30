@@ -21,6 +21,7 @@ import { useUserObjects } from "@/stores/userObjects";
 import type {
   ActionConfig,
   ActionStepOpenWizard,
+  FieldOverride,
   WizardLookupRef,
   WizardRelatedImage,
 } from "@/types/page";
@@ -362,10 +363,24 @@ function buildRowData(
  *  KHÔNG cần sửa entity trên DB. Field không có override giữ nguyên. */
 function applyFieldOverrides(
   fields: EntityField[],
-  ov?: Record<string, { type?: string; label?: string; options?: string[]; required?: boolean }>,
+  ov?: Record<string, FieldOverride>,
 ): EntityField[] {
   if (!ov) return fields;
   return fields.map((f) => (ov[f.name] ? ({ ...f, ...ov[f.name] } as EntityField) : f));
+}
+
+/** Field có hiện không theo override.visibleWhen (so field khác trong form hiện
+ *  tại). Bỏ equals → chỉ cần field điều kiện có giá trị. */
+function fieldVisibleByRule(
+  ov: FieldOverride | undefined,
+  formVals: Record<string, string>,
+): boolean {
+  const vw = ov?.visibleWhen;
+  if (!vw) return true;
+  const cur = String(formVals[vw.field] ?? "");
+  if (vw.equals == null) return cur !== "";
+  const want = Array.isArray(vw.equals) ? vw.equals.map(String) : [String(vw.equals)];
+  return want.includes(cur);
 }
 
 /** Ép giá trị khoá liên kết (linkField) theo KIỂU field đích: field số (vd
@@ -464,7 +479,7 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
   // nhãn/options) để form đi theo page sync mà khỏi chạm entity trên DB.
   const fieldOv = Object.assign({}, ...wizardSteps.map((s) => s.fieldOverrides ?? {})) as Record<
     string,
-    { type?: string; label?: string; options?: string[]; required?: boolean }
+    FieldOverride
   >;
 
   // Chế độ 1-entity: mọi bước thao tác cùng step.entity (gom field theo bước).
@@ -734,13 +749,17 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
   const entFields = applyFieldOverrides(ent?.fields ?? [], fieldOv);
   // hiddenFields: vẫn trong `fields` (để lưu qua defaults) nhưng ẩn khỏi form.
   const stepHidden = new Set(current.hiddenFields ?? []);
+  // Giá trị form hiện tại của bước (để đánh giá visibleWhen per-field).
+  const curFormForVis = forms[wizardEntityId ? SINGLE_FORM_KEY : current.id] ?? {};
   const visibleFields = (
     current.fields?.length
       ? (current.fields
           .map((n) => entFields.find((f) => f.name === n))
           .filter(Boolean) as EntityField[])
       : entFields
-  ).filter((f) => !stepHidden.has(f.name));
+  )
+    .filter((f) => !stepHidden.has(f.name))
+    .filter((f) => fieldVisibleByRule(fieldOv[f.name], curFormForVis));
   // 1-entity → form dùng chung 1 khoá cho mọi bước; else → form riêng theo step.id.
   const formKey = wizardEntityId ? SINGLE_FORM_KEY : current.id;
   const form = forms[formKey] ?? {};
@@ -1365,10 +1384,19 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
           // → fill chi tiết phiếu nhập từ tr_dondathang_chitiet). Ghi đè dòng hiện có.
           const fd = lk.fillDetail;
           const detailStep = fd ? wizardSteps.find((s) => s.detail) : undefined;
-          if (fd && detailStep && v) {
+          // Giá trị khớp child: theo field của RECORD vừa chọn (sourceMatchField,
+          // vd id GUID) nếu cấu hình; mặc định = giá trị đã chọn (valueField).
+          const matchVal = fd?.sourceMatchField
+            ? (() => {
+                const r = rec ?? src.find((x) => String(x[lk.valueField] ?? "") === v);
+                const mv = r?.[fd.sourceMatchField];
+                return mv == null ? "" : String(mv);
+              })()
+            : v;
+          if (fd && detailStep && matchVal) {
             void api
               .getRecords(fd.entity, {
-                filters: { [fd.matchField]: { op: "=", value: v } },
+                filters: { [fd.matchField]: { op: "=", value: matchVal } },
                 limit: 2000,
               })
               .then((res) => {
