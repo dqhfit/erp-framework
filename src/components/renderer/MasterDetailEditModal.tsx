@@ -9,7 +9,7 @@
    Dùng chung CreateFormCfg + FieldLookup với modal tạo mới.
    ========================================================== */
 import { createApiDataSource } from "@erp-framework/client";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { I } from "@/components/Icons";
 import { Button, Input, Modal, SearchableSelect, Tabs } from "@/components/ui";
 import type { EntityField } from "@/lib/object-types";
@@ -119,6 +119,12 @@ export function MasterDetailEditModal({
   const [master, setMaster] = useState<Record<string, string>>({});
   const [rows, setRows] = useState<DetailRow[]>([]);
   const [deleted, setDeleted] = useState<string[]>([]);
+  // Khoá liên kết con↔cha đã resolve lúc LOAD (từ mdata — có cả field không
+  // hiển thị trên form). SAVE PHẢI tái dùng giá trị này, KHÔNG tự suy lại từ
+  // state form: với record cũ có khoá nghiệp vụ mà parentKeyField không nằm
+  // trên form, suy lại từ form sẽ rỗng → fallback PK UUID → re-link dòng con
+  // sang UUID → con mồ côi → mất chi tiết khi mở lại.
+  const linkKeyRef = useRef<string>("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [masterErrors, setMasterErrors] = useState<Record<string, string>>({});
@@ -171,6 +177,8 @@ export function MasterDetailEditModal({
 
         // f_id (logical "id") NULL ở record mới → dùng PK UUID (rec.id) làm fallback.
         const keyVal = String(mdata[keyField] ?? "").trim() || String(rec?.id ?? "");
+        // Ghi nhớ để SAVE tái dùng đúng khoá này (xem ghi chú ở linkKeyRef).
+        linkKeyRef.current = keyVal;
         if (keyVal) {
           const res = await api
             .getRecords(config.detail.entity, {
@@ -377,8 +385,12 @@ export function MasterDetailEditModal({
         throw new Error(`Dòng chi tiết ${invalidRow + 1} chưa nhập đủ thông tin bắt buộc.`);
       }
       await api.updateRecord(recordId, buildData(master, masterFields));
-      // parentKeyField thường là "id" (không có trong form state) → dùng recordId.
-      const keyVal = (master[config.detail.parentKeyField] ?? "").trim() || recordId;
+      // parentKeyField thường là "id" (không có trong form state). Ưu tiên giá
+      // trị form (nếu key hiển thị & sửa được), rồi tới khoá đã resolve lúc LOAD
+      // (giữ khoá nghiệp vụ record cũ — tránh re-link con sang PK UUID), cuối là
+      // recordId. linkKeyRef giống hệt biểu thức LOAD nên LOAD/SAVE luôn khớp.
+      const keyVal =
+        (master[config.detail.parentKeyField] ?? "").trim() || linkKeyRef.current || recordId;
       const computed = config.detail.computed;
       // Xóa các dòng bị bỏ trước.
       for (const rid of deleted) await api.deleteRecord(rid);

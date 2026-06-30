@@ -692,6 +692,10 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
   const [lookupReloadKey, setLookupReloadKey] = useState(0);
   // (SỬA) id các dòng chi tiết cũ bị xoá → deleteRecord khi lưu.
   const [deletedDetail, setDeletedDetail] = useState<string[]>([]);
+  // data record master đã LOAD (đầy đủ field, kể cả field không hiển thị). SAVE
+  // tái dùng làm fallback khoá liên kết detail (parentKeyField) — đảm bảo LOAD/
+  // SAVE luôn cùng khoá kể cả khi form state không giữ field khoá nghiệp vụ.
+  const loadedMasterRef = useRef<Record<string, unknown>>({});
   const [imgUploading, setImgUploading] = useState<Record<string, boolean>>({});
   // Tên file gốc lưu sau khi upload thành công — tránh phụ thuộc decode token client-side.
   const [fileDisplayNames, setFileDisplayNames] = useState<Record<string, string>>({});
@@ -893,6 +897,7 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
       .getRecord(editId)
       .then(async (rec) => {
         const data = (rec?.data ?? {}) as Record<string, unknown>;
+        loadedMasterRef.current = data;
         // Format theo kiểu field (date/datetime → "YYYY-MM-DD" cho input date).
         const mFields = applyFieldOverrides(
           entities.find((e) => e.id === wizardEntityId)?.fields ?? [],
@@ -1447,7 +1452,8 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
         const keyOf = (dc: NonNullable<typeof current.detail>) =>
           dc.parentKeyField === "id"
             ? String(saved.id ?? editId ?? "")
-            : (shared[dc.parentKeyField] ?? "").trim();
+            : (shared[dc.parentKeyField] ?? "").trim() ||
+              String(loadedMasterRef.current[dc.parentKeyField] ?? "");
         // (SỬA) xoá các dòng cũ bị bỏ trước.
         for (const rid of deletedDetail) await api.deleteRecord(rid);
         for (const s of wizardSteps) {
