@@ -58,6 +58,8 @@ export interface ActionContext {
   /** Mở form Tạo mới master-detail của list (createForm). Do list widget cấp khi
    *  render embeddedActions → cho nút "Tạo đơn hàng" nằm trong thanh hành động. */
   openCreateForm?: () => void;
+  /** Mở form Sửa master-detail của list (editForm) theo record ID. */
+  openEditForm?: (id: string, readOnly?: boolean) => void;
   /** Xuất toàn bộ record của entity ra file (xlsx/csv). */
   exportRecords?: (entityId: string, format: "xlsx" | "csv", title?: string) => Promise<void>;
   /** In danh sách record của entity (mở cửa sổ in). */
@@ -82,12 +84,23 @@ const TPL = /\{\{\s*([a-zA-Z_$][\w$.]*)\s*\}\}/g;
 export function interpolate(template: string, getter: (key: string) => unknown): string {
   return template.replace(TPL, (_full, path: string) => {
     const parts = path.split(".");
+    let baseKey = parts[0] ?? "";
+    let startIdx = 1;
     if (parts[0] === "state" && parts.length >= 2) {
-      const v = getter(parts.slice(1).join("."));
-      return v == null ? "" : String(v);
+      baseKey = parts[1] ?? "";
+      startIdx = 2;
     }
-    // Future: {{output.x}}, {{user.x}} ... — V1 chỉ hỗ trợ state.
-    return "";
+    let val = getter(baseKey);
+    for (let i = startIdx; i < parts.length; i++) {
+      const key = parts[i];
+      if (key && val && typeof val === "object") {
+        val = (val as Record<string, unknown>)[key];
+      } else {
+        val = undefined;
+        break;
+      }
+    }
+    return val == null ? "" : String(val);
   });
 }
 
@@ -165,7 +178,14 @@ export async function runActionSteps(
       continue;
     }
     if (step.kind === "set-state") {
-      const value = resolveBinding(step.value, rs.get);
+      let value: unknown;
+      if (step.value && typeof step.value === "object" && "source" in (step.value as object)) {
+        value = resolveBinding(step.value as BindingValue, rs.get);
+      } else if (typeof step.value === "string") {
+        value = interpolate(step.value, rs.get);
+      } else {
+        value = step.value;
+      }
       rs.set(step.key, value);
       continue;
     }
@@ -204,9 +224,42 @@ export async function runActionSteps(
       continue;
     }
     if (step.kind === "navigate") {
-      const href = interpolate(step.href, rs.get);
+      let href = interpolate(step.href, rs.get);
       if (!href) continue;
-      if (step.external) {
+
+      // Tự động viết lại liên kết trang để giữ nguyên chế độ chạy (Designer / Portal / View)
+      let openInNewTab = !!step.external;
+      const pathname = typeof window !== "undefined" ? window.location.pathname : "";
+
+      if (!step.external) {
+        const pageIdMatch = href.match(
+          /(?:view\/|page=)([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})/i,
+        );
+        if (pageIdMatch) {
+          const targetPageId = pageIdMatch[1] ?? "";
+          const origin =
+            typeof window !== "undefined" ? window.location.origin : "http://localhost";
+          const urlObj = new URL(href, origin);
+          const params = new URLSearchParams(urlObj.search);
+          params.delete("page");
+
+          if (pathname.startsWith("/pages/")) {
+            // Khi đang ở Designer, thay vì chuyển hướng tab hiện tại (gây mất trạng thái thiết kế),
+            // ta tự động mở trang đích trong một tab mới!
+            openInNewTab = true;
+            const queryStr = params.toString();
+            href = `/pages/${targetPageId}${queryStr ? `?${queryStr}` : ""}`;
+          } else if (pathname.startsWith("/view/")) {
+            const queryStr = params.toString();
+            href = `/view/${targetPageId}${queryStr ? `?${queryStr}` : ""}`;
+          } else {
+            params.set("page", targetPageId);
+            href = `/portal?${params.toString()}`;
+          }
+        }
+      }
+
+      if (openInNewTab) {
         window.open(href, "_blank", "noopener,noreferrer");
       } else {
         ctx.navigate(href);
@@ -242,6 +295,17 @@ export async function runActionSteps(
     }
     if (step.kind === "open-create-form") {
       ctx.openCreateForm?.();
+      continue;
+    }
+    if (step.kind === "open-edit-form") {
+      const rid = resolveBinding(step.recordIdBinding, rs.get);
+      if (rid == null || rid === "") {
+        await ctx.dialog.alert("Vui lòng chọn một dòng trong danh sách trước.", {
+          title: "Chưa chọn dòng",
+        });
+        return { completed: false, procedureRuns };
+      }
+      ctx.openEditForm?.(String(rid), step.readOnly);
       continue;
     }
     if (step.kind === "open-wizard") {

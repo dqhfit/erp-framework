@@ -2,7 +2,7 @@
    riêng) + MultiItemFilter (nhiều item, lọc cha-con + visibleWhen) + FilterWidget
    (dispatcher) + LegacyCascadeFilter (bộ lọc tầng cũ). Đẩy/đọc pageState. Tách
    từ ConsumerPage.tsx (Phase A4) — chỉ di chuyển code, KHÔNG đổi hành vi. */
-import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
+import { type ReactNode, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { I } from "@/components/Icons";
 import {

@@ -699,7 +699,7 @@ export function DataGrid<T>({
               return (
                 <div
                   key={row.id}
-                  onClick={clickable ? () => onRowClick(row.original) : undefined}
+                  onClick={clickable ? (e) => onRowClick(row.original, e) : undefined}
                   onKeyDown={
                     clickable
                       ? (e) => {
@@ -1121,7 +1121,7 @@ export function DataGrid<T>({
                           rowClassName?.(row.original) ?? "",
                         ].join(" ")}
                         style={isChanged ? { backgroundColor: "var(--changed-row-bg)" } : undefined}
-                        onClick={clickable ? () => onRowClick(row.original) : undefined}
+                        onClick={clickable ? (e) => onRowClick(row.original, e) : undefined}
                       >
                         {selecting && (
                           <td className="w-9 px-1 text-center align-middle">

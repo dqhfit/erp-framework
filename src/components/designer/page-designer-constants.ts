@@ -27,6 +27,7 @@ export type ComponentKind =
   | "action"
   | "actionbar"
   | "step"
+  | "subpage"
   | "banve-type";
 
 export type ActionBarItem = { id: string } & ActionConfig;
@@ -55,6 +56,7 @@ export const PALETTE: Array<{
   { kind: "kanban", label: "Kanban", icon: "Kanban", defaultSize: { w: 12, h: 4 } },
   { kind: "split", label: "Split Panel", icon: "Columns2", defaultSize: { w: 12, h: 5 } },
   { kind: "grid", label: "Grid Layout", icon: "LayoutGrid", defaultSize: { w: 12, h: 5 } },
+  { kind: "subpage", label: "Subpage / Trang nhúng", icon: "Layout", defaultSize: { w: 6, h: 5 } },
   { kind: "filter", label: "Filter", icon: "Filter", defaultSize: { w: 12, h: 2 } },
   { kind: "search", label: "Search", icon: "Search", defaultSize: { w: 4, h: 2 } },
   { kind: "combobox", label: "Combobox", icon: "ChevronDown", defaultSize: { w: 3, h: 2 } },

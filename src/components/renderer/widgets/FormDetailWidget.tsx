@@ -2,6 +2,8 @@
    pageState) + CollectionSection (bảng con 1-N trong detail) + FormWidget (sinh
    form từ field, lưu record thật). Tách từ ConsumerPage.tsx (Phase A5) — chỉ di
    chuyển code, KHÔNG đổi hành vi. */
+
+import { useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { I } from "@/components/Icons";
 import { FileCell, ImageCell } from "@/components/renderer/FilePreviewModal";
@@ -18,6 +20,52 @@ import { Chip, SearchableSelect } from "@/components/ui";
 import { useT } from "@/hooks/useT";
 import { applyFieldFormat } from "@/lib/format";
 
+// Hook để chuyển hướng bảo toàn chế độ chạy (Designer / Portal / View)
+function useNavigateWithContext() {
+  const navigate = useNavigate();
+  return (href: string) => {
+    let targetHref = href;
+    const pageIdMatch = href.match(
+      /(?:view\/|page=)([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})/i,
+    );
+    if (pageIdMatch) {
+      const targetPageId = pageIdMatch[1] ?? "";
+      const pathname = typeof window !== "undefined" ? window.location.pathname : "";
+      const origin = typeof window !== "undefined" ? window.location.origin : "http://localhost";
+      const urlObj = new URL(href, origin);
+      const params = new URLSearchParams(urlObj.search);
+      params.delete("page");
+
+      if (pathname.startsWith("/pages/")) {
+        const queryStr = params.toString();
+        targetHref = `/pages/${targetPageId}${queryStr ? `?${queryStr}` : ""}`;
+      } else if (pathname.startsWith("/view/")) {
+        const queryStr = params.toString();
+        targetHref = `/view/${targetPageId}${queryStr ? `?${queryStr}` : ""}`;
+      } else {
+        params.set("page", targetPageId);
+        targetHref = `/portal?${params.toString()}`;
+      }
+    }
+
+    try {
+      if (targetHref.includes("?")) {
+        const [path, query] = targetHref.split("?");
+        const searchParams: Record<string, string> = {};
+        const params = new URLSearchParams(query);
+        params.forEach((v, k) => {
+          searchParams[k] = v;
+        });
+        void navigate({ to: path, search: searchParams as any });
+      } else {
+        void navigate({ to: targetHref });
+      }
+    } catch {
+      void navigate({ to: targetHref });
+    }
+  };
+}
+
 /** Phase V — DetailWidget: render 1 record theo state.
  *  Khi cfg.editable=true → render dạng form chỉnh sửa, lưu bằng updateRecord.
  *  Khi false (mặc định) → read-only. */
@@ -26,12 +74,34 @@ export function DetailWidget({ cfg, compId }: { cfg: Record<string, unknown>; co
   const entityId = cfg.entity as string | undefined;
   const recordIdFromState = cfg.recordIdFromState as string | undefined;
   const title = cfg.title as string | undefined;
-  const editable = cfg.editable === true;
+  const baseEditable = cfg.editable === true;
+  const editableFromState = cfg.editableFromState as string | undefined;
   const forwardRefs =
     (cfg.forwardRefs as Array<{ field: string; refEntityId: string }> | undefined) ?? [];
   const ent = useEntity(entityId);
   const { rows, fields: wdFields, isDataSource, update: dataUpdate } = useWidgetData(cfg);
   const pageState = usePageState();
+  const editableMode = editableFromState ? pageState.get(editableFromState) : undefined;
+  const editable =
+    baseEditable &&
+    (!editableFromState ||
+      editableMode === undefined ||
+      editableMode === "" ||
+      editableMode === true ||
+      editableMode === "true" ||
+      editableMode === "edit" ||
+      editableMode === "editable");
+  const ctxNavigate = useNavigateWithContext();
+  const handleCancel = () => {
+    if (recordIdFromState) {
+      pageState.set(recordIdFromState, "");
+    }
+    pageState.set("sel_baocao", "");
+    const cancelTarget = (cfg.onCancelNavigate || cfg.onSaveNavigate) as string | undefined;
+    if (cancelTarget) {
+      ctxNavigate(cancelTarget);
+    }
+  };
 
   // Form state cho chế độ chỉnh sửa
   const [form, setForm] = useState<Record<string, string>>({});
@@ -42,6 +112,40 @@ export function DetailWidget({ cfg, compId }: { cfg: Record<string, unknown>; co
 
   const recordId = recordIdFromState ? pageState.get(recordIdFromState) : undefined;
   const record = rows.find((r) => r.id === recordId || String(r.id) === String(recordId));
+  const [fallbackRecord, setFallbackRecord] = useState<Record<string, unknown> | null>(null);
+  const [fallbackLoading, setFallbackLoading] = useState(false);
+
+  useEffect(() => {
+    const rid = recordId == null || recordId === "" ? "" : String(recordId);
+    if (!rid || record || isDataSource || !entityId) {
+      setFallbackRecord(null);
+      setFallbackLoading(false);
+      return;
+    }
+    let alive = true;
+    setFallbackLoading(true);
+    api
+      .getRecord(rid)
+      .then((row) => {
+        if (!alive) return;
+        if (!row || row.entityId !== entityId) {
+          setFallbackRecord(null);
+          return;
+        }
+        setFallbackRecord({ ...row.data, id: row.id, created_at: row.createdAt });
+      })
+      .catch(() => {
+        if (alive) setFallbackRecord(null);
+      })
+      .finally(() => {
+        if (alive) setFallbackLoading(false);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [recordId, record, isDataSource, entityId]);
+
+  const effectiveRecord = record ?? fallbackRecord;
 
   const allFields = isDataSource ? wdFields : (ent?.fields ?? []);
   const selectedFieldNames = (cfg.fields as string[] | undefined) ?? [];
@@ -58,29 +162,29 @@ export function DetailWidget({ cfg, compId }: { cfg: Record<string, unknown>; co
   // V2 P5: mirror từng field ra pageState để widget khác filter theo.
   // biome-ignore lint/correctness/useExhaustiveDependencies: compId + record identity đủ
   useEffect(() => {
-    if (!compId || !ent || !record) return;
+    if (!compId || !ent || !effectiveRecord) return;
     for (const f of allFields) {
-      pageState.set(`detail:${compId}:${f.name}`, record[f.name]);
+      pageState.set(`detail:${compId}:${f.name}`, effectiveRecord[f.name]);
     }
-  }, [compId, record?.id, ent?.id]);
+  }, [compId, effectiveRecord?.id, ent?.id]);
 
   // Pre-fill form khi record thay đổi (editable mode)
   // biome-ignore lint/correctness/useExhaustiveDependencies: record.id + editable đủ để reset
   useEffect(() => {
     if (!editable) return;
-    if (!record) {
+    if (!effectiveRecord) {
       setForm({});
       return;
     }
     const filled: Record<string, string> = {};
     for (const f of scalarFields) {
-      const v = record[f.name];
+      const v = effectiveRecord[f.name];
       filled[f.name] = v == null ? "" : String(v);
     }
     setForm(filled);
     setSaveMsg("");
     setSaveErr("");
-  }, [record?.id, editable]);
+  }, [effectiveRecord?.id, editable]);
 
   if (!entityId || !ent) {
     return <div className="p-3 text-xs text-muted">{t("widget.no_entity_detail")}</div>;
@@ -95,7 +199,10 @@ export function DetailWidget({ cfg, compId }: { cfg: Record<string, unknown>; co
       </div>
     );
   }
-  if (!record) {
+  if (!effectiveRecord) {
+    if (fallbackLoading) {
+      return <div className="p-3 text-xs text-muted">Đang tải bản ghi...</div>;
+    }
     return (
       <div className="p-3 text-xs text-muted">Không tìm thấy bản ghi (id={String(recordId)}).</div>
     );
@@ -111,10 +218,31 @@ export function DetailWidget({ cfg, compId }: { cfg: Record<string, unknown>; co
     setSaveMsg("");
     try {
       const data: Record<string, unknown> = {};
-      for (const [k, v] of Object.entries(form)) if (v !== "") data[k] = v;
-      if (isDataSource) await dataUpdate(String(record.id), data);
-      else await api.updateRecord(String(record.id), data, record.version as number | undefined);
+      for (const [k, v] of Object.entries(form)) data[k] = v;
+      let updatedRecord: Record<string, unknown> | null = null;
+      if (isDataSource) await dataUpdate(String(effectiveRecord.id), data);
+      else {
+        const updated = await api.updateRecord(
+          String(effectiveRecord.id),
+          data,
+          effectiveRecord.version as number | undefined,
+        );
+        updatedRecord = { ...updated.data, id: updated.id, created_at: updated.createdAt };
+      }
+      if (updatedRecord) setFallbackRecord(updatedRecord);
+      if (entityId) {
+        pageState.set(`__refresh:${entityId}`, Date.now());
+      }
       setSaveMsg(t("widget.saved_ok"));
+      if (recordIdFromState) {
+        pageState.set(recordIdFromState, "");
+      }
+      pageState.set("sel_baocao", "");
+      if (cfg.onSaveNavigate) {
+        setTimeout(() => {
+          ctxNavigate(cfg.onSaveNavigate as string);
+        }, 800);
+      }
     } catch (e) {
       setSaveErr((e as Error).message);
     } finally {
@@ -128,7 +256,7 @@ export function DetailWidget({ cfg, compId }: { cfg: Record<string, unknown>; co
       {collectionFields.map((f) => {
         const childEntityId = f.ref;
         const fkField = f.fkField;
-        const parentId = record.id as string | undefined;
+        const parentId = effectiveRecord.id as string | undefined;
         if (!childEntityId || !fkField || !parentId) {
           return (
             <div
@@ -159,52 +287,80 @@ export function DetailWidget({ cfg, compId }: { cfg: Record<string, unknown>; co
         {title && (
           <div className="text-sm font-semibold pb-1.5 border-b border-border">{title}</div>
         )}
-        <div className="space-y-2">
+        <div className="grid grid-cols-[130px_1fr] gap-x-3 gap-y-2 items-start text-xs">
           {scalarFields.length === 0 && (
-            <div className="text-xs text-muted">{t("widget.no_fields")}</div>
+            <div className="col-span-2 text-xs text-muted">{t("widget.no_fields")}</div>
           )}
-          {scalarFields.map((f) => (
-            <div key={f.name}>
-              <label className="text-xs text-muted">
-                {f.label}
-                {f.required ? " *" : ""}
-              </label>
-              {f.type === "select" && f.options?.length ? (
-                <SearchableSelect
-                  className="w-full"
-                  value={form[f.name] ?? ""}
-                  onChange={(v) => setForm({ ...form, [f.name]: v })}
-                  options={f.options.map((o) => ({ value: o, label: o }))}
-                  emptyOption="— chọn —"
-                />
-              ) : (
-                <input
-                  className="input w-full"
-                  type={
-                    f.type === "number" || f.type === "currency"
-                      ? "number"
-                      : f.type === "date"
-                        ? "date"
-                        : f.type === "email"
-                          ? "email"
-                          : "text"
-                  }
-                  value={form[f.name] ?? ""}
-                  onChange={(e) => setForm({ ...form, [f.name]: e.target.value })}
-                />
-              )}
-            </div>
-          ))}
+          {scalarFields.map((f) => {
+            const isFieldReadOnly =
+              (cfg.fieldOverrides as Record<string, { readOnly?: boolean }> | undefined)?.[f.name]
+                ?.readOnly === true;
+            return (
+              <div key={f.name} className="contents">
+                <label className="text-xs text-muted pt-1.5 font-medium truncate" title={f.label}>
+                  {f.label}
+                  {f.required ? " *" : ""}
+                </label>
+                <div className="min-w-0 w-full">
+                  {f.type === "select" && f.options?.length ? (
+                    <SearchableSelect
+                      className="w-full"
+                      value={form[f.name] ?? ""}
+                      onChange={(v) => setForm({ ...form, [f.name]: v })}
+                      options={f.options.map((o) => ({ value: o, label: o }))}
+                      emptyOption="— chọn —"
+                      disabled={isFieldReadOnly}
+                    />
+                  ) : f.type === "longtext" || f.name === "dexuat" ? (
+                    <textarea
+                      className="input w-full resize-y disabled:opacity-75 disabled:bg-panel-2/50 min-h-[60px]"
+                      value={form[f.name] ?? ""}
+                      onChange={(e) => setForm({ ...form, [f.name]: e.target.value })}
+                      readOnly={isFieldReadOnly}
+                      disabled={isFieldReadOnly}
+                    />
+                  ) : (
+                    <input
+                      className="input w-full disabled:opacity-75 disabled:bg-panel-2/50"
+                      type={
+                        f.type === "number" || f.type === "currency"
+                          ? "number"
+                          : f.type === "date"
+                            ? "date"
+                            : f.type === "email"
+                              ? "email"
+                              : "text"
+                      }
+                      value={form[f.name] ?? ""}
+                      onChange={(e) => setForm({ ...form, [f.name]: e.target.value })}
+                      readOnly={isFieldReadOnly}
+                      disabled={isFieldReadOnly}
+                    />
+                  )}
+                </div>
+              </div>
+            );
+          })}
         </div>
         <div className="flex items-center gap-2 pt-1">
           <button
             type="button"
-            className="btn btn-primary btn-sm"
+            className="btn btn-primary btn-sm font-semibold px-4"
             disabled={busy}
             onClick={() => void save()}
           >
             {busy ? t("common.saving") : t("widget.save_changes")}
           </button>
+          {!!(cfg.onCancelNavigate || cfg.onSaveNavigate) && (
+            <button
+              type="button"
+              className="btn btn-outline btn-sm border-border/80 text-muted hover:bg-panel-2/50 font-semibold px-4"
+              disabled={busy}
+              onClick={handleCancel}
+            >
+              Hủy
+            </button>
+          )}
           {saveMsg && <span className="text-xs text-success">{saveMsg}</span>}
           {saveErr && <span className="text-xs text-danger">{saveErr}</span>}
         </div>
@@ -221,7 +377,7 @@ export function DetailWidget({ cfg, compId }: { cfg: Record<string, unknown>; co
       )}
       <dl className="grid grid-cols-[140px_1fr] gap-x-3 gap-y-1.5 text-xs">
         {scalarFields.map((f) => {
-          const v = record[f.name];
+          const v = effectiveRecord[f.name];
           const isForward = fwdSet.has(f.name);
           return (
             <div key={f.name} className="contents">
@@ -545,6 +701,11 @@ export function FormWidget({ cfg, compId }: { cfg: Record<string, unknown>; comp
       await wdCreate(data);
       setForm({});
       setMsg(t("widget.saved_record"));
+      if (entityId) {
+        const key = `__refresh:${entityId}`;
+        const tag = (pageState.get(key) as number | undefined) ?? 0;
+        pageState.set(key, tag + 1);
+      }
     } catch (e) {
       setErr((e as Error).message);
     } finally {
@@ -562,71 +723,94 @@ export function FormWidget({ cfg, compId }: { cfg: Record<string, unknown>; comp
           Chọn 1 dòng ở danh sách để thêm bản ghi liên quan.
         </div>
       ) : (
-        <div className="space-y-2">
-          {fields.length === 0 && <div className="text-xs text-muted">{t("widget.no_fields")}</div>}
-          {fields.map((f) => (
-            <div key={f.id}>
-              <label className="text-xs text-muted">
-                {f.label}
-                {f.required ? " *" : ""}
-              </label>
-              {(f.type === "lookup" || f.type === "multi-lookup") && f.ref ? (
-                <LookupPicker
-                  refEntityId={f.ref}
-                  value={form[f.name] ?? ""}
-                  onChange={(v) => setForm({ ...form, [f.name]: v })}
-                  multi={f.type === "multi-lookup"}
-                />
-              ) : f.type === "select" && f.options?.length ? (
-                <SearchableSelect
-                  className="w-full"
-                  value={form[f.name] ?? ""}
-                  onChange={(v) => setForm({ ...form, [f.name]: v })}
-                  options={f.options.map((o) => ({ value: o, label: o }))}
-                  emptyOption="— chọn —"
-                />
-              ) : f.type === "boolean" ? (
-                <label className="flex items-center gap-2 text-sm cursor-pointer">
-                  <input
-                    type="checkbox"
-                    className="accent-accent"
-                    checked={form[f.name] === "true"}
-                    onChange={(e) =>
-                      setForm({ ...form, [f.name]: e.target.checked ? "true" : "false" })
-                    }
-                  />
-                  {f.label}
-                </label>
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2.5">
+            {fields.length === 0 && (
+              <div className="col-span-2 text-xs text-muted">{t("widget.no_fields")}</div>
+            )}
+            {fields.map((f) => {
+              const isFullWidth = f.type === "image" || f.type === "file" || f.type === "boolean";
+              return (
+                <div key={f.id} className={isFullWidth ? "col-span-2" : "col-span-1"}>
+                  <label className="text-xs text-muted mb-1 block font-medium">
+                    {f.label}
+                    {f.required ? " *" : ""}
+                  </label>
+                  {(f.type === "lookup" || f.type === "multi-lookup") && f.ref ? (
+                    <LookupPicker
+                      refEntityId={f.ref}
+                      value={form[f.name] ?? ""}
+                      onChange={(v) => setForm({ ...form, [f.name]: v })}
+                      multi={f.type === "multi-lookup"}
+                    />
+                  ) : f.type === "select" && f.options?.length ? (
+                    <SearchableSelect
+                      className="w-full"
+                      value={form[f.name] ?? ""}
+                      onChange={(v) => setForm({ ...form, [f.name]: v })}
+                      options={f.options.map((o) => ({ value: o, label: o }))}
+                      emptyOption="— chọn —"
+                    />
+                  ) : f.type === "boolean" ? (
+                    <label className="flex items-center gap-2 text-sm cursor-pointer mt-1">
+                      <input
+                        type="checkbox"
+                        className="accent-accent"
+                        checked={form[f.name] === "true"}
+                        onChange={(e) =>
+                          setForm({ ...form, [f.name]: e.target.checked ? "true" : "false" })
+                        }
+                      />
+                      {f.label}
+                    </label>
+                  ) : f.type === "longtext" ||
+                    f.name === "diengiai" ||
+                    f.name === "ghichu" ||
+                    f.name === "note" ? (
+                    <textarea
+                      className="input w-full resize-y min-h-[60px]"
+                      value={form[f.name] ?? ""}
+                      onChange={(e) => setForm({ ...form, [f.name]: e.target.value })}
+                    />
+                  ) : (
+                    <input
+                      className="input w-full"
+                      type={
+                        f.type === "number" || f.type === "currency" || f.type === "integer"
+                          ? "number"
+                          : f.type === "date"
+                            ? "date"
+                            : f.type === "datetime"
+                              ? "datetime-local"
+                              : f.type === "email"
+                                ? "email"
+                                : "text"
+                      }
+                      value={form[f.name] ?? ""}
+                      onChange={(e) => setForm({ ...form, [f.name]: e.target.value })}
+                    />
+                  )}
+                </div>
+              );
+            })}
+          </div>
+          <div className="flex items-center justify-end gap-3 border-t border-border pt-3">
+            {msg && <div className="text-xs text-success font-medium">{msg}</div>}
+            {err && <div className="text-xs text-danger font-medium">{err}</div>}
+            <button
+              type="button"
+              className="btn btn-outline border-success/60 text-success hover:bg-success/10 btn-sm flex items-center gap-1.5 font-semibold px-4"
+              disabled={busy || fields.length === 0}
+              onClick={() => void submit()}
+            >
+              {busy ? (
+                <I.Loader size={14} className="animate-spin" />
               ) : (
-                <input
-                  className="input w-full"
-                  type={
-                    f.type === "number" || f.type === "currency" || f.type === "integer"
-                      ? "number"
-                      : f.type === "date"
-                        ? "date"
-                        : f.type === "datetime"
-                          ? "datetime-local"
-                          : f.type === "email"
-                            ? "email"
-                            : "text"
-                  }
-                  value={form[f.name] ?? ""}
-                  onChange={(e) => setForm({ ...form, [f.name]: e.target.value })}
-                />
+                <I.Plus size={14} className="text-success" />
               )}
-            </div>
-          ))}
-          <button
-            type="button"
-            className="btn btn-primary btn-sm"
-            disabled={busy || fields.length === 0}
-            onClick={() => void submit()}
-          >
-            {busy ? t("common.saving") : t("widget.save_record")}
-          </button>
-          {msg && <div className="text-xs text-success">{msg}</div>}
-          {err && <div className="text-xs text-danger">{err}</div>}
+              Thêm
+            </button>
+          </div>
         </div>
       )}
     </div>

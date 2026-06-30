@@ -191,7 +191,7 @@ export interface ActionStepSetState {
   id: string;
   kind: "set-state";
   key: string;
-  value: BindingValue;
+  value: BindingValue | string | unknown;
 }
 
 /** Nạp lại dữ liệu lưới: đặt cờ __refresh cho từng entity → list refetch. */
@@ -247,6 +247,8 @@ export interface ActionStepOpenPopup {
   saveOutputTo: string;
   /** Ghi đè type/label của field trong popup (vd url→file, text→image). */
   fieldOverrides?: Record<string, FieldOverride>;
+  columnLabels?: Record<string, string>;
+  linkedToState?: { field: string; stateKey: string } | Array<{ field: string; stateKey: string }>;
   /** (list) Chọn NHIỀU dòng: hiện checkbox + nút xác nhận. Kết quả trả về
    *  { __many: true, ids: string[], items: object[] } để step sau lặp cập nhật. */
   multiSelect?: boolean;
@@ -274,8 +276,33 @@ export interface ActionStepOpenPopup {
     entity?: string;
     valueField?: string;
     labelField?: string;
+    labelFields?: string[];
+    columnHeaders?: string[];
+    searchFields?: string[];
+    autofill?: Record<string, string>;
+    multiple?: boolean;
+    separator?: string;
+    preloadLimit?: number;
+    filters?: Record<
+      string,
+      {
+        op?: RecordFilterOp;
+        value?: unknown;
+        fromLinked?: string;
+        split?: string;
+      }
+    >;
     /** Options tĩnh — dùng thay cho fetch entity. */
     options?: Array<{ value: string; label: string }>;
+  }>;
+  imageAttachments?: Array<{
+    field: string;
+    entity: string;
+    itemField: string;
+    pathField: string;
+    nameField: string;
+    itemValueField?: string;
+    subfolder?: string;
   }>;
 }
 
@@ -425,6 +452,15 @@ export interface ActionStepOpenCreateForm {
   kind: "open-create-form";
 }
 
+export interface ActionStepOpenEditForm {
+  id: string;
+  kind: "open-edit-form";
+  /** Lấy record ID từ state (vd {"key":"sel","source":"state"}). */
+  recordIdBinding: BindingValue;
+  /** true → mở ở chế độ chỉ-đọc. */
+  readOnly?: boolean;
+}
+
 export interface ActionStepOpenWizard {
   id: string;
   kind: "open-wizard";
@@ -485,6 +521,7 @@ export type ActionStep =
   | ActionStepPrintRecords
   | ActionStepOpenPopup
   | ActionStepOpenCreateForm
+  | ActionStepOpenEditForm
   | ActionStepOpenWizard
   | ActionStepUploadFile;
 

@@ -169,7 +169,8 @@ export function MasterDetailEditModal({
         for (const f of masterFields) mInit[f.name] = toStr(mdata[f.name], f.type);
         if (alive) setMaster(mInit);
 
-        const keyVal = String(mdata[keyField] ?? "");
+        // f_id (logical "id") NULL ở record mới → dùng PK UUID (rec.id) làm fallback.
+        const keyVal = String(mdata[keyField] ?? "").trim() || String(rec?.id ?? "");
         if (keyVal) {
           const res = await api
             .getRecords(config.detail.entity, {
@@ -376,7 +377,8 @@ export function MasterDetailEditModal({
         throw new Error(`Dòng chi tiết ${invalidRow + 1} chưa nhập đủ thông tin bắt buộc.`);
       }
       await api.updateRecord(recordId, buildData(master, masterFields));
-      const keyVal = (master[config.detail.parentKeyField] ?? "").trim();
+      // parentKeyField thường là "id" (không có trong form state) → dùng recordId.
+      const keyVal = (master[config.detail.parentKeyField] ?? "").trim() || recordId;
       const computed = config.detail.computed;
       // Xóa các dòng bị bỏ trước.
       for (const rid of deleted) await api.deleteRecord(rid);
@@ -451,217 +453,278 @@ export function MasterDetailEditModal({
                 Vui lòng điền đầy đủ các trường bắt buộc được đánh dấu bên dưới.
               </div>
             )}
-          {config.layout !== "single" && (
-            <Tabs
-              value={tab}
-              onChange={setTab}
-              options={[
-                { value: "master", label: config.masterLabel ?? "Thông tin" },
-                {
-                  value: "detail",
-                  label: `${config.detailLabel ?? "Chi tiết"} (${rows.length})`,
-                },
-              ]}
-            />
-          )}
-
-          {(config.layout === "single" || tab === "master") && (
-            <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-3">
-              {masterFields.map((f) => (
-                <div
-                  key={f.id}
-                  className={
-                    config.master.fullWidthFields?.includes(f.name)
-                      ? "space-y-1 col-span-2"
-                      : "space-y-1"
-                  }
-                >
-                  <label className="text-xs font-medium">
-                    {config.master.fieldLabels?.[f.name] ?? f.label}
-                    {(f.required || config.master.requiredFields?.includes(f.name)) && (
-                      <span className="text-danger ml-0.5">*</span>
-                    )}
-                  </label>
-                  <div
-                    className={masterErrors[f.name] ? "rounded-md ring-1 ring-danger" : undefined}
-                  >
-                    {renderInput(
-                      f,
-                      master[f.name] ?? "",
-                      (v) => {
-                        setMaster((s) => ({ ...s, [f.name]: v }));
-                        if (v.trim()) {
-                          setMasterErrors((current) => {
-                            const next = { ...current };
-                            delete next[f.name];
-                            return next;
-                          });
-                        }
-                      },
-                      false,
-                      masterLookups?.[f.name],
-                    )}
-                  </div>
-                  {masterErrors[f.name] && (
-                    <p className="text-xs text-danger">{masterErrors[f.name]}</p>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-          {(config.layout === "single" || tab === "detail") && (
-            <div className={config.layout === "single" ? "mt-4 space-y-2" : "mt-3 space-y-2"}>
-              <div className="overflow-x-auto border border-border rounded-md max-h-[420px] overflow-y-auto">
-                <table className="text-sm w-full">
-                  <thead className="bg-panel-2 sticky top-0">
-                    <tr>
-                      {detailFields.map((f) => (
-                        <th
-                          key={f.id}
-                          className="px-2 py-1.5 text-left text-xs font-semibold text-muted whitespace-nowrap"
-                        >
-                          {config.detail.fieldLabels?.[f.name] ?? f.label}
-                          {config.detail.requiredFields?.includes(f.name) && (
-                            <span className="text-danger ml-0.5">*</span>
-                          )}
-                        </th>
-                      ))}
-                      {!readOnly && <th className="w-8" />}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {rows.map((r, i) => (
-                      <tr
-                        key={r._key}
+          {(() => {
+            const masterFormContent = (stacked = false) => (
+              <div className={stacked ? "space-y-3" : "mt-3 grid grid-cols-2 gap-x-4 gap-y-3"}>
+                {masterFields.map((f) => {
+                  const fResolved = config.master.longtextFields?.includes(f.name)
+                    ? { ...f, type: "longtext" as EntityField["type"] }
+                    : f;
+                  const isFieldReadonly = config.master.readonlyFields?.includes(f.name);
+                  return (
+                    <div
+                      key={f.id ?? f.name}
+                      className={
+                        !stacked && config.master.fullWidthFields?.includes(f.name)
+                          ? "space-y-1 col-span-2"
+                          : "space-y-1"
+                      }
+                    >
+                      <label className="text-xs font-medium">
+                        {config.master.fieldLabels?.[f.name] ?? f.label}
+                        {(f.required || config.master.requiredFields?.includes(f.name)) && (
+                          <span className="text-danger ml-0.5">*</span>
+                        )}
+                      </label>
+                      <div
                         className={
-                          detailErrors[i]
-                            ? "border-t border-danger bg-danger/5"
-                            : "border-t border-border"
+                          masterErrors[f.name] ? "rounded-md ring-1 ring-danger" : undefined
                         }
                       >
-                        {detailFields.map((f) => {
-                          const factors = config.detail.computed?.[f.name];
-                          return (
-                            <td
-                              key={f.id}
-                              className={
-                                detailLookups?.[f.name]
-                                  ? "px-1.5 py-1 min-w-[220px]"
-                                  : "px-1.5 py-1 min-w-[130px]"
-                              }
-                            >
-                              {factors ? (
-                                <div className="px-2 py-1 text-right tabular-nums text-muted">
-                                  {computeProduct(r, factors).toLocaleString("vi-VN")}
-                                </div>
-                              ) : (
-                                renderInput(
-                                  f,
-                                  r[f.name] ?? "",
-                                  (v) => {
-                                    setRow(i, f.name, v);
-                                    if (v.trim()) {
-                                      setDetailErrors((current) => {
-                                        const next = { ...current };
-                                        const rowErrors = { ...(next[i] ?? {}) };
-                                        delete rowErrors[f.name];
-                                        if (Object.keys(rowErrors).length) next[i] = rowErrors;
-                                        else delete next[i];
-                                        return next;
-                                      });
-                                    }
-                                  },
-                                  true,
-                                  detailLookups?.[f.name],
-                                  // Dòng đã có (sửa) + có cấu hình editableOnExisting → khoá cột
-                                  // không thuộc danh sách (chỉ cho sửa vd số lượng, đơn giá).
-                                  !!r._rid &&
-                                    !!config.detail.editableOnExisting &&
-                                    !config.detail.editableOnExisting.includes(f.name),
-                                )
-                              )}
-                              {detailErrors[i]?.[f.name] && (
-                                <p className="px-1 pt-0.5 text-[11px] text-danger">
-                                  {detailErrors[i][f.name]}
-                                </p>
-                              )}
-                            </td>
-                          );
-                        })}
-                        {!readOnly && (
-                          <td className="text-center">
-                            <button
-                              type="button"
-                              title="Xoá dòng"
-                              className="p-1 text-muted hover:text-danger"
-                              onClick={() => removeRow(i)}
-                            >
-                              <I.Trash size={13} />
-                            </button>
-                          </td>
+                        {renderInput(
+                          fResolved,
+                          master[f.name] ?? "",
+                          (v) => {
+                            setMaster((s) => ({ ...s, [f.name]: v }));
+                            if (v.trim())
+                              setMasterErrors((c) => {
+                                const n = { ...c };
+                                delete n[f.name];
+                                return n;
+                              });
+                          },
+                          false,
+                          masterLookups?.[f.name],
+                          isFieldReadonly,
                         )}
-                      </tr>
-                    ))}
-                  </tbody>
-                  {config.detail.footerSums && config.detail.footerSums.length > 0 && (
-                    <tfoot className="sticky bottom-0 bg-panel-2 border-t-2 border-border">
-                      <tr>
-                        {detailFields.map((f, idx) => {
-                          const isSum = config.detail.footerSums?.includes(f.name);
-                          return (
-                            <td
-                              key={f.id}
-                              className={
-                                isSum
-                                  ? "px-2 py-1.5 text-right text-xs font-semibold tabular-nums"
-                                  : "px-2 py-1.5 text-xs font-semibold text-muted"
-                              }
-                            >
-                              {isSum
-                                ? sumField(rows, f.name, config.detail.computed).toLocaleString(
-                                    "vi-VN",
-                                  )
-                                : idx === 0
-                                  ? "Tổng"
-                                  : ""}
-                            </td>
-                          );
-                        })}
-                        {!readOnly && <td />}
-                      </tr>
-                    </tfoot>
-                  )}
-                </table>
+                      </div>
+                      {masterErrors[f.name] && (
+                        <p className="text-xs text-danger">{masterErrors[f.name]}</p>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
-              {!readOnly && (
-                <>
-                  <Button
-                    variant="ghost"
-                    onClick={() =>
-                      setRows((rs) => [
-                        ...rs,
-                        {
-                          _key: crypto.randomUUID(),
-                          ...(config.detail.autoSequenceField
-                            ? { [config.detail.autoSequenceField]: String(rs.length + 1) }
-                            : {}),
-                        },
-                      ])
-                    }
-                    icon={<I.Plus size={13} />}
-                  >
-                    Thêm dòng
-                  </Button>
-                  {config.layout !== "single" && (
-                    <p className="text-xs text-muted">
-                      Dòng mới sẽ tự gán {config.detail.linkField} = giá trị{" "}
-                      {config.detail.parentKeyField} ở phần thông tin.
+            );
+
+            const renderDetailTable = (inSplit = false) => (
+              <div
+                className={
+                  inSplit
+                    ? "flex flex-col gap-2 flex-1 min-h-0"
+                    : config.layout === "single"
+                      ? "mt-4 space-y-2"
+                      : "mt-3 space-y-2"
+                }
+              >
+                <div
+                  className={
+                    inSplit
+                      ? "overflow-auto border border-border rounded-md flex-1 min-h-0"
+                      : "overflow-x-auto border border-border rounded-md max-h-[420px] overflow-y-auto"
+                  }
+                >
+                  <table className={`text-sm${inSplit ? " min-w-max" : " w-full"}`}>
+                    <thead className="bg-panel-2 sticky top-0">
+                      <tr>
+                        {detailFields.map((f) => (
+                          <th
+                            key={f.id ?? f.name}
+                            style={{
+                              width:
+                                config.detail.fieldWidths?.[f.name] ??
+                                (detailLookups?.[f.name]
+                                  ? 190
+                                  : f.type === "number"
+                                    ? 90
+                                    : undefined),
+                            }}
+                            className="px-2 py-1.5 text-left text-xs font-semibold text-muted whitespace-nowrap"
+                          >
+                            {config.detail.fieldLabels?.[f.name] ?? f.label}
+                            {config.detail.requiredFields?.includes(f.name) && (
+                              <span className="text-danger ml-0.5">*</span>
+                            )}
+                          </th>
+                        ))}
+                        {!readOnly && <th className="w-8" />}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {rows.map((r, i) => (
+                        <tr
+                          key={r._key}
+                          className={
+                            detailErrors[i]
+                              ? "border-t border-danger bg-danger/5"
+                              : "border-t border-border"
+                          }
+                        >
+                          {detailFields.map((f) => {
+                            const factors = config.detail.computed?.[f.name];
+                            return (
+                              <td
+                                key={f.id ?? f.name}
+                                className="px-1.5 py-1"
+                                style={{
+                                  minWidth:
+                                    config.detail.fieldWidths?.[f.name] ??
+                                    (detailLookups?.[f.name]
+                                      ? 190
+                                      : f.type === "number"
+                                        ? 90
+                                        : 110),
+                                }}
+                              >
+                                {factors ? (
+                                  <div className="px-2 py-1 text-right tabular-nums text-muted">
+                                    {computeProduct(r, factors).toLocaleString("vi-VN")}
+                                  </div>
+                                ) : (
+                                  renderInput(
+                                    f,
+                                    r[f.name] ?? "",
+                                    (v) => {
+                                      setRow(i, f.name, v);
+                                      if (v.trim())
+                                        setDetailErrors((cur) => {
+                                          const n = { ...cur };
+                                          const re = { ...(n[i] ?? {}) };
+                                          delete re[f.name];
+                                          if (Object.keys(re).length) n[i] = re;
+                                          else delete n[i];
+                                          return n;
+                                        });
+                                    },
+                                    true,
+                                    detailLookups?.[f.name],
+                                    !!r._rid &&
+                                      !!config.detail.editableOnExisting &&
+                                      !config.detail.editableOnExisting.includes(f.name),
+                                  )
+                                )}
+                                {detailErrors[i]?.[f.name] && (
+                                  <p className="px-1 pt-0.5 text-[11px] text-danger">
+                                    {detailErrors[i][f.name]}
+                                  </p>
+                                )}
+                              </td>
+                            );
+                          })}
+                          {!readOnly && (
+                            <td className="text-center">
+                              <button
+                                type="button"
+                                title="Xoá dòng"
+                                className="p-1 text-muted hover:text-danger"
+                                onClick={() => removeRow(i)}
+                              >
+                                <I.Trash size={13} />
+                              </button>
+                            </td>
+                          )}
+                        </tr>
+                      ))}
+                    </tbody>
+                    {config.detail.footerSums && config.detail.footerSums.length > 0 && (
+                      <tfoot className="sticky bottom-0 bg-panel-2 border-t-2 border-border">
+                        <tr>
+                          {detailFields.map((f, idx) => {
+                            const isSum = config.detail.footerSums?.includes(f.name);
+                            return (
+                              <td
+                                key={f.id ?? f.name}
+                                className={
+                                  isSum
+                                    ? "px-2 py-1.5 text-right text-xs font-semibold tabular-nums"
+                                    : "px-2 py-1.5 text-xs font-semibold text-muted"
+                                }
+                              >
+                                {isSum
+                                  ? sumField(rows, f.name, config.detail.computed).toLocaleString(
+                                      "vi-VN",
+                                    )
+                                  : idx === 0
+                                    ? "Tổng"
+                                    : ""}
+                              </td>
+                            );
+                          })}
+                          {!readOnly && <td />}
+                        </tr>
+                      </tfoot>
+                    )}
+                  </table>
+                </div>
+                {!readOnly && (
+                  <>
+                    <Button
+                      variant="ghost"
+                      onClick={() =>
+                        setRows((rs) => [
+                          ...rs,
+                          {
+                            _key: crypto.randomUUID(),
+                            ...(config.detail.autoSequenceField
+                              ? { [config.detail.autoSequenceField]: String(rs.length + 1) }
+                              : {}),
+                          },
+                        ])
+                      }
+                      icon={<I.Plus size={13} />}
+                    >
+                      Thêm dòng
+                    </Button>
+                    {!inSplit && config.layout !== "single" && (
+                      <p className="text-xs text-muted">
+                        Dòng mới sẽ tự gán {config.detail.linkField} = giá trị{" "}
+                        {config.detail.parentKeyField} ở phần thông tin.
+                      </p>
+                    )}
+                  </>
+                )}
+              </div>
+            );
+
+            if (config.layout === "split") {
+              return (
+                <div className="flex gap-0 mt-1" style={{ height: 520 }}>
+                  <div className="w-[360px] shrink-0 flex flex-col border-r border-border pr-4">
+                    <p className="text-xs font-semibold text-muted uppercase tracking-wide mb-3">
+                      {config.masterLabel ?? "Thông tin chung"}
                     </p>
-                  )}
-                </>
-              )}
-            </div>
-          )}
+                    <div className="flex-1 overflow-y-auto pr-0.5">{masterFormContent(true)}</div>
+                  </div>
+                  <div className="flex-1 min-w-0 pl-4 flex flex-col gap-2 overflow-hidden">
+                    <p className="text-xs font-semibold text-muted uppercase tracking-wide mb-1">
+                      {config.detailLabel ?? "Chi tiết"}
+                    </p>
+                    {renderDetailTable(true)}
+                  </div>
+                </div>
+              );
+            }
+
+            return (
+              <>
+                {config.layout !== "single" && (
+                  <Tabs
+                    value={tab}
+                    onChange={setTab}
+                    options={[
+                      { value: "master", label: config.masterLabel ?? "Thông tin" },
+                      {
+                        value: "detail",
+                        label: `${config.detailLabel ?? "Chi tiết"} (${rows.length})`,
+                      },
+                    ]}
+                  />
+                )}
+                {(config.layout === "single" || tab === "master") && masterFormContent()}
+                {(config.layout === "single" || tab === "detail") && renderDetailTable()}
+              </>
+            );
+          })()}
         </>
       )}
     </Modal>

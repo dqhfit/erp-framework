@@ -1556,6 +1556,26 @@ function ComponentBody({
       </div>
     );
   }
+  if (comp.kind === "subpage") {
+    const targetPageId = comp.config.targetPageId as string | undefined;
+    return (
+      <div className="h-full flex flex-col items-center justify-center p-4 border border-dashed border-border/80 bg-panel/30 rounded-md text-xs gap-1.5 text-center overflow-hidden">
+        <I.Layout size={20} className="text-accent/80 shrink-0" />
+        <div className="font-semibold text-text truncate max-w-full shrink-0">
+          Subpage / Trang nhúng
+        </div>
+        {targetPageId ? (
+          <span className="text-[10px] font-mono text-muted/80 select-all truncate max-w-full px-2 shrink-0">
+            ID: {targetPageId}
+          </span>
+        ) : (
+          <span className="text-[10px] text-warning/90 font-medium shrink-0">
+            Chưa cấu hình ID trang con
+          </span>
+        )}
+      </div>
+    );
+  }
 
   return null;
 }

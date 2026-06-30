@@ -102,6 +102,8 @@ interface Props {
   /** Mở form Tạo mới master-detail của list (createForm) — list widget cấp khi
    *  render embeddedActions, cho step "open-create-form". */
   onOpenCreateForm?: () => void;
+  /** Mở form Sửa master-detail của list (editForm) — cho step "open-edit-form". */
+  onOpenEditForm?: (id: string, readOnly?: boolean) => void;
   /** Gọi sau khi chuỗi action chạy xong, dùng để refresh lookup trong wizard cha. */
   onComplete?: (output?: any) => void;
 }
@@ -113,6 +115,7 @@ export function ActionWidget({
   compact = false,
   menuItem = false,
   onOpenCreateForm,
+  onOpenEditForm,
   onComplete,
 }: Props) {
   const user = useAuth((s) => s.user);
@@ -123,6 +126,9 @@ export function ActionWidget({
   const [popupRecordId, setPopupRecordId] = useState<unknown>(undefined);
   // listFilters đã resolve (field → giá trị) cho popup list lọc server-side.
   const [popupFilters, setPopupFilters] = useState<Record<string, unknown> | undefined>(undefined);
+  const [popupLinkedData, setPopupLinkedData] = useState<Record<string, unknown> | undefined>(
+    undefined,
+  );
   const popupResolveRef = useRef<((v: Record<string, unknown> | null) => void) | null>(null);
   const [wizardStep, setWizardStep] = useState<ActionStepOpenWizard | null>(null);
   const [wizardRecordId, setWizardRecordId] = useState<unknown>(undefined);
@@ -150,6 +156,21 @@ export function ActionWidget({
         setPopupFilters(Object.keys(f).length ? f : undefined);
       } else {
         setPopupFilters(undefined);
+      }
+      const linkedItems = step.linkedToState
+        ? Array.isArray(step.linkedToState)
+          ? step.linkedToState
+          : [step.linkedToState]
+        : [];
+      if (linkedItems.length > 0) {
+        const linkedData: Record<string, unknown> = {};
+        for (const linked of linkedItems) {
+          const val = getter(linked.stateKey);
+          if (val !== undefined && val !== null && val !== "") linkedData[linked.field] = val;
+        }
+        setPopupLinkedData(Object.keys(linkedData).length ? linkedData : undefined);
+      } else {
+        setPopupLinkedData(undefined);
       }
       setPopupStep(step);
       return new Promise((resolve) => {
@@ -230,11 +251,28 @@ export function ActionWidget({
           procClient.invokeModule(name, args),
         dialog: { confirm: dialog.confirm, alert: dialog.alert },
         toast: { success: toast.success, error: toast.error, info: toast.info },
-        navigate: (href: string) => void navigate({ to: href }),
+        navigate: (href: string) => {
+          try {
+            if (href.includes("?")) {
+              const [path, query] = href.split("?");
+              const searchParams: Record<string, string> = {};
+              const params = new URLSearchParams(query);
+              params.forEach((v, k) => {
+                searchParams[k] = v;
+              });
+              void navigate({ to: path, search: searchParams as any });
+            } else {
+              void navigate({ to: href });
+            }
+          } catch {
+            void navigate({ to: href });
+          }
+        },
         openPopup,
         openWizard: (s: ActionStepOpenWizard, getter: (key: string) => unknown) =>
           openWizard(s, getter),
         openCreateForm: onOpenCreateForm,
+        openEditForm: onOpenEditForm,
         exportRecords: async (entityId: string, format: "xlsx" | "csv", title?: string) => {
           const r = await recordsApi.exportRecords(entityId, "csv");
           const name = title || "export";
@@ -301,8 +339,9 @@ export function ActionWidget({
         {popupStep && (
           <PopupPickerModal
             step={popupStep}
-            recordId={popupRecordId}
-            filters={popupFilters}
+            recordId={popupRecordId as string}
+            filters={popupFilters as Record<string, string>}
+            linkedData={popupLinkedData}
             onSelect={(value) => closePopup(value)}
             onCancel={() => closePopup(null)}
           />
@@ -354,8 +393,9 @@ export function ActionWidget({
       {popupStep && (
         <PopupPickerModal
           step={popupStep}
-          recordId={popupRecordId}
-          filters={popupFilters}
+          recordId={popupRecordId as string}
+          filters={popupFilters as Record<string, string>}
+          linkedData={popupLinkedData}
           onSelect={(value) => closePopup(value)}
           onCancel={() => closePopup(null)}
         />

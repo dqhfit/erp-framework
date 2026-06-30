@@ -26,6 +26,7 @@ import type {
   RowDetailCfg,
   SplitGridCell,
   SplitPanelCfg,
+  VisibleRule,
 } from "@/components/renderer/page-types";
 import { DetailWidget, FormWidget } from "@/components/renderer/widgets/FormDetailWidget";
 import { ListWidget, ServerPagedListWidget } from "@/components/renderer/widgets/list-widgets";
@@ -161,6 +162,8 @@ function buildSubCfg(
     columnGroups: panel.columnGroups,
     serverPaging: panel.serverPaging,
     editable: panel.editable,
+    editableFromState: (panel as Record<string, unknown>).editableFromState,
+    visibleWhen: (panel as Record<string, unknown>).visibleWhen,
     batchEdit: panel.batchEdit,
     excelMode: panel.excelMode,
     multiSelect: panel.multiSelect,
@@ -169,6 +172,9 @@ function buildSubCfg(
     rowLimit: panel.rowLimit,
     pageSize: panel.pageSize,
     defaultSort: panel.defaultSort,
+    fieldOverrides: (panel as Record<string, unknown>).fieldOverrides,
+    fieldLookups: (panel as Record<string, unknown>).fieldLookups,
+    linkedToState: (panel as Record<string, unknown>).linkedToState,
     embeddedActions: panel.embeddedActions,
     rowActionsBuiltin: panel.rowActionsBuiltin,
     rowActionsHidden: panel.rowActionsHidden,
@@ -181,11 +187,10 @@ function buildSubCfg(
     addRowPos: panel.addRowPos,
     groupBy: panel.groupBy,
     valueField: panel.valueField,
-    // chart kind maps to cfg.kind (ChartWidget reads cfg.kind for bar/line/pie…)
     ...(kind === "chart" ? { kind: panel.chartKind ?? "bar" } : {}),
     ...(kind === "list"
       ? {
-          selectionStateKey: ownStateKey,
+          selectionStateKey: (panel as Record<string, any>).selectionStateKey ?? ownStateKey,
           ...(panel.sourceField ? { selectionField: panel.sourceField } : {}),
           // sourceFields: mỗi field phát thêm 1 state key riêng {ownStateKey}:{field}
           ...(panel.sourceFields?.length
@@ -197,7 +202,9 @@ function buildSubCfg(
             : {}),
         }
       : {}),
-    ...(kind === "detail" ? { recordIdFromState: srcStateKey } : {}),
+    ...(kind === "detail"
+      ? { recordIdFromState: (panel as Record<string, any>).recordIdFromState ?? srcStateKey }
+      : {}),
     // linkField đơn (backwards compat) → filterFromState như cũ.
     // Bỏ qua khi linkConditions đã khai báo: linkConditions ưu tiên + filterFromState
     // sẽ dùng row-id (uuid) làm stateKey → không bao giờ khớp field nghiệp vụ → ẩn hết.
@@ -226,6 +233,28 @@ function buildSubCfg(
   };
 }
 
+function isVisibleByRule(rule: VisibleRule | undefined, value: unknown): boolean {
+  if (!rule) return true;
+  const sv = value == null ? "" : String(value);
+  const arr = Array.isArray(rule.value) ? rule.value.map(String) : [];
+  switch (rule.op) {
+    case "eq":
+      return sv === String(rule.value ?? "");
+    case "neq":
+      return sv !== String(rule.value ?? "");
+    case "in":
+      return arr.includes(sv);
+    case "nin":
+      return !arr.includes(sv);
+    case "set":
+      return sv !== "";
+    case "notset":
+      return sv === "";
+    default:
+      return true;
+  }
+}
+
 function RenderSubWidget({
   kind,
   cfg,
@@ -236,6 +265,12 @@ function RenderSubWidget({
   stateKey: string;
 }) {
   const pageState = usePageState();
+  const visibleWhen = cfg.visibleWhen as VisibleRule | undefined;
+  if (
+    !isVisibleByRule(visibleWhen, visibleWhen ? pageState.get(visibleWhen.stateKey) : undefined)
+  ) {
+    return null;
+  }
   const embeddedActions = (cfg.embeddedActions ?? []) as ActionBarItem[];
 
   // Split widget lồng nhau bên trong tab panel — dùng stateKey làm id để namespace state
@@ -319,15 +354,27 @@ function RenderSubWidget({
         addRowAtEnd={cfg.addRowAtEnd === true}
         addRowPos={cfg.addRowPos === "top" ? "top" : "bottom"}
         defaultSort={cfg.defaultSort as { field: string; dir: "asc" | "desc" } | undefined}
+        embeddedActions={embeddedActions.length > 0 ? embeddedActions : undefined}
+        embeddedFilters={cfg.embeddedFilters as any}
       />,
-      embeddedActions,
+      [],
       pageState,
     );
   }
   if (kind === "detail")
-    return withEmbeddedActions(<DetailWidget cfg={cfg} />, embeddedActions, pageState);
+    return withEmbeddedActions(
+      // compId = stateKey (comp.id:cell.id) để DetailWidget mirror field bản ghi ra
+      // pageState (`detail:<compId>:<field>`); widget khác cùng trang lọc theo đó.
+      <DetailWidget cfg={cfg} compId={stateKey} />,
+      embeddedActions,
+      pageState,
+    );
   if (kind === "form")
-    return withEmbeddedActions(<FormWidget cfg={cfg} />, embeddedActions, pageState);
+    return withEmbeddedActions(
+      <FormWidget cfg={cfg} compId={stateKey} />,
+      embeddedActions,
+      pageState,
+    );
   if (kind === "chart") return <ChartWidget cfg={cfg} />;
   if (kind === "kanban") return <KanbanWidget cfg={cfg} />;
   return null;

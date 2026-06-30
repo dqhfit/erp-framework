@@ -10,10 +10,19 @@ interface DrawerProps {
   onClose: () => void;
   title: string;
   width?: number;
+  inline?: boolean;
   children?: ReactNode;
   footer?: ReactNode;
 }
-export function Drawer({ open, onClose, title, width = 420, children, footer }: DrawerProps) {
+export function Drawer({
+  open,
+  onClose,
+  title,
+  width = 420,
+  inline,
+  children,
+  footer,
+}: DrawerProps) {
   // Focus trap + Esc + return focus về trigger (giống Modal).
   const containerRef = useFocusTrap<HTMLDivElement>(open, onClose);
   const isMobile = useIsMobile();
@@ -21,7 +30,7 @@ export function Drawer({ open, onClose, title, width = 420, children, footer }: 
   if (!open) return null;
   return (
     <div
-      className="fixed inset-0 z-800"
+      className={cn("inset-0 z-800", inline ? "absolute overflow-hidden" : "fixed")}
       onMouseDown={(e) => {
         if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
           onClose();

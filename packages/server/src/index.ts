@@ -28,6 +28,7 @@ import { describeAgentEntity, searchAgentRecords } from "./agent-records-search"
 import { SESSION_COOKIE } from "./auth";
 import { assertWithinBudget } from "./budget";
 import { CAD_GENERATE_TOOL, runCadGenerate } from "./cad-tool";
+import { isChatMember } from "./chat-router";
 import { createContext, resolveActiveCompany } from "./context";
 import { db } from "./db";
 import { verifyOoJwt } from "./documents-router";
@@ -61,7 +62,6 @@ import { queryParams } from "./router-helpers";
 import { recordServerError } from "./server-errors";
 import { resolveSearchConfig, webSearch } from "./web-search";
 import { registerWebhookRoutes } from "./webhook-routes";
-import { isChatMember } from "./chat-router";
 import { isChannelAllowed } from "./ws-channels";
 import { registerConnection, subscribe, unsubscribe } from "./ws-hub";
 import "./plugins"; // Đăng ký plugin server-side vào pluginRegistry
@@ -1062,8 +1062,9 @@ async function main(): Promise<void> {
   });
 
   /* Upload ảnh cho field type="image" — lưu vào UPLOAD_DIR/img/<companyId>/,
-     trả { url } để frontend lưu vào field thay vì base64. */
-  app.post("/upload/image", async (req, reply) => {
+     trả { url } để frontend lưu vào field thay vì base64.
+     Hỗ trợ cả /upload/image?subfolder=... và /upload/image/:subfolder. */
+  const handleUploadImage = async (req: FastifyRequest, reply: FastifyReply) => {
     const sid = (req.cookies as Record<string, string | undefined>)?.[SESSION_COOKIE];
     if (!sid) {
       reply.code(401).send({ error: "Chưa đăng nhập" });
@@ -1110,8 +1111,10 @@ async function main(): Promise<void> {
       reply.code(400).send({ error: "Định dạng file không hợp lệ" });
       return;
     }
-    // Lấy subfolder từ query param (lọc ký tự an toàn chống path traversal)
-    const subfolder = String((req.query as Record<string, unknown> | undefined)?.subfolder ?? "")
+    // Lấy subfolder từ path trước, fallback query param (lọc ký tự an toàn chống path traversal).
+    const pathSubfolder = (req.params as Record<string, unknown> | undefined)?.subfolder;
+    const querySubfolder = (req.query as Record<string, unknown> | undefined)?.subfolder;
+    const subfolder = String(pathSubfolder ?? querySubfolder ?? "")
       .replace(/[^\w-]/g, "")
       .trim();
 
@@ -1125,7 +1128,9 @@ async function main(): Promise<void> {
 
     const relativeFilename = subfolder ? `${subfolder}/${filename}` : filename;
     reply.send({ url: signFileUrl(active.companyId, "img", relativeFilename) });
-  });
+  };
+  app.post("/upload/image", handleUploadImage);
+  app.post("/upload/image/:subfolder", handleUploadImage);
 
   /* Upload file đính kèm cho field type="file" — lưu UPLOAD_DIR/doc/<companyId>/,
      trả { url, name }. Khác /upload/image: whitelist rộng hơn (tài liệu) và

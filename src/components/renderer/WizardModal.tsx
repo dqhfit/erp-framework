@@ -610,7 +610,7 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
   // nhãn/options) để form đi theo page sync mà khỏi chạm entity trên DB.
   const fieldOv = Object.assign({}, ...wizardSteps.map((s) => s.fieldOverrides ?? {})) as Record<
     string,
-    { type?: string; label?: string; options?: string[]; required?: boolean }
+    { type?: string; label?: string; options?: string[]; required?: boolean; readOnly?: boolean }
   >;
   const hasImageInAnyStep = useMemo(() => {
     return wizardSteps.some((s) => {
@@ -1307,7 +1307,7 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
           const t = typeOf(k);
           // Multiselect: form lưu CSV "a,b" → server yêu cầu MẢNG.
           if (t === "multiselect" || t === "multienum" || t === "multilookup") {
-            if (k === "bemat_sanpham") {
+            if (k === "bemat_sanpham" || k === "madonhang") {
               payload[k] = v; // Gửi nguyên chuỗi "Trơn láng/ Giả cổ/ Da" cho DB text column
             } else {
               payload[k] = v
@@ -1611,9 +1611,9 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
       );
   };
 
-  // Render 1 control nhập theo kiểu field (combobox lookup / select / bool / longtext / input).
   const renderControl = (f: EntityField) => {
-    if (readOnly) {
+    const isFieldReadOnly = readOnly || fieldOv[f.name]?.readOnly === true;
+    if (isFieldReadOnly) {
       if (current.fieldLookups?.[f.name]) {
         const lk = current.fieldLookups[f.name];
         if (!lk) return null;
@@ -1735,6 +1735,15 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
         // Chọn (hoặc vừa tạo) → set field + autofill các field đích từ record nguồn.
         const pick = (v: string, rec?: Record<string, unknown>) => {
           setField(f.name, v);
+          if (f.name === "madonhang" && v) {
+            const parts = v.split("-").map((p) => p.trim());
+            if (parts.length >= 4) {
+              setField("khachhang", parts[2] ?? "");
+              setField("hehang", parts[3] ?? "");
+            } else if (parts.length === 3) {
+              setField("hehang", parts[2] ?? "");
+            }
+          }
           if (lk.autofill) {
             const r = rec ?? src.find((x) => String(x[lk.valueField] ?? "") === v);
             for (const [tgt, srcField] of Object.entries(lk.autofill)) {
@@ -1897,7 +1906,8 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
   const hasImagePanel = imgFields.length > 0 || !!relatedImageCfg;
 
   const renderFieldInput = (f: EntityField) => {
-    const renderFieldAction = !readOnly ? renderAction : undefined;
+    const isFieldReadOnly = readOnly || fieldOv[f.name]?.readOnly === true;
+    const renderFieldAction = !isFieldReadOnly ? renderAction : undefined;
     const actions = current.fieldActions?.[f.name] ?? [];
     if (!renderFieldAction || actions.length === 0) return renderControl(f);
     return (
@@ -1988,7 +1998,7 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
                   : "Tiếp theo →"
                 : isLast
                   ? step.submitLabel || "Hoàn tất"
-                  : "Tiếp theo →"}
+                  : (current as any).nextLabel || "Tiếp theo →"}
           </Button>
         </div>
       }

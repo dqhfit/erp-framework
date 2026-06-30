@@ -133,10 +133,34 @@ export function PageStateProvider({
 }) {
   // Tạo store 1 lần (stable ref) — không đặt trong useState để không trigger re-render cha
   const storeRef = useRef<PageStore | null>(null);
-  if (!storeRef.current) storeRef.current = createPageStore();
+  if (!storeRef.current) {
+    const s = createPageStore();
+    // Nạp URL params vào store ngay khi tạo (đồng bộ) để widget đọc đúng từ render đầu tiên
+    if (typeof window !== "undefined") {
+      const init: Record<string, PageStateValue> = {};
+      for (const [k, v] of new URLSearchParams(window.location.search).entries()) init[k] = v;
+      if (Object.keys(init).length > 0) s.init(init);
+    }
+    storeRef.current = s;
+  }
   const store = storeRef.current;
 
   const idbKey = pageId ? `pageState:${pageId}` : null;
+
+  // Đồng bộ tham số URL query params vào store khi URL thay đổi
+  const searchStr = typeof window !== "undefined" ? window.location.search : "";
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(searchStr);
+    for (const [k, v] of params.entries()) {
+      store.set(k, v);
+    }
+    for (const key of Object.keys(store.getSnapshot())) {
+      if (key.startsWith("sel_") && !params.has(key)) {
+        store.set(key, "");
+      }
+    }
+  }, [searchStr, store]);
 
   // Restore từ IDB 1 lần khi mount (chỉ các key không phải refresh signal).
   const restoredRef = useRef(false);
@@ -148,7 +172,7 @@ export function PageStateProvider({
       // Bỏ qua __refresh:* — tín hiệu 1 lần, không có nghĩa sau reload.
       const clean: Record<string, PageStateValue> = {};
       for (const [k, v] of Object.entries(saved)) {
-        if (!k.startsWith("__refresh:")) clean[k] = v;
+        if (!k.startsWith("__refresh:") && !k.startsWith("sel_")) clean[k] = v;
       }
       if (Object.keys(clean).length > 0) store.init(clean);
     });
