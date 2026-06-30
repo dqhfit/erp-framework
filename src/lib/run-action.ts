@@ -10,6 +10,7 @@ import type { ProceduresClient } from "@erp-framework/client";
 import type {
   ActionStep,
   ActionStepOpenPopup,
+  ActionStepOpenTechChangeForm,
   ActionStepOpenWizard,
   BindingValue,
 } from "@/types/page";
@@ -54,6 +55,9 @@ export interface ActionContext {
   openWizard?: (
     step: ActionStepOpenWizard,
     getter: (key: string) => unknown,
+  ) => Promise<Record<string, unknown> | null>;
+  openTechChangeForm?: (
+    step: ActionStepOpenTechChangeForm,
   ) => Promise<Record<string, unknown> | null>;
   /** Mở form Tạo mới master-detail của list (createForm). Do list widget cấp khi
    *  render embeddedActions → cho nút "Tạo đơn hàng" nằm trong thanh hành động. */
@@ -298,6 +302,26 @@ export async function runActionSteps(
     }
     if (step.kind === "open-create-form") {
       ctx.openCreateForm?.();
+      continue;
+    }
+    if (step.kind === "open-tech-change-form") {
+      if (!ctx.openTechChangeForm) {
+        ctx.toast.error("Form thay đổi kỹ thuật không khả dụng trong ngữ cảnh này");
+        return { completed: false, procedureRuns };
+      }
+      const rid = step.recordIdBinding
+        ? resolveBinding(step.recordIdBinding, rs.get)
+        : step.recordId;
+      const result = await ctx.openTechChangeForm({
+        ...step,
+        recordId: rid == null || rid === "" ? undefined : String(rid),
+      });
+      if (result === null) return { completed: false, procedureRuns };
+      lastResult = result;
+      if (step.invalidateEntities?.length) {
+        const stamp = Date.now();
+        for (const eid of step.invalidateEntities) rs.set(`__refresh:${eid}`, stamp);
+      }
       continue;
     }
     if (step.kind === "open-edit-form") {

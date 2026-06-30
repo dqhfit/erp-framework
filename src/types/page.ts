@@ -452,6 +452,23 @@ export interface ActionStepOpenCreateForm {
   kind: "open-create-form";
 }
 
+export interface ActionStepOpenTechChangeForm {
+  id: string;
+  kind: "open-tech-change-form";
+  entity: string;
+  productsEntity: string;
+  dinhmucEntities: {
+    GVA: string;
+    NKI: string;
+    DGO: string;
+    SON: string;
+  };
+  recordId?: string;
+  recordIdBinding?: BindingValue;
+  readOnly?: boolean;
+  invalidateEntities?: string[];
+}
+
 export interface ActionStepOpenEditForm {
   id: string;
   kind: "open-edit-form";
@@ -521,6 +538,7 @@ export type ActionStep =
   | ActionStepPrintRecords
   | ActionStepOpenPopup
   | ActionStepOpenCreateForm
+  | ActionStepOpenTechChangeForm
   | ActionStepOpenEditForm
   | ActionStepOpenWizard
   | ActionStepUploadFile;

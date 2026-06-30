@@ -1696,6 +1696,11 @@ function bindRowIdToAction(action: ActionConfig, row: Record<string, unknown>): 
           ? s
           : { ...s, recordIdBinding: { source: "const" as const, value: rowId } };
       }
+      if (s.kind === "open-tech-change-form") {
+        return keepRid(s.recordIdBinding)
+          ? s
+          : { ...s, recordIdBinding: { source: "const" as const, value: rowId } };
+      }
       return s.kind === "delete-record" || s.kind === "open-wizard"
         ? { ...s, recordIdBinding: { source: "const" as const, value: rowId } }
         : s;

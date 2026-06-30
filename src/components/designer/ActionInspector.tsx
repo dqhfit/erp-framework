@@ -374,6 +374,7 @@ function StepRow({
     "print-records": "In danh sách",
     "open-popup": "Mở popup",
     "open-create-form": "Mở form tạo mới (list)",
+    "open-tech-change-form": "Mở form thay đổi kỹ thuật",
     "open-edit-form": "Mở form sửa (list)",
     "open-wizard": "Mở wizard",
     "upload-file": "Tải lên file",

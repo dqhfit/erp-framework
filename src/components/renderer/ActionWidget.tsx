@@ -9,6 +9,7 @@ import { useCallback, useMemo, useRef, useState } from "react";
 import { I } from "@/components/Icons";
 import { exportCsvContentAsXlsx } from "@/components/renderer/consumer-utils";
 import { PopupPickerModal } from "@/components/renderer/PopupPickerModal";
+import { TechChangeCreateModal } from "@/components/renderer/TechChangeCreateModal";
 import { WizardModal } from "@/components/renderer/WizardModal";
 import { Button } from "@/components/ui";
 import { dialog } from "@/lib/dialog";
@@ -17,7 +18,12 @@ import { type PageStateLike, resolveBinding, runActionSteps } from "@/lib/run-ac
 import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/stores/auth";
-import type { ActionConfig, ActionStepOpenPopup, ActionStepOpenWizard } from "@/types/page";
+import type {
+  ActionConfig,
+  ActionStepOpenPopup,
+  ActionStepOpenTechChangeForm,
+  ActionStepOpenWizard,
+} from "@/types/page";
 
 const procClient = createProceduresClient("");
 const recordsApi = createApiDataSource("");
@@ -133,6 +139,8 @@ export function ActionWidget({
   const [wizardStep, setWizardStep] = useState<ActionStepOpenWizard | null>(null);
   const [wizardRecordId, setWizardRecordId] = useState<unknown>(undefined);
   const wizardResolveRef = useRef<((v: Record<string, unknown> | null) => void) | null>(null);
+  const [techChangeStep, setTechChangeStep] = useState<ActionStepOpenTechChangeForm | null>(null);
+  const techChangeResolveRef = useRef<((v: Record<string, unknown> | null) => void) | null>(null);
 
   const hasProcedureStep = useMemo(
     () => (config.steps ?? []).some((s) => s.kind === "procedure"),
@@ -207,6 +215,22 @@ export function ActionWidget({
     wizardResolveRef.current = null;
   }, []);
 
+  const openTechChangeForm = useCallback(
+    (step: ActionStepOpenTechChangeForm): Promise<Record<string, unknown> | null> => {
+      setTechChangeStep(step);
+      return new Promise((resolve) => {
+        techChangeResolveRef.current = resolve;
+      });
+    },
+    [],
+  );
+
+  const closeTechChangeForm = useCallback((value: Record<string, unknown> | null) => {
+    setTechChangeStep(null);
+    techChangeResolveRef.current?.(value);
+    techChangeResolveRef.current = null;
+  }, []);
+
   const onClick = async () => {
     if (busy || !canRun) return;
 
@@ -271,6 +295,7 @@ export function ActionWidget({
         openPopup,
         openWizard: (s: ActionStepOpenWizard, getter: (key: string) => unknown) =>
           openWizard(s, getter),
+        openTechChangeForm,
         openCreateForm: onOpenCreateForm,
         openEditForm: onOpenEditForm,
         exportRecords: async (entityId: string, format: "xlsx" | "csv", title?: string) => {
@@ -364,6 +389,13 @@ export function ActionWidget({
             )}
           />
         )}
+        {techChangeStep && (
+          <TechChangeCreateModal
+            step={techChangeStep}
+            onDone={(value) => closeTechChangeForm(value)}
+            onCancel={() => closeTechChangeForm(null)}
+          />
+        )}
       </>
     );
   }
@@ -416,6 +448,13 @@ export function ActionWidget({
               onComplete={onActionComplete}
             />
           )}
+        />
+      )}
+      {techChangeStep && (
+        <TechChangeCreateModal
+          step={techChangeStep}
+          onDone={(value) => closeTechChangeForm(value)}
+          onCancel={() => closeTechChangeForm(null)}
         />
       )}
     </>
