@@ -86,6 +86,11 @@ export type CreateFormCfg = {
       argName: string;
       title?: string;
       columns: { field: string; label: string; width?: number; align?: "right" }[];
+      /** Gom nhóm hàng theo field này (vd "nguyenlieu"): hàng mẹ tổng hợp +
+       *  thu/mở các hàng con. */
+      groupBy?: string;
+      /** Field số cộng tổng ở hàng mẹ (vd "tong_sokhoi"). */
+      sumFields?: string[];
     };
   };
   /** Entity con + cách nối với cha. */
@@ -256,6 +261,7 @@ export function MasterDetailCreateModal({ config, onClose, onCreated }: Props) {
   const refArgVal = refPanel ? (master[refPanel.argField] ?? "") : "";
   const [refRows, setRefRows] = useState<Record<string, unknown>[]>([]);
   const [refLoading, setRefLoading] = useState(false);
+  const [refCollapsed, setRefCollapsed] = useState<Set<string>>(new Set());
   // biome-ignore lint/correctness/useExhaustiveDependencies: chỉ phụ thuộc proc + giá trị arg
   useEffect(() => {
     if (!refPanel) return;
@@ -282,6 +288,92 @@ export function MasterDetailCreateModal({ config, onClose, onCreated }: Props) {
       alive = false;
     };
   }, [refPanel?.proc, refArgVal]);
+
+  const renderRefBody = () => {
+    if (!refPanel) return null;
+    const cols = refPanel.columns;
+    const groupBy = refPanel.groupBy;
+    const sumFields = refPanel.sumFields ?? [];
+    const cell = (c: { align?: "right" }) =>
+      `py-0.5 px-2 ${c.align === "right" ? "text-right tabular-nums" : ""}`;
+    if (!groupBy) {
+      return refRows.map((row) => (
+        <tr
+          key={cols.map((c) => String(row[c.field] ?? "")).join("|")}
+          className="border-b border-border/50"
+        >
+          {cols.map((c) => (
+            <td key={c.field} className={cell(c)}>
+              {String(row[c.field] ?? "")}
+            </td>
+          ))}
+        </tr>
+      ));
+    }
+    // Gom nhóm theo groupBy: hàng mẹ (tổng) + hàng con thu/mở.
+    const gmap = new Map<string, Record<string, unknown>[]>();
+    for (const row of refRows) {
+      const k = String(row[groupBy] ?? "");
+      let arr = gmap.get(k);
+      if (!arr) {
+        arr = [];
+        gmap.set(k, arr);
+      }
+      arr.push(row);
+    }
+    const groups = [...gmap.entries()].map(([key, rows]) => ({ key, rows }));
+    const fmt = (n: number) => String(Math.round(n * 1e5) / 1e5);
+    return groups.flatMap((g) => {
+      const open = !refCollapsed.has(g.key);
+      const toggle = () =>
+        setRefCollapsed((s) => {
+          const n = new Set(s);
+          if (n.has(g.key)) n.delete(g.key);
+          else n.add(g.key);
+          return n;
+        });
+      const parent = (
+        <tr
+          key={`g:${g.key}`}
+          className="border-b border-border bg-bg-soft/70 font-medium cursor-pointer hover:bg-hover/40"
+          onClick={toggle}
+        >
+          {cols.map((c) => {
+            if (c.field === groupBy)
+              return (
+                <td key={c.field} className="py-1 px-2">
+                  <span className="inline-block w-3 text-muted">{open ? "▾" : "▸"}</span> {g.key}{" "}
+                  <span className="text-muted font-normal">({g.rows.length})</span>
+                </td>
+              );
+            if (sumFields.includes(c.field)) {
+              const sum = g.rows.reduce((a, r) => a + (Number(r[c.field]) || 0), 0);
+              return (
+                <td key={c.field} className={cell(c)}>
+                  {fmt(sum)}
+                </td>
+              );
+            }
+            return <td key={c.field} className="py-1 px-2" />;
+          })}
+        </tr>
+      );
+      if (!open) return [parent];
+      const children = g.rows.map((row) => (
+        <tr
+          key={`c:${g.key}:${cols.map((c) => String(row[c.field] ?? "")).join("|")}`}
+          className="border-b border-border/40"
+        >
+          {cols.map((c) => (
+            <td key={c.field} className={c.field === groupBy ? "py-0.5 px-2 pl-6" : cell(c)}>
+              {c.field === groupBy ? "" : String(row[c.field] ?? "")}
+            </td>
+          ))}
+        </tr>
+      ));
+      return [parent, ...children];
+    });
+  };
 
   const refPanelContent = () => {
     if (!refPanel) return null;
@@ -312,23 +404,7 @@ export function MasterDetailCreateModal({ config, onClose, onCreated }: Props) {
                 ))}
               </tr>
             </thead>
-            <tbody>
-              {refRows.map((row) => (
-                <tr
-                  key={refPanel.columns.map((c) => String(row[c.field] ?? "")).join("|")}
-                  className="border-b border-border/50"
-                >
-                  {refPanel.columns.map((c) => (
-                    <td
-                      key={c.field}
-                      className={`py-0.5 px-2 ${c.align === "right" ? "text-right tabular-nums" : ""}`}
-                    >
-                      {String(row[c.field] ?? "")}
-                    </td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
+            <tbody>{renderRefBody()}</tbody>
           </table>
         )}
       </div>
