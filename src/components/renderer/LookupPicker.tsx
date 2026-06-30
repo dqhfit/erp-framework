@@ -33,6 +33,7 @@ interface Props {
   /** Lookup theo GIÁ TRỊ field này (vd "nguyenlieu"/"mavt") thay vì record.id —
    *  value lưu/khớp theo field đó (giữ tương thích data lưu tên/mã). */
   valueField?: string;
+  onPick?: (row: Record<string, unknown>) => void;
   readOnly?: boolean;
   reloadKey?: number;
 }
@@ -46,6 +47,7 @@ export function LookupPicker({
   autoOpen,
   onClose,
   valueField,
+  onPick,
   readOnly = false,
   reloadKey,
 }: Props) {
@@ -312,6 +314,11 @@ export function LookupPicker({
   }
 
   // Single lookup
+  const handleSingleChange = (nextValue: string) => {
+    onChange(nextValue);
+    const picked = rows.find((row) => optValue(row) === nextValue);
+    if (picked) onPick?.(picked);
+  };
   const options = rows.map((row) => {
     const cells = multiCol ? cellFields.map((f) => String(row[f.name] ?? "")) : undefined;
     return cells
@@ -328,7 +335,7 @@ export function LookupPicker({
     <SearchableSelect
       className={className ? className : "w-full"}
       value={value}
-      onChange={onChange}
+      onChange={handleSingleChange}
       options={options}
       emptyOption={`chọn ${refEnt?.name ?? "bản ghi"}`}
       searchPlaceholder={

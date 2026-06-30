@@ -21,6 +21,8 @@ export interface AuthUser {
   email: string;
   name: string;
   role: string;
+  /** Bộ phận legacy gán cho user; null/rỗng thì form nghiệp vụ để trống. */
+  department?: string | null;
   /** false = dang ky qua invite link, cho admin duyet. */
   companyApproved?: boolean;
   /** true = admin da vo hieu hoa tai khoan trong cong ty nay. */

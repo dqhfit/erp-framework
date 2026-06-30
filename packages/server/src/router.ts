@@ -5,90 +5,91 @@
    - records.*    : CRUD dữ liệu động            (RBAC + validate-on-write)
    - workflows.*  : trigger workflow             (RBAC)
    ========================================================== */
-import { z } from "zod";
-import { and, eq, desc, isNull, sql } from "drizzle-orm";
-import { TRPCError } from "@trpc/server";
+
 import {
-  users,
-  sessions,
-  mcpConfigs,
-  llmProfiles,
   activityLog,
   companies,
   companyMembers,
-  userInvites,
   inviteLinks,
+  llmProfiles,
+  mcpConfigs,
+  sessions,
+  userInvites,
+  users,
 } from "@erp-framework/db";
-import {
-  router,
-  publicProcedure,
-  protectedProcedure,
-  approvedProcedure,
-  rbacProcedure,
-  rateLimit,
-} from "./trpc";
+import { TRPCError } from "@trpc/server";
+import { and, desc, eq, isNull, sql } from "drizzle-orm";
+import { z } from "zod";
 import { logActivity } from "./activity";
+import { agentConversationsRouter } from "./agent-conversations-router";
+import { agentsRouter } from "./agents-router";
+import { apiKeysRouter } from "./api-keys-router";
+import { backupRouter } from "./backup-router";
 import { chatRouter } from "./chat-router";
 import { companiesRouter } from "./companies-router";
-import { heartbeatsRouter } from "./heartbeats-router";
-import { entitySyncRouter } from "./entity-sync-router";
-import { governanceRouter } from "./governance-router";
-import { pluginsRouter } from "./plugins-router";
-import { recordsRouter } from "./records-router";
+import { encryptSecret } from "./crypto";
 import { dataSourcesRouter } from "./datasources-router";
-import { entitiesRouter } from "./entities-router";
-import { workflowsRouter } from "./workflows-router";
-import { schedulesRouter } from "./schedules-router";
-import { pagesRouter } from "./pages-router";
-import { agentsRouter } from "./agents-router";
-import { agentConversationsRouter } from "./agent-conversations-router";
-import { toolsRouter } from "./tools-router";
-import { proceduresRouter } from "./procedures-router";
-import { enumsRouter } from "./enums-router";
-import { savedViewsRouter } from "./saved-views-router";
-import { recordCommentsRouter } from "./record-comments-router";
-import { entityWebhooksRouter } from "./entity-webhooks-router";
-import { apiKeysRouter } from "./api-keys-router";
-import { materializedViewsRouter } from "./materialized-views-router";
-import { entityTemplatesRouter } from "./entity-templates-router";
-import { notificationsRouter } from "./notifications-router";
-import { feedbackRouter } from "./feedback-router";
-import { errorRouter } from "./error-router";
-import { presenceRouter } from "./presence-router";
-import { fieldOpsRouter } from "./field-ops-router";
+import { documentsRouter } from "./documents-router";
 import { embedRouter } from "./embed-router";
-import { knowledgeRouter } from "./knowledge-router";
-import { iotRouter } from "./iot-router";
-import { backupRouter } from "./backup-router";
+import { entitiesRouter } from "./entities-router";
+import { entitySyncRouter } from "./entity-sync-router";
+import { entityTemplatesRouter } from "./entity-templates-router";
+import { entityWebhooksRouter } from "./entity-webhooks-router";
+import { enumsRouter } from "./enums-router";
+import { errorRouter } from "./error-router";
+import { feedbackRouter } from "./feedback-router";
+import { fieldOpsRouter } from "./field-ops-router";
+import { governanceRouter } from "./governance-router";
+import { heartbeatsRouter } from "./heartbeats-router";
 import { integrationsRouter } from "./integrations-router";
+import { iotRouter } from "./iot-router";
+import { knowledgeRouter } from "./knowledge-router";
+import { LEGACY_EMAIL_DOMAIN, tryLegacyMd5Login } from "./legacy-login";
+import { legacyMenuRouter } from "./legacy-menu-router";
+import { materializedViewsRouter } from "./materialized-views-router";
+import { mesMucTieuMigrateRouter } from "./mes-muctieu-migrate-router";
+import { mesMucTieuSanXuatRouter } from "./mes-muctieu-sanxuat-router";
 import { migrationRouter } from "./migration-router";
 import { migrationSyncRouter } from "./migration-sync-router";
-import { legacyMenuRouter } from "./legacy-menu-router";
-import { navRouter } from "./nav-router";
-import { mesMucTieuSanXuatRouter } from "./mes-muctieu-sanxuat-router";
-import { mesMucTieuMigrateRouter } from "./mes-muctieu-migrate-router";
-import { printTemplatesRouter } from "./print-templates-router";
 import { mssqlConnectionsRouter } from "./mssql-connections-router";
+import { navRouter } from "./nav-router";
+import { notificationsRouter } from "./notifications-router";
+import { pagesRouter } from "./pages-router";
+import { pluginsRouter } from "./plugins-router";
 import { preferencesRouter } from "./preferences-router";
+import { presenceRouter } from "./presence-router";
+import { printTemplatesRouter } from "./print-templates-router";
+import { proceduresRouter } from "./procedures-router";
+import { recordCommentsRouter } from "./record-comments-router";
+import { recordsRouter } from "./records-router";
+import { savedViewsRouter } from "./saved-views-router";
+import { schedulesRouter } from "./schedules-router";
+import { toolsRouter } from "./tools-router";
+import {
+  approvedProcedure,
+  protectedProcedure,
+  publicProcedure,
+  rateLimit,
+  rbacProcedure,
+  router,
+} from "./trpc";
 import { viewerGroupsRouter } from "./viewer-groups-router";
-import { documentsRouter } from "./documents-router";
-import { encryptSecret } from "./crypto";
-
-import { LEGACY_EMAIL_DOMAIN, tryLegacyMd5Login } from "./legacy-login";
+import { workflowsRouter } from "./workflows-router";
 
 /** Email người dùng nhập (register/invite) KHÔNG được thuộc namespace tổng hợp
  *  @dqhf.local — namespace này dành riêng cho user lazy-tạo từ bridge legacy.
  *  Chặn để không ai pre-claim định danh legacy của user khác. */
 const notLegacyDomain = (email: string) => !email.toLowerCase().endsWith(`@${LEGACY_EMAIL_DOMAIN}`);
-import { getBudget, setBudget, monthUsageUsd } from "./budget";
-import { exportBundle, importBundle } from "./transfer";
+
 import {
   hashPassword,
-  verifyPassword,
   newSessionToken,
-  SESSION_TTL_MS,
   SESSION_COOKIE,
+  SESSION_TTL_MS,
+  verifyPassword,
 } from "./auth";
+import { getBudget, monthUsageUsd, setBudget } from "./budget";
+import { exportBundle, importBundle } from "./transfer";
 
 /* ─── AppRouter ──────────────────────────────────────────── */
 export const appRouter = router({
@@ -337,7 +338,23 @@ export const appRouter = router({
             actorUserId: u.id,
           });
         }
-        return { id: u.id, email: u.email, name: u.name, role: u.role };
+        const deptRows = u.legacyUsername
+          ? ((await ctx.db.execute(sql`
+              SELECT COALESCE(NULLIF(trim(f_bophan), ''), NULLIF(trim(f_departmentcode), '')) AS department
+              FROM sys_user
+              WHERE deleted_at IS NULL
+                AND company_id = ${m.companyId}::uuid
+                AND lower(f_username) = lower(${u.legacyUsername})
+              LIMIT 1
+            `)) as unknown as Array<{ department: string | null }>)
+          : [];
+        return {
+          id: u.id,
+          email: u.email,
+          name: u.name,
+          role: u.role,
+          department: deptRows[0]?.department ?? null,
+        };
       }),
 
     logout: protectedProcedure.mutation(async ({ ctx }) => {

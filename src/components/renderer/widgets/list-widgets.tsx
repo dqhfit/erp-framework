@@ -1745,6 +1745,7 @@ export function ListWidget({
   selectable,
   embeddedActions,
   embeddedFilters: _embeddedFilters,
+  approvalStatusFilter,
   addRowAtEnd,
   addRowPos,
   defaultSort,
@@ -1850,6 +1851,13 @@ export function ListWidget({
     options?: string;
     optionLabels?: Record<string, string>;
   }>;
+  /** Field trạng thái duyệt tính từ dữ liệu dòng: active=0 -> huỷ; có người/ngày duyệt -> đã duyệt. */
+  approvalStatusFilter?: {
+    field: string;
+    activeField?: string;
+    approvedByField?: string;
+    approvedAtField?: string;
+  };
   /** Hiện DÒNG "＋ Thêm dòng mới" trong lưới (cfg.addRowAtEnd) — chỉ khi editable
    *  + batchEdit (mới tạo được dòng nháp). */
   addRowAtEnd?: boolean;
@@ -2131,10 +2139,27 @@ export function ListWidget({
       : allFields.filter((f) => f.defaultVisible !== false);
   _rafVisibleFields.current = visibleFields;
 
+  const rowsForFilters = approvalStatusFilter
+    ? rows.map((row) => {
+        const field = approvalStatusFilter.field;
+        const activeField = approvalStatusFilter.activeField ?? "active";
+        const approvedByField = approvalStatusFilter.approvedByField ?? "nguoiduyet";
+        const approvedAtField = approvalStatusFilter.approvedAtField ?? "ngayduyet";
+        const isCanceled = String(row[activeField] ?? "1") === "0";
+        const approved =
+          String(row[approvedByField] ?? "").trim() !== "" ||
+          String(row[approvedAtField] ?? "").trim() !== "";
+        return {
+          ...row,
+          [field]: isCanceled ? "huy" : approved ? "da_duyet" : "chua_duyet",
+        };
+      })
+    : rows;
+
   // V2: filters (cây) ưu tiên — pass-through default khi state rỗng.
-  let filteredRows = rows;
+  let filteredRows = rowsForFilters;
   if (filters) {
-    filteredRows = applyFilters(rows, filters, pageState);
+    filteredRows = applyFilters(rowsForFilters, filters, pageState);
   } else if (filterFromState) {
     // Legacy: hide all khi state rỗng (master-detail UX truyền thống).
     const stateVal = pageState.get(filterFromState.stateKey);
@@ -2144,7 +2169,7 @@ export function ListWidget({
       stateVal !== "" &&
       !(Array.isArray(stateVal) && stateVal.length === 0)
     ) {
-      filteredRows = rows.filter((r) => {
+      filteredRows = rowsForFilters.filter((r) => {
         const v = r[filterFromState.field];
         if (Array.isArray(stateVal)) {
           return (stateVal as string[]).includes(String(v));

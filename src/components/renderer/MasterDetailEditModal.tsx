@@ -115,6 +115,52 @@ export function MasterDetailEditModal({
     () => pickFields(detailEnt?.fields ?? [], config.detail.fields),
     [detailEnt, config.detail.fields],
   );
+  const hiddenMasterFields = useMemo(
+    () => new Set(config.master.hiddenFields ?? []),
+    [config.master.hiddenFields],
+  );
+  const hiddenDetailFields = useMemo(
+    () => new Set(config.detail.hiddenFields ?? []),
+    [config.detail.hiddenFields],
+  );
+  const visibleMasterFields = useMemo(
+    () => masterFields.filter((f) => !hiddenMasterFields.has(f.name)),
+    [masterFields, hiddenMasterFields],
+  );
+  const visibleDetailFields = useMemo(
+    () => detailFields.filter((f) => !hiddenDetailFields.has(f.name)),
+    [detailFields, hiddenDetailFields],
+  );
+
+  const resolveDefaultValue = (value: string): string => {
+    if (value === "__today__") return new Date().toISOString().slice(0, 10);
+    if (value === "__uuid_upper__" || value === "__guid_upper__")
+      return crypto.randomUUID().toUpperCase();
+    return value;
+  };
+
+  const makeDetailRow = (index: number): DetailRow => ({
+    _key: crypto.randomUUID(),
+    ...Object.fromEntries(
+      Object.entries(config.detail.defaultValues ?? {}).map(([k, v]) => [
+        k,
+        resolveDefaultValue(v),
+      ]),
+    ),
+    ...(config.detail.autoSequenceField
+      ? { [config.detail.autoSequenceField]: String(index) }
+      : {}),
+  });
+
+  const rowHasVisibleData = (row: DetailRow): boolean =>
+    Object.entries(row).some(
+      ([key, value]) =>
+        key !== "_rid" &&
+        key !== "_key" &&
+        key !== config.detail.autoSequenceField &&
+        !hiddenDetailFields.has(key) &&
+        value.trim() !== "",
+    );
 
   const [tab, setTab] = useState<"master" | "detail">("master");
   const [master, setMaster] = useState<Record<string, string>>({});
@@ -381,6 +427,7 @@ export function MasterDetailEditModal({
     compact = false,
     lookup?: FieldLookup,
     cellReadOnly = false,
+    setField?: (name: string, value: string) => void,
   ) => {
     if (readOnly || cellReadOnly) {
       const displayValue =
@@ -403,6 +450,16 @@ export function MasterDetailEditModal({
     }
     if (lookup) {
       const srcRows = lookupData[lookup.entity] ?? [];
+      const applyAutofill = (src: Record<string, unknown>) => {
+        if (!lookup.autofill || !setField) return;
+        for (const [srcF, tgtF] of Object.entries(lookup.autofill))
+          setField(tgtF, String(src[srcF] ?? ""));
+      };
+      const handleChange = (val: string) => {
+        onChange(val);
+        const src = srcRows.find((r) => String(r[lookup.valueField] ?? "") === val);
+        if (src) applyAutofill(src);
+      };
       const labelFields = lookup.labelFields ?? [lookup.valueField];
       const opts = srcRows.map((r) => {
         const val = String(r[lookup.valueField] ?? "");
@@ -435,9 +492,10 @@ export function MasterDetailEditModal({
           <LookupPicker
             refEntityId={lookup.entity}
             value={value ?? ""}
-            onChange={onChange}
+            onChange={handleChange}
             valueField={lookup.valueField}
             className="w-full"
+            onPick={applyAutofill}
           />
         );
       }
@@ -445,7 +503,7 @@ export function MasterDetailEditModal({
         <SearchableSelect
           className="w-full"
           value={value ?? ""}
-          onChange={onChange}
+          onChange={handleChange}
           options={richOpts}
           columnHeaders={lookup.columnHeaders}
           emptyOption={`— chọn ${srcLabel} —`}
@@ -523,6 +581,7 @@ export function MasterDetailEditModal({
       const requiredDetail = config.detail.requiredFields ?? [];
       const nextDetailErrors: Record<number, Record<string, string>> = {};
       rows.forEach((row, rowIndex) => {
+        if (!row._rid && !rowHasVisibleData(row)) return;
         for (const field of requiredDetail) {
           if (!(row[field] ?? "").trim()) {
             nextDetailErrors[rowIndex] ??= {};
@@ -551,9 +610,7 @@ export function MasterDetailEditModal({
       for (const rid of deleted) await api.deleteRecord(rid);
       // Upsert dòng chi tiết.
       for (const [rowIndex, r] of rows.entries()) {
-        const hasData = Object.entries(r).some(
-          ([key, value]) => key !== "_rid" && key !== "_key" && value.trim() !== "",
-        );
+        const hasData = rowHasVisibleData(r);
         const data = buildData(r, detailFields);
         if (config.detail.autoSequenceField) {
           data[config.detail.autoSequenceField] = rowIndex + 1;
@@ -623,7 +680,7 @@ export function MasterDetailEditModal({
           {(() => {
             const masterFormContent = (stacked = false) => (
               <div className={stacked ? "space-y-3" : "mt-3 grid grid-cols-2 gap-x-4 gap-y-3"}>
-                {masterFields.map((f) => {
+                {visibleMasterFields.map((f) => {
                   const fResolved = config.master.longtextFields?.includes(f.name)
                     ? { ...f, type: "longtext" as EntityField["type"] }
                     : f;
@@ -694,7 +751,7 @@ export function MasterDetailEditModal({
                   <table className={`text-sm${inSplit ? " min-w-max" : " w-full"}`}>
                     <thead className="bg-panel-2 sticky top-0">
                       <tr>
-                        {detailFields.map((f) => (
+                        {visibleDetailFields.map((f) => (
                           <th
                             key={f.id ?? f.name}
                             style={{
@@ -727,7 +784,7 @@ export function MasterDetailEditModal({
                               : "border-t border-border"
                           }
                         >
-                          {detailFields.map((f) => {
+                          {visibleDetailFields.map((f) => {
                             const factors = config.detail.computed?.[f.name];
                             return (
                               <td
@@ -768,6 +825,7 @@ export function MasterDetailEditModal({
                                     !!r._rid &&
                                       !!config.detail.editableOnExisting &&
                                       !config.detail.editableOnExisting.includes(f.name),
+                                    (name, val) => setRow(i, name, val),
                                   )
                                 )}
                                 {detailErrors[i]?.[f.name] && (
@@ -796,7 +854,7 @@ export function MasterDetailEditModal({
                     {config.detail.footerSums && config.detail.footerSums.length > 0 && (
                       <tfoot className="sticky bottom-0 bg-panel-2 border-t-2 border-border">
                         <tr>
-                          {detailFields.map((f, idx) => {
+                          {visibleDetailFields.map((f, idx) => {
                             const isSum = config.detail.footerSums?.includes(f.name);
                             return (
                               <td
@@ -827,17 +885,7 @@ export function MasterDetailEditModal({
                   <>
                     <Button
                       variant="ghost"
-                      onClick={() =>
-                        setRows((rs) => [
-                          ...rs,
-                          {
-                            _key: crypto.randomUUID(),
-                            ...(config.detail.autoSequenceField
-                              ? { [config.detail.autoSequenceField]: String(rs.length + 1) }
-                              : {}),
-                          },
-                        ])
-                      }
+                      onClick={() => setRows((rs) => [...rs, makeDetailRow(rs.length + 1)])}
                       icon={<I.Plus size={13} />}
                     >
                       Thêm dòng

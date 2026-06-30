@@ -14,6 +14,7 @@ import { I } from "@/components/Icons";
 import { Button, Input, Modal, SearchableSelect, Tabs } from "@/components/ui";
 import type { EntityField } from "@/lib/object-types";
 import { toast } from "@/lib/toast";
+import { useAuth } from "@/stores/auth";
 import { useUserObjects } from "@/stores/userObjects";
 import { LookupPicker } from "./LookupPicker";
 import { MultiLookupPicker } from "./MultiLookupPicker";
@@ -73,6 +74,7 @@ export type CreateFormCfg = {
     fullWidthFields?: string[];
     /** Field chỉ-đọc (vd ngaydexuat tự điền hôm nay). */
     readonlyFields?: string[];
+    hiddenFields?: string[];
     /** Giá trị mặc định khi tạo mới. "__today__" → ngày hôm nay (YYYY-MM-DD). */
     defaultValues?: Record<string, string>;
     /** Các field text render textarea nhiều dòng (rows=3) dù type="text". */
@@ -114,6 +116,8 @@ export type CreateFormCfg = {
     footerSums?: string[];
     fieldLabels?: Record<string, string>;
     requiredFields?: string[];
+    hiddenFields?: string[];
+    defaultValues?: Record<string, string>;
     autoSequenceField?: string;
     /** Dòng ĐÃ CÓ (đang sửa) chỉ cho sửa các field này; field khác → read-only.
      *  Dòng MỚI thêm vẫn nhập được mọi field. (vd ["soluong","dongia"]). */
@@ -192,6 +196,7 @@ function buildData(vals: Record<string, string>, fields: EntityField[]): Record<
 }
 
 export function MasterDetailCreateModal({ config, onClose, onCreated }: Props) {
+  const user = useAuth((s) => s.user);
   const entities = useUserObjects((s) => s.entities);
   const masterEnt = entities.find((e) => e.id === config.master.entity);
   const detailEnt = entities.find((e) => e.id === config.detail.entity);
@@ -204,23 +209,57 @@ export function MasterDetailCreateModal({ config, onClose, onCreated }: Props) {
     () => pickFields(detailEnt?.fields ?? [], config.detail.fields),
     [detailEnt, config.detail.fields],
   );
+  const hiddenMasterFields = useMemo(
+    () => new Set(config.master.hiddenFields ?? []),
+    [config.master.hiddenFields],
+  );
+  const hiddenDetailFields = useMemo(
+    () => new Set(config.detail.hiddenFields ?? []),
+    [config.detail.hiddenFields],
+  );
+  const visibleMasterFields = useMemo(
+    () => masterFields.filter((f) => !hiddenMasterFields.has(f.name)),
+    [masterFields, hiddenMasterFields],
+  );
+  const visibleDetailFields = useMemo(
+    () => detailFields.filter((f) => !hiddenDetailFields.has(f.name)),
+    [detailFields, hiddenDetailFields],
+  );
+
+  const resolveDefaultValue = (value: string): string => {
+    if (value === "__today__") return new Date().toISOString().slice(0, 10);
+    if (value === "__current_user_name__") return user?.name ?? "";
+    if (value === "__current_user_department__") return user?.department?.trim() ?? "";
+    if (value === "__dv_service_number__") return "";
+    if (value === "__pmh_purchase_number__" || value === "__next_stt__") return "";
+    if (value === "__uuid_upper__" || value === "__guid_upper__")
+      return crypto.randomUUID().toUpperCase();
+    return value;
+  };
+
+  const makeDetailRow = (index: number): DetailInputRow => ({
+    _key: crypto.randomUUID(),
+    ...Object.fromEntries(
+      Object.entries(config.detail.defaultValues ?? {}).map(([k, v]) => [
+        k,
+        resolveDefaultValue(v),
+      ]),
+    ),
+    ...(config.detail.autoSequenceField
+      ? { [config.detail.autoSequenceField]: String(index) }
+      : {}),
+  });
 
   const [tab, setTab] = useState<"master" | "detail">("master");
   const [master, setMaster] = useState<Record<string, string>>(() => {
-    const today = new Date().toISOString().slice(0, 10);
     return Object.fromEntries(
       Object.entries(config.master.defaultValues ?? {}).map(([k, v]) => [
         k,
-        v === "__today__" ? today : v,
+        resolveDefaultValue(v),
       ]),
     );
   });
-  const [rows, setRows] = useState<DetailInputRow[]>([
-    {
-      _key: crypto.randomUUID(),
-      ...(config.detail.autoSequenceField ? { [config.detail.autoSequenceField]: "1" } : {}),
-    },
-  ]);
+  const [rows, setRows] = useState<DetailInputRow[]>([makeDetailRow(1)]);
   const [saving, setSaving] = useState(false);
   const [masterErrors, setMasterErrors] = useState<Record<string, string>>({});
   const [detailErrors, setDetailErrors] = useState<Record<number, Record<string, string>>>({});
@@ -236,7 +275,6 @@ export function MasterDetailCreateModal({ config, onClose, onCreated }: Props) {
     ]),
   ].join(",");
   const [lookupData, setLookupData] = useState<Record<string, Record<string, unknown>[]>>({});
-  // biome-ignore lint/correctness/useExhaustiveDependencies: bám lookupEntityKey thay object lookups
   useEffect(() => {
     if (!lookupEntityKey) return;
     const ids = lookupEntityKey.split(",");
@@ -410,9 +448,147 @@ export function MasterDetailCreateModal({ config, onClose, onCreated }: Props) {
       </div>
     );
   };
+  useEffect(() => {
+    const defaults = config.master.defaultValues ?? {};
+    const autoEntries = Object.entries(defaults).filter(([, v]) => v === "__dv_service_number__");
+    if (autoEntries.length === 0) return;
+
+    let alive = true;
+    const now = new Date();
+    const dd = String(now.getDate()).padStart(2, "0");
+    const mm = String(now.getMonth() + 1).padStart(2, "0");
+    const yyyy = String(now.getFullYear());
+    const prefix = `DV ${dd}-${mm}-${yyyy}`;
+
+    api
+      .getRecords(config.master.entity, { limit: 5000 })
+      .then((res) => {
+        if (!alive) return;
+        const maxSeq = res.rows.reduce((max, row) => {
+          const v = String((row.data as Record<string, unknown>)?.sophieu ?? "");
+          const n = Number(v.match(/^DV\s+\d{2}-\d{2}-\d{4}\s+(\d+)$/)?.[1] ?? "");
+          return Number.isFinite(n) ? Math.max(max, n) : max;
+        }, 0);
+        const next = `${prefix} ${maxSeq + 1}`;
+        setMaster((cur) => ({
+          ...cur,
+          ...Object.fromEntries(
+            autoEntries.map(([k, token]) => [k, cur[k] && cur[k] !== token ? cur[k] : next]),
+          ),
+        }));
+      })
+      .catch(() => {
+        if (!alive) return;
+        const fallback = `${prefix} 1`;
+        setMaster((cur) => ({
+          ...cur,
+          ...Object.fromEntries(
+            autoEntries.map(([k, token]) => [k, cur[k] && cur[k] !== token ? cur[k] : fallback]),
+          ),
+        }));
+      });
+
+    return () => {
+      alive = false;
+    };
+  }, [config.master.defaultValues, config.master.entity]);
+
+  useEffect(() => {
+    const defaults = config.master.defaultValues ?? {};
+    const numberEntries = Object.entries(defaults).filter(
+      ([, v]) => v === "__pmh_purchase_number__",
+    );
+    const sttEntries = Object.entries(defaults).filter(([, v]) => v === "__next_stt__");
+    if (numberEntries.length === 0 && sttEntries.length === 0) return;
+
+    let alive = true;
+    api
+      .getRecords(config.master.entity, { limit: 5000 })
+      .then((res) => {
+        if (!alive) return;
+        const maxStt = res.rows.reduce((max, row) => {
+          const data = (row.data ?? {}) as Record<string, unknown>;
+          const fromStt = Number(data.stt);
+          const fromCode = Number(String(data.sophieu ?? "").match(/^PMH(\d+)$/)?.[1] ?? "");
+          const n = Number.isFinite(fromStt) ? fromStt : fromCode;
+          return Number.isFinite(n) ? Math.max(max, n) : max;
+        }, 0);
+        const nextStt = String(maxStt + 1);
+        const nextSophieu = `PMH${nextStt}`;
+        setMaster((cur) => ({
+          ...cur,
+          ...Object.fromEntries(
+            numberEntries.map(([k, token]) => [
+              k,
+              cur[k] && cur[k] !== token ? cur[k] : nextSophieu,
+            ]),
+          ),
+          ...Object.fromEntries(
+            sttEntries.map(([k, token]) => [k, cur[k] && cur[k] !== token ? cur[k] : nextStt]),
+          ),
+        }));
+      })
+      .catch(() => {
+        if (!alive) return;
+        setMaster((cur) => ({
+          ...cur,
+          ...Object.fromEntries(
+            numberEntries.map(([k, token]) => [k, cur[k] && cur[k] !== token ? cur[k] : "PMH1"]),
+          ),
+          ...Object.fromEntries(
+            sttEntries.map(([k, token]) => [k, cur[k] && cur[k] !== token ? cur[k] : "1"]),
+          ),
+        }));
+      });
+
+    return () => {
+      alive = false;
+    };
+  }, [config.master.defaultValues, config.master.entity]);
 
   const setRow = (i: number, name: string, v: string) =>
     setRows((rs) => rs.map((r, idx) => (idx === i ? { ...r, [name]: v } : r)));
+
+  const ensureAsyncMasterDefaults = async (
+    current: Record<string, string>,
+  ): Promise<Record<string, string>> => {
+    const defaults = config.master.defaultValues ?? {};
+    const numberEntries = Object.entries(defaults).filter(
+      ([, v]) => v === "__pmh_purchase_number__",
+    );
+    const sttEntries = Object.entries(defaults).filter(([, v]) => v === "__next_stt__");
+    if (numberEntries.length === 0 && sttEntries.length === 0) return current;
+
+    const needsNumber = numberEntries.some(([k]) => !(current[k] ?? "").trim());
+    const needsStt = sttEntries.some(([k]) => !(current[k] ?? "").trim());
+    if (!needsNumber && !needsStt) return current;
+
+    const res = await api.getRecords(config.master.entity, { limit: 5000 });
+    const maxStt = res.rows.reduce((max, row) => {
+      const data = (row.data ?? {}) as Record<string, unknown>;
+      const fromStt = Number(data.stt);
+      const fromCode = Number(String(data.sophieu ?? "").match(/^PMH(\d+)$/)?.[1] ?? "");
+      const n = Number.isFinite(fromStt) ? fromStt : fromCode;
+      return Number.isFinite(n) ? Math.max(max, n) : max;
+    }, 0);
+    const nextStt = String(maxStt + 1);
+    const nextSophieu = `PMH${nextStt}`;
+    return {
+      ...current,
+      ...Object.fromEntries(
+        numberEntries.map(([k]) => {
+          const currentValue = current[k] ?? "";
+          return [k, currentValue.trim() ? currentValue : nextSophieu];
+        }),
+      ),
+      ...Object.fromEntries(
+        sttEntries.map(([k]) => {
+          const currentValue = current[k] ?? "";
+          return [k, currentValue.trim() ? currentValue : nextStt];
+        }),
+      ),
+    };
+  };
 
   const renderInput = (
     f: EntityField,
@@ -470,19 +646,6 @@ export function MasterDetailCreateModal({ config, onClose, onCreated }: Props) {
       // Placeholder suy từ nhãn entity nguồn → dùng chung cho mọi lookup
       // (khách hàng, sản phẩm, …) thay vì cố định "sản phẩm".
       const srcLabel = entities.find((e) => e.id === lookup.entity)?.name ?? "mục";
-      // Bảng lớn (vd tr_dondathang 14k): serverSearch → LookupPicker ILIKE
-      // server-side thay vì lọc trong 2000 record preload (tìm không thấy).
-      if (lookup.serverSearch && !lookup.multiple) {
-        return (
-          <LookupPicker
-            className="w-full"
-            refEntityId={lookup.entity}
-            value={value ?? ""}
-            onChange={handleChange}
-            valueField={lookup.valueField}
-          />
-        );
-      }
       if (lookup.multiple) {
         return (
           <MultiLookupPicker
@@ -491,6 +654,23 @@ export function MasterDetailCreateModal({ config, onClose, onCreated }: Props) {
             options={richOpts}
             title={srcLabel}
             separator={lookup.separator}
+          />
+        );
+      }
+      if (lookup.serverSearch) {
+        return (
+          <LookupPicker
+            refEntityId={lookup.entity}
+            value={value ?? ""}
+            onChange={handleChange}
+            valueField={lookup.valueField}
+            className="w-full"
+            onPick={(src) => {
+              if (lookup.autofill && setField) {
+                for (const [srcF, tgtF] of Object.entries(lookup.autofill))
+                  setField(tgtF, String(src[srcF] ?? ""));
+              }
+            }}
           />
         );
       }
@@ -568,7 +748,13 @@ export function MasterDetailCreateModal({ config, onClose, onCreated }: Props) {
     setSaving(true);
     try {
       const validRows = rows.filter((row) =>
-        Object.entries(row).some(([field, value]) => field !== "_key" && value.trim() !== ""),
+        Object.entries(row).some(
+          ([field, value]) =>
+            field !== "_key" &&
+            field !== config.detail.autoSequenceField &&
+            !hiddenDetailFields.has(field) &&
+            value.trim() !== "",
+        ),
       );
       const requiredDetail = config.detail.requiredFields ?? [];
       const nextDetailErrors: Record<number, Record<string, string>> = {};
@@ -589,12 +775,14 @@ export function MasterDetailCreateModal({ config, onClose, onCreated }: Props) {
         setTab("detail");
         throw new Error(`Dòng chi tiết ${invalidRow + 1} chưa nhập đủ thông tin bắt buộc.`);
       }
+      const masterForSave = await ensureAsyncMasterDefaults(master);
+      if (masterForSave !== master) setMaster(masterForSave);
       const masterRecord = await api.createRecord(
         config.master.entity,
-        buildData(master, masterFields),
+        buildData(masterForSave, masterFields),
       );
       // parentKeyField thường là "id" (không có trong form) → lấy từ record trả về.
-      const keyVal = (master[config.detail.parentKeyField] ?? "").trim() || masterRecord.id;
+      const keyVal = (masterForSave[config.detail.parentKeyField] ?? "").trim() || masterRecord.id;
       const computed = config.detail.computed;
       for (const [rowIndex, r] of validRows.entries()) {
         const data = buildData(r, detailFields);
@@ -642,7 +830,7 @@ export function MasterDetailCreateModal({ config, onClose, onCreated }: Props) {
         <table className={`text-sm${inSplit ? " min-w-max" : " w-full table-fixed"}`}>
           <thead className="bg-panel-2 sticky top-0">
             <tr>
-              {detailFields.map((f) => (
+              {visibleDetailFields.map((f) => (
                 <th
                   key={f.id ?? f.name}
                   style={{
@@ -669,7 +857,7 @@ export function MasterDetailCreateModal({ config, onClose, onCreated }: Props) {
                   detailErrors[i] ? "border-t border-danger bg-danger/5" : "border-t border-border"
                 }
               >
-                {detailFields.map((f) => {
+                {visibleDetailFields.map((f) => {
                   const factors = config.detail.computed?.[f.name];
                   return (
                     <td
@@ -732,7 +920,7 @@ export function MasterDetailCreateModal({ config, onClose, onCreated }: Props) {
           {config.detail.footerSums && config.detail.footerSums.length > 0 && (
             <tfoot className="sticky bottom-0 bg-panel-2 border-t-2 border-border">
               <tr>
-                {detailFields.map((f, idx) => {
+                {visibleDetailFields.map((f, idx) => {
                   const isSum = config.detail.footerSums?.includes(f.name);
                   return (
                     <td
@@ -759,17 +947,7 @@ export function MasterDetailCreateModal({ config, onClose, onCreated }: Props) {
       </div>
       <Button
         variant="ghost"
-        onClick={() =>
-          setRows((rs) => [
-            ...rs,
-            {
-              _key: crypto.randomUUID(),
-              ...(config.detail.autoSequenceField
-                ? { [config.detail.autoSequenceField]: String(rs.length + 1) }
-                : {}),
-            },
-          ])
-        }
+        onClick={() => setRows((rs) => [...rs, makeDetailRow(rs.length + 1)])}
         icon={<I.Plus size={13} />}
       >
         Thêm dòng
@@ -785,7 +963,7 @@ export function MasterDetailCreateModal({ config, onClose, onCreated }: Props) {
 
   const masterFormContent = (stacked = false) => (
     <div className={stacked ? "space-y-3" : "mt-3 grid grid-cols-2 gap-x-4 gap-y-3"}>
-      {masterFields.map((f) => {
+      {visibleMasterFields.map((f) => {
         const fResolved = config.master.longtextFields?.includes(f.name)
           ? { ...f, type: "longtext" as EntityField["type"] }
           : f;

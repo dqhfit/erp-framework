@@ -7,11 +7,11 @@
 import type { CreateFastifyContextOptions } from "@trpc/server/adapters/fastify";
 import type { FastifyReply } from "fastify";
 import "@fastify/cookie"; // mang augmentation cookies/setCookie vào kiểu Fastify
-import { and, eq, gt } from "drizzle-orm";
-import { sessions, users, companyMembers } from "@erp-framework/db";
 import type { Role } from "@erp-framework/core";
-import { db } from "./db";
+import { companyMembers, sessions, users } from "@erp-framework/db";
+import { and, eq, gt, sql } from "drizzle-orm";
 import { SESSION_COOKIE } from "./auth";
+import { db } from "./db";
 
 export interface SessionUser {
   id: string;
@@ -25,6 +25,8 @@ export interface SessionUser {
   companyApproved: boolean;
   /** true = admin da vo hieu hoa tai khoan nay trong cong ty. */
   companyDisabled: boolean;
+  /** Bộ phận legacy gán cho user (sys_user.f_bophan, fallback f_departmentcode). */
+  department?: string | null;
 }
 
 export interface Context {
@@ -74,6 +76,7 @@ export async function createContext({ req, res }: CreateFastifyContextOptions): 
         email: users.email,
         name: users.name,
         defaultRole: users.role,
+        legacyUsername: users.legacyUsername,
         activeCompanyId: sessions.activeCompanyId,
       })
       .from(sessions)
@@ -86,6 +89,16 @@ export async function createContext({ req, res }: CreateFastifyContextOptions): 
       // đăng nhập, chặn phiên cũ còn sót truy cập hệ thống. User hợp lệ luôn
       // có ít nhất 1 membership (kể cả pending/disabled — active vẫn != null).
       if (active) {
+        const deptRows = row.legacyUsername
+          ? ((await db.execute(sql`
+              SELECT COALESCE(NULLIF(trim(f_bophan), ''), NULLIF(trim(f_departmentcode), '')) AS department
+              FROM sys_user
+              WHERE deleted_at IS NULL
+                AND company_id = ${active.companyId}::uuid
+                AND lower(f_username) = lower(${row.legacyUsername})
+              LIMIT 1
+            `)) as unknown as Array<{ department: string | null }>)
+          : [];
         user = {
           id: row.id,
           email: row.email,
@@ -94,6 +107,7 @@ export async function createContext({ req, res }: CreateFastifyContextOptions): 
           companyId: active.companyId,
           companyApproved: active.approved,
           companyDisabled: active.disabled,
+          department: deptRows[0]?.department ?? null,
         };
       }
     }
