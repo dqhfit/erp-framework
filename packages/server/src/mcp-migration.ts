@@ -356,6 +356,11 @@ const TOOLS: ToolDef[] = [
           description:
             "true (kèm overwrite) = đè cả page đã publish — dùng khi regenerate menu-driven sau publish.",
         },
+        publish: {
+          type: "boolean",
+          description:
+            "true = đặt published=true sau khi upsert (dùng khi sync từ dev đã publish sang prod).",
+        },
       },
       required: ["name", "label", "content"],
     },
@@ -1542,6 +1547,7 @@ async function callMigrationTool(
               icon: iconVal,
               content: contentToStore,
               updatedAt: new Date(),
+              ...(args.publish === true ? { published: true } : {}),
             })
             .where(eq(pages.id, wantId));
           return { status: "overwritten", pageId: wantId, name: pageName };
@@ -1566,7 +1572,7 @@ async function callMigrationTool(
           label,
           icon: iconVal,
           content: contentToStore,
-          published: false,
+          published: args.publish === true,
         });
         return { status: "created", pageId: wantId, name: pageName };
       }
@@ -1589,6 +1595,7 @@ async function callMigrationTool(
               ...(args.icon ? { icon: iconVal } : {}),
               content: contentToStore,
               updatedAt: new Date(),
+              ...(args.publish === true ? { published: true } : {}),
             })
             .where(eq(pages.id, exists.id));
           return { status: "overwritten", pageId: exists.id, name: pageName };

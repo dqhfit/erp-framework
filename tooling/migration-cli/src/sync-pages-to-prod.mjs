@@ -292,6 +292,7 @@ try {
         content,
         overwrite: true,
         overwritePublished: true,
+        publish: p.published === true,
       });
       const st = r?.status ?? "other";
       tally[st in tally ? st : "other"]++;
