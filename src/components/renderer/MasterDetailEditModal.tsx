@@ -8,7 +8,7 @@
    chưa có → createRecord; dòng bị xóa → deleteRecord.
    Dùng chung CreateFormCfg + FieldLookup với modal tạo mới.
    ========================================================== */
-import { createApiDataSource } from "@erp-framework/client";
+import { createApiDataSource, createProceduresClient } from "@erp-framework/client";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { I } from "@/components/Icons";
 import { Button, Input, Modal, SearchableSelect, Tabs } from "@/components/ui";
@@ -25,6 +25,7 @@ import {
 import { MultiLookupPicker } from "./MultiLookupPicker";
 
 const api = createApiDataSource("");
+const procs = createProceduresClient("");
 
 interface Props {
   config: CreateFormCfg;
@@ -158,6 +159,88 @@ export function MasterDetailEditModal({
       alive = false;
     };
   }, [lookupEntityKey]);
+
+  // ── Panel tham chiếu (refPanel): chọn đơn hàng → gọi proc tổng hợp ─────────
+  const refPanel = config.master.refPanel;
+  const refArgVal = refPanel ? (master[refPanel.argField] ?? "") : "";
+  const [refRows, setRefRows] = useState<Record<string, unknown>[]>([]);
+  const [refLoading, setRefLoading] = useState(false);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: chỉ phụ thuộc proc + giá trị arg
+  useEffect(() => {
+    if (!refPanel) return;
+    const v = String(refArgVal).trim();
+    if (!v) {
+      setRefRows([]);
+      return;
+    }
+    let alive = true;
+    setRefLoading(true);
+    procs
+      .invokeModule(refPanel.proc, { [refPanel.argName]: v })
+      .then((r) => {
+        if (alive)
+          setRefRows(Array.isArray(r.output) ? (r.output as Record<string, unknown>[]) : []);
+      })
+      .catch(() => {
+        if (alive) setRefRows([]);
+      })
+      .finally(() => {
+        if (alive) setRefLoading(false);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [refPanel?.proc, refArgVal]);
+
+  const refPanelContent = () => {
+    if (!refPanel) return null;
+    return (
+      <div className="mt-3 rounded-md border border-border bg-bg-soft p-2">
+        <p className="text-xs font-semibold text-muted uppercase tracking-wide mb-1.5">
+          {refPanel.title ?? "Tham chiếu"}
+        </p>
+        {refLoading ? (
+          <p className="text-xs text-muted">Đang tải…</p>
+        ) : refRows.length === 0 ? (
+          <p className="text-xs text-muted">
+            {String(refArgVal).trim() ? "Không có dữ liệu." : "Chọn đơn hàng để xem."}
+          </p>
+        ) : (
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="text-muted border-b border-border">
+                {refPanel.columns.map((c) => (
+                  <th
+                    key={c.field}
+                    className={`py-1 px-2 font-medium ${c.align === "right" ? "text-right" : "text-left"}`}
+                  >
+                    {c.label}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {refRows.map((row) => (
+                <tr
+                  key={refPanel.columns.map((c) => String(row[c.field] ?? "")).join("|")}
+                  className="border-b border-border/50"
+                >
+                  {refPanel.columns.map((c) => (
+                    <td
+                      key={c.field}
+                      className={`py-0.5 px-2 ${c.align === "right" ? "text-right tabular-nums" : ""}`}
+                    >
+                      {String(row[c.field] ?? "")}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+    );
+  };
 
   /* ── Nạp record master + các dòng chi tiết để điền sẵn ── */
   // biome-ignore lint/correctness/useExhaustiveDependencies: chỉ nạp lại khi đổi recordId/entity; masterFields/detailFields ổn định theo entity
@@ -705,7 +788,10 @@ export function MasterDetailEditModal({
                     <p className="text-xs font-semibold text-muted uppercase tracking-wide mb-3">
                       {config.masterLabel ?? "Thông tin chung"}
                     </p>
-                    <div className="flex-1 overflow-y-auto pr-0.5">{masterFormContent(true)}</div>
+                    <div className="flex-1 overflow-y-auto pr-0.5">
+                      {masterFormContent(true)}
+                      {refPanelContent()}
+                    </div>
                   </div>
                   <div className="flex-1 min-w-0 pl-4 flex flex-col gap-2 overflow-hidden">
                     <p className="text-xs font-semibold text-muted uppercase tracking-wide mb-1">
@@ -732,7 +818,12 @@ export function MasterDetailEditModal({
                     ]}
                   />
                 )}
-                {(config.layout === "single" || tab === "master") && masterFormContent()}
+                {(config.layout === "single" || tab === "master") && (
+                  <>
+                    {masterFormContent()}
+                    {refPanelContent()}
+                  </>
+                )}
                 {(config.layout === "single" || tab === "detail") && renderDetailTable()}
               </>
             );
