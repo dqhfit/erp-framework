@@ -428,6 +428,7 @@ export function MasterDetailEditModal({
     lookup?: FieldLookup,
     cellReadOnly = false,
     setField?: (name: string, value: string) => void,
+    optionsOverride?: { value: string; label: string }[],
   ) => {
     if (readOnly || cellReadOnly) {
       const displayValue =
@@ -446,6 +447,20 @@ export function MasterDetailEditModal({
         >
           {displayValue}
         </div>
+      );
+    }
+    // Dropdown từ config.detail/master.fieldOptions (vd "Nguồn gốc": Chile/Uruguay
+    // /…). Field entity là text thường (không có f.options) → phải đọc options từ
+    // config, nếu không sẽ render thành ô text → "thiếu chọn nguồn gốc" khi Sửa.
+    if (!lookup && optionsOverride && optionsOverride.length > 0) {
+      return (
+        <SearchableSelect
+          className="w-full"
+          value={value ?? ""}
+          onChange={onChange}
+          options={optionsOverride}
+          emptyOption="— chọn —"
+        />
       );
     }
     if (lookup) {
@@ -720,6 +735,8 @@ export function MasterDetailEditModal({
                           false,
                           masterLookups?.[f.name],
                           isFieldReadonly,
+                          undefined,
+                          config.master.fieldOptions?.[f.name],
                         )}
                       </div>
                       {masterErrors[f.name] && (
@@ -826,6 +843,7 @@ export function MasterDetailEditModal({
                                       !!config.detail.editableOnExisting &&
                                       !config.detail.editableOnExisting.includes(f.name),
                                     (name, val) => setRow(i, name, val),
+                                    config.detail.fieldOptions?.[f.name],
                                   )
                                 )}
                                 {detailErrors[i]?.[f.name] && (
