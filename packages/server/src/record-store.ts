@@ -206,6 +206,11 @@ class EavRecordStore implements RecordStore {
       } else {
         q = q.orderBy(sql`(${entityRecords.data}->>${params.sort.field}) ${dir} NULLS LAST`);
       }
+    } else {
+      // Mặc định KHÔNG sort → Postgres trả theo thứ tự heap (bất định): bản mới
+      // không lên đầu, sửa xong tuple nhảy vị trí. Sort ổn định newest-first;
+      // id (DESC) làm tiebreaker khi created_at trùng mili-giây.
+      q = q.orderBy(sql`${entityRecords.createdAt} desc, ${entityRecords.id} desc`);
     }
     const rows = (await q.limit(params.limit ?? 100).offset(params.offset ?? 0)) as StoredRecord[];
     if (params.withTotal === false) return { rows, total: rows.length };
@@ -563,6 +568,10 @@ class TableRecordStore implements RecordStore {
         ? sql.raw(`"${systemCols[params.sort.field]}"`)
         : this.textExpr(params.sort.field);
       orderSql = sql` ORDER BY ${sortExpr} ${dir} NULLS LAST`;
+    } else {
+      // Mặc định newest-first ổn định (xem ghi chú ở EavRecordStore.list) — không
+      // để rỗng kẻo Postgres trả theo heap order, bản mới không lên đầu + sửa nhảy.
+      orderSql = sql` ORDER BY created_at DESC, id DESC`;
     }
     const limit = params.limit ?? 100;
     const offset = params.offset ?? 0;
