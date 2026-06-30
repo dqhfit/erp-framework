@@ -203,7 +203,9 @@ export function MasterDetailEditModal({
           <p className="text-xs text-muted">Đang tải…</p>
         ) : refRows.length === 0 ? (
           <p className="text-xs text-muted">
-            {String(refArgVal).trim() ? "Không có dữ liệu." : "Chọn đơn hàng để xem."}
+            {String(refArgVal).trim()
+              ? `Không có dữ liệu cho [${refArgVal}].`
+              : "Chọn đơn hàng để xem."}
           </p>
         ) : (
           <table className="w-full text-xs">
