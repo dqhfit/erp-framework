@@ -441,3 +441,13 @@ tầm thường khỏi test (khớp §8).
     trả `string`, sync lên prod báo "content bắt buộc" dù content trông đúng.
     Dùng `${sql.json(obj)}` hoặc truyền thẳng JS object/array (postgres-js
     tự serialize). Kiểm tra nhanh: `jsonb_typeof(content)` phải là `array`.
+
+---
+
+## Rules chi tiết (cheat-sheet nạp kèm)
+
+> Bản tóm tắt nhanh để quét; nội dung gốc vẫn ở các mục trên. Nguồn: bộ khung
+> best-practice `D:\code\claude`.
+
+@.claude/rules/architecture.md
+@.claude/rules/patterns.md

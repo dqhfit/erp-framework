@@ -39,9 +39,15 @@ playwright-report/
 e2e/.auth/
 .codegraph/
 
-# Backup tarball + Claude session data (local)
+# Backup tarball (local)
 backups/
-.claude/
+
+# Claude Code: commit cấu hình chung cho team; GIỮ LOCAL phần cá nhân/nhạy cảm
+.claude/settings.local.json
+.claude/**/*.local.json
+.claude/.credentials.json
+.claude/**/.env*
+.claude/**/secrets*
 
 # Báo cáo HTML xuất tạm từ module MES (artifact, không versioned)
 /bao-cao-*.html
