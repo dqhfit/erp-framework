@@ -317,8 +317,14 @@ export interface FieldOverride {
   options?: string[];
   /** Bắt buộc nhập. */
   required?: boolean;
+  /** Chỉ đọc — hiển thị nhưng không cho sửa. */
+  readOnly?: boolean;
   /** Số cột mà field này chiếm dụng (1 | 2 | 3 | 4). */
   colSpan?: number;
+  /** Chỉ hiện field khi 1 field khác trong form khớp giá trị (vd hiện "Lệnh cấp
+   *  phát" khi reftype=2021, "Phiếu yêu cầu" khi reftype=2022). equals: 1 giá trị
+   *  hoặc danh sách (khớp 1 trong số); bỏ equals = chỉ cần field kia có giá trị. */
+  visibleWhen?: { field: string; equals?: string | string[] };
 }
 
 /** Liên kết 1 field tới entity nguồn (picker) — lưu giá trị valueField. */
@@ -363,6 +369,11 @@ export interface WizardLookupRef {
     entity: string;
     matchField: string;
     map: Record<string, string>;
+    /** Field trên RECORD VỪA CHỌN dùng làm giá trị khớp `matchField` (thay vì
+     *  giá trị valueField đã lưu). Dùng khi khoá liên kết chi tiết ≠ giá trị hiển
+     *  thị/lưu — vd phiếu yêu cầu lưu sophieustr nhưng chi tiết link qua id (GUID):
+     *  sourceMatchField="id", matchField="phieuyeucau_id". Bỏ trống = dùng valueField. */
+    sourceMatchField?: string;
   };
 }
 
@@ -578,4 +589,17 @@ export interface ActionConfig {
   /** Ẩn-riêng nút với các tài khoản cụ thể (denylist).
    *  User có trong danh sách này KHÔNG thấy nút, người khác vẫn thấy. */
   hiddenForUsers?: string[];
+  /** Vô hiệu nút theo điều kiện page-state (vd dòng đang chọn đã ghi kho →
+   *  cấm Sửa). 1 rule hoặc mảng rule — disabled khi BẤT KỲ rule nào đúng.
+   *  Đọc state reactive nên đổi selection là cập nhật ngay. */
+  disabledWhen?: ActionDisableRule | ActionDisableRule[];
+  /** Tooltip hiển thị khi nút bị disabledWhen vô hiệu (giải thích lý do). */
+  disabledHint?: string;
+}
+
+/** Điều kiện vô hiệu nút theo 1 state key — cùng ngữ nghĩa VisibleRule của renderer. */
+export interface ActionDisableRule {
+  stateKey: string;
+  op: "eq" | "neq" | "in" | "nin" | "set" | "notset";
+  value?: string | string[];
 }

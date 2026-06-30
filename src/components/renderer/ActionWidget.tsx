@@ -9,6 +9,7 @@ import { useCallback, useMemo, useRef, useState } from "react";
 import { I } from "@/components/Icons";
 import { exportCsvContentAsXlsx } from "@/components/renderer/consumer-utils";
 import { PopupPickerModal } from "@/components/renderer/PopupPickerModal";
+import { usePageState } from "@/components/renderer/page-data";
 import { TechChangeCreateModal } from "@/components/renderer/TechChangeCreateModal";
 import { WizardModal } from "@/components/renderer/WizardModal";
 import { Button } from "@/components/ui";
@@ -20,10 +21,34 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/stores/auth";
 import type {
   ActionConfig,
+  ActionDisableRule,
   ActionStepOpenPopup,
   ActionStepOpenTechChangeForm,
   ActionStepOpenWizard,
 } from "@/types/page";
+
+/** Đánh giá 1 rule disabledWhen theo page-state (cùng ngữ nghĩa evalVisible). */
+function evalDisableRule(rule: ActionDisableRule, get: (k: string) => unknown): boolean {
+  const raw = get(rule.stateKey);
+  const sv = raw == null ? "" : String(raw);
+  const arr = Array.isArray(rule.value) ? rule.value.map(String) : [];
+  switch (rule.op) {
+    case "eq":
+      return sv === String(rule.value ?? "");
+    case "neq":
+      return sv !== String(rule.value ?? "");
+    case "in":
+      return arr.includes(sv);
+    case "nin":
+      return !arr.includes(sv);
+    case "set":
+      return sv !== "";
+    case "notset":
+      return sv === "";
+    default:
+      return false;
+  }
+}
 
 const procClient = createProceduresClient("");
 const recordsApi = createApiDataSource("");
@@ -148,6 +173,19 @@ export function ActionWidget({
   );
   const canRun = !hasProcedureStep || (role ? roleCan(role as Role, "run", "procedure") : false);
 
+  // Vô hiệu nút theo điều kiện state (reactive — subscribe qua usePageState).
+  const livePageState = usePageState();
+  const disabledRules = useMemo(
+    () =>
+      config.disabledWhen
+        ? Array.isArray(config.disabledWhen)
+          ? config.disabledWhen
+          : [config.disabledWhen]
+        : [],
+    [config.disabledWhen],
+  );
+  const isDisabledByRule = disabledRules.some((r) => evalDisableRule(r, livePageState.get));
+
   const openPopup = useCallback(
     (
       step: ActionStepOpenPopup,
@@ -232,7 +270,7 @@ export function ActionWidget({
   }, []);
 
   const onClick = async () => {
-    if (busy || !canRun) return;
+    if (busy || !canRun || isDisabledByRule) return;
 
     let preloadedFile: File | null = null;
     const hasUploadStep = (config.steps ?? []).some((s) => s.kind === "upload-file");
@@ -341,7 +379,9 @@ export function ActionWidget({
   // iconOnly: ẩn label nhưng giữ làm tooltip + aria-label (a11y).
   const title = !canRun
     ? "Bạn không có quyền chạy procedure"
-    : config.hint || (config.iconOnly ? config.label : undefined);
+    : isDisabledByRule
+      ? config.disabledHint || config.hint || "Không khả dụng"
+      : config.hint || (config.iconOnly ? config.label : undefined);
 
   // Menu item style cho overflow popover
   if (menuItem) {
@@ -350,12 +390,12 @@ export function ActionWidget({
         <button
           type="button"
           onClick={onClick}
-          disabled={busy || !canRun}
+          disabled={busy || !canRun || isDisabledByRule}
           title={title}
           className={cn(
             "w-full flex items-center gap-2 px-2 py-1 rounded text-sm text-left transition-colors",
             variant === "danger" ? "text-danger hover:bg-danger/10" : "text-text hover:bg-hover",
-            (!canRun || busy) && "opacity-50 cursor-not-allowed",
+            (!canRun || busy || isDisabledByRule) && "opacity-50 cursor-not-allowed",
           )}
         >
           {icon}
@@ -405,7 +445,7 @@ export function ActionWidget({
       variant={variant}
       size={compact ? "xs" : "md"}
       onClick={onClick}
-      disabled={busy || !canRun}
+      disabled={busy || !canRun || isDisabledByRule}
       icon={icon}
       title={title}
       aria-label={config.iconOnly ? config.label : undefined}
