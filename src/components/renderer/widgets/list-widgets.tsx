@@ -1855,6 +1855,7 @@ export function ListWidget({
   approvalStatusFilter?: {
     field: string;
     activeField?: string;
+    canceledField?: string;
     approvedByField?: string;
     approvedAtField?: string;
   };
@@ -2143,9 +2144,17 @@ export function ListWidget({
     ? rows.map((row) => {
         const field = approvalStatusFilter.field;
         const activeField = approvalStatusFilter.activeField ?? "active";
+        const canceledField = approvalStatusFilter.canceledField;
         const approvedByField = approvalStatusFilter.approvedByField ?? "nguoiduyet";
         const approvedAtField = approvalStatusFilter.approvedAtField ?? "ngayduyet";
-        const isCanceled = String(row[activeField] ?? "1") === "0";
+        const activeValue = row[activeField];
+        const canceledValue = canceledField ? row[canceledField] : undefined;
+        const isCanceled =
+          String(activeValue ?? "1") === "0" ||
+          activeValue === false ||
+          canceledValue === true ||
+          String(canceledValue ?? "").toLowerCase() === "true" ||
+          String(canceledValue ?? "") === "1";
         const approved =
           String(row[approvedByField] ?? "").trim() !== "" ||
           String(row[approvedAtField] ?? "").trim() !== "";
