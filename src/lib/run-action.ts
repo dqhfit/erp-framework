@@ -244,11 +244,14 @@ export async function runActionSteps(
           params.delete("page");
 
           if (pathname.startsWith("/pages/")) {
-            // Khi đang ở Designer, thay vì chuyển hướng tab hiện tại (gây mất trạng thái thiết kế),
-            // ta tự động mở trang đích trong một tab mới!
-            openInNewTab = true;
             const queryStr = params.toString();
             href = `/pages/${targetPageId}${queryStr ? `?${queryStr}` : ""}`;
+            // Trong Designer: sang TRANG KHÁC mới mở tab mới (giữ trạng thái thiết
+            // kế của trang đang sửa). Điều hướng NỘI-TRANG — drill-down master-
+            // detail cùng trang (chỉ đổi sel/query) — phải ở CÙNG tab; nếu không
+            // mỗi lần Xem/Quay lại đẻ 1 tab Chrome mới + tab hiện tại cũng đổi state.
+            const curId = (pathname.split("/")[2] ?? "").toLowerCase();
+            openInNewTab = targetPageId.toLowerCase() !== curId;
           } else if (pathname.startsWith("/view/")) {
             const queryStr = params.toString();
             href = `/view/${targetPageId}${queryStr ? `?${queryStr}` : ""}`;
