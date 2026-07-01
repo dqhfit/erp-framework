@@ -26,10 +26,10 @@ import {
   migrationSyncRuns,
   migrationSyncTables,
   mssqlConnections,
-  pageViewerGroups,
   pages,
-  userViewerGroups,
+  pageViewerGroups,
   users,
+  userViewerGroups,
   viewerGroups,
 } from "@erp-framework/db";
 import { MssqlClient } from "@erp-framework/mssql-client";
@@ -656,13 +656,58 @@ const TOOLS: ToolDef[] = [
     inputSchema: {
       type: "object",
       properties: {
+        id: {
+          type: "string",
+          description:
+            "UUID cố định (tuỳ chọn) — upsert THEO id thay vì name; dùng khi sync dev→prod " +
+            "để dataSourceId khớp trang (khỏi phải dịch id).",
+        },
         name: { type: "string", description: "Định danh máy ^[a-z][a-z0-9_]*$" },
         label: { type: "string", description: "Nhãn hiển thị" },
         icon: { type: "string" },
         config: { type: "object", description: "DataSourceConfig (xem mô tả)" },
-        overwrite: { type: "boolean", description: "true = ghi đè datasource trùng tên" },
+        overwrite: { type: "boolean", description: "true = ghi đè datasource trùng id/tên" },
       },
       required: ["name", "label", "config"],
+    },
+  },
+  {
+    name: "entity_create_draft",
+    description:
+      "Tạo/UPSERT 1 entity (bảng dữ liệu low-code). Dùng khi sync dev→prod entity mà prod " +
+      "chưa có (vd entity trỏ VIEW read-only). Upsert theo `id` (nếu truyền) để khớp ref của " +
+      "trang/datasource; không có id → theo name. `fields` = mảng field {name,type,label}; " +
+      "`meta` = { storage:{tier:'table',tableName,columns,...}, ... }. Idempotent " +
+      "(overwrite=true mới ghi đè). Nếu meta.storage.tableName phải là bảng/VIEW đã tồn tại.",
+    level: "apply",
+    inputSchema: {
+      type: "object",
+      properties: {
+        id: { type: "string", description: "UUID cố định (tuỳ chọn) — upsert theo id" },
+        name: { type: "string", description: "Tên máy của entity" },
+        label: { type: "string", description: "Nhãn hiển thị" },
+        fields: { type: "array", items: { type: "object" }, description: "Mảng field def" },
+        meta: { type: "object", description: "meta (storage tier/tableName/columns...)" },
+        overwrite: { type: "boolean", description: "true = ghi đè entity trùng id/tên" },
+      },
+      required: ["name", "label", "fields"],
+    },
+  },
+  {
+    name: "migration_create_view",
+    description:
+      "Tạo/CREATE OR REPLACE 1 VIEW SQL trên prod (vd view gộp union nhập-xuất làm nguồn cho " +
+      "entity+datasource+list). Guard: tên view là ident hợp lệ; `select` là 1 query ĐỌC " +
+      "(SELECT/WITH, không dấu chấm phẩy, không từ khoá ghi). CREATE OR REPLACE nên chỉ thay " +
+      "chính view đó (thêm cột phải ở CUỐI). Sau khi tạo view → dùng entity_create_draft trỏ vào.",
+    level: "apply",
+    inputSchema: {
+      type: "object",
+      properties: {
+        name: { type: "string", description: "Tên view (ident, ^[a-zA-Z_][a-zA-Z0-9_]*$)" },
+        select: { type: "string", description: "Thân query SELECT/WITH (không CREATE VIEW ...)" },
+      },
+      required: ["name", "select"],
     },
   },
   {
@@ -2261,6 +2306,43 @@ async function callMigrationTool(
         throw new McpError(`entityId không thuộc công ty: ${alien.join(", ")}`);
       }
 
+      // Upsert THEO id (nếu truyền) — để dataSourceId khớp trang khi sync dev→prod.
+      const fixedDsId = args.id ? String(args.id) : undefined;
+      if (fixedDsId) {
+        const [existsById] = await db
+          .select({ id: dataSources.id })
+          .from(dataSources)
+          .where(and(eq(dataSources.companyId, companyId), eq(dataSources.id, fixedDsId)));
+        if (existsById && args.overwrite !== true) {
+          return { status: "skipped_exists", dataSourceId: fixedDsId, name: dsName };
+        }
+        if (existsById) {
+          await db
+            .update(dataSources)
+            .set({
+              name: dsName,
+              label,
+              ...(args.icon ? { icon: String(args.icon) } : {}),
+              config: cfg,
+              updatedAt: new Date(),
+            })
+            .where(eq(dataSources.id, existsById.id));
+          return { status: "overwritten", dataSourceId: fixedDsId, name: dsName };
+        }
+        const [rowNew] = await db
+          .insert(dataSources)
+          .values({
+            id: fixedDsId,
+            companyId,
+            name: dsName,
+            label,
+            icon: args.icon ? String(args.icon) : null,
+            config: cfg,
+          })
+          .returning({ id: dataSources.id });
+        return { status: "created", dataSourceId: rowNew?.id, name: dsName };
+      }
+
       const [exists] = await db
         .select({ id: dataSources.id })
         .from(dataSources)
@@ -2297,6 +2379,85 @@ async function callMigrationTool(
         })
         .returning({ id: dataSources.id });
       return { status: "created", dataSourceId: row?.id, name: dsName };
+    }
+
+    /* ── entity_create_draft (apply) — upsert entity ────────── */
+    case "entity_create_draft": {
+      const entName = String(args.name ?? "").trim();
+      const entLabel = String(args.label ?? "").trim();
+      if (!entName) throw new McpError("name bắt buộc");
+      if (!entLabel) throw new McpError("label bắt buộc");
+      if (!Array.isArray(args.fields)) throw new McpError("fields phải là mảng");
+      const entFields = args.fields as unknown[];
+      const entMeta = (asObj(args.meta) ?? {}) as Record<string, unknown>;
+      // Nếu trỏ bảng/VIEW thật → tên phải là ident hợp lệ (chống injection nơi khác dùng).
+      const st = entMeta.storage as { tableName?: string } | undefined;
+      if (st?.tableName) assertIdent(String(st.tableName));
+      const fixedEntId = args.id ? String(args.id) : undefined;
+
+      const findExisting = fixedEntId
+        ? await db
+            .select({ id: entities.id })
+            .from(entities)
+            .where(and(eq(entities.companyId, companyId), eq(entities.id, fixedEntId)))
+        : await db
+            .select({ id: entities.id })
+            .from(entities)
+            .where(
+              and(
+                eq(entities.companyId, companyId),
+                sql`lower(${entities.name}) = lower(${entName})`,
+              ),
+            );
+      const existing = findExisting[0];
+
+      if (existing) {
+        if (args.overwrite !== true) {
+          return { status: "skipped_exists", entityId: existing.id, name: entName };
+        }
+        await db
+          .update(entities)
+          .set({
+            name: entName,
+            label: entLabel,
+            fields: entFields,
+            meta: entMeta,
+            updatedAt: new Date(),
+          })
+          .where(eq(entities.id, existing.id));
+        return { status: "overwritten", entityId: existing.id, name: entName };
+      }
+      const [created] = await db
+        .insert(entities)
+        .values({
+          ...(fixedEntId ? { id: fixedEntId } : {}),
+          companyId,
+          name: entName,
+          label: entLabel,
+          fields: entFields,
+          meta: entMeta,
+        })
+        .returning({ id: entities.id });
+      return { status: "created", entityId: created?.id, name: entName };
+    }
+
+    /* ── migration_create_view (apply) — CREATE OR REPLACE VIEW ── */
+    case "migration_create_view": {
+      const viewName = String(args.name ?? "").trim();
+      const selectSql = String(args.select ?? "").trim();
+      if (!viewName) throw new McpError("name bắt buộc");
+      if (!selectSql) throw new McpError("select bắt buộc");
+      assertIdent(viewName); // chặn injection ở tên view
+      // Guard: select là 1 query ĐỌC (giống migration_query_readonly, nhưng cho phép
+      // WITH/SELECT làm thân view). CREATE OR REPLACE bọc bên ngoài, an toàn.
+      const body = selectSql.replace(/;\s*$/, "");
+      if (body.includes(";")) throw new McpError("select chỉ 1 statement (không dấu chấm phẩy)");
+      if (!/^(select|with)\b/i.test(body)) throw new McpError("select phải bắt đầu SELECT/WITH");
+      if (/\b(insert|update|delete|merge|drop|truncate|alter|grant|copy)\b/i.test(body)) {
+        throw new McpError("Phát hiện từ khoá ghi trong select — từ chối");
+      }
+      await db.execute(sql.raw(`CREATE OR REPLACE VIEW "${viewName}" AS ${body}`));
+      return { ok: true, view: viewName };
     }
 
     /* ── datasource_preview (read) ──────────────────────────── */

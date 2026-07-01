@@ -113,6 +113,9 @@ export interface ActionStepInvokeModule {
   invalidateEntities?: string[];
   /** Refetch các list bind DataSource sau khi proc chạy xong (__refresh:ds:<id>). */
   invalidateDataSources?: string[];
+  /** Nội dung hiển thị trên dialog "đang xử lý" trong lúc proc chạy (vd
+   *  "Đang xuất kho…"). Bỏ trống → dùng mặc định "Đang xử lý…". */
+  busyMessage?: string;
 }
 /** Xoá bản ghi đang chọn (records.deleteRecord theo recordId). Thường ghép
  *  sau 1 step confirm. Nút "Xoá" của form DQHF map tới đây. */
@@ -368,7 +371,11 @@ export interface WizardLookupRef {
   fillDetail?: {
     entity: string;
     matchField: string;
-    map: Record<string, string>;
+    /** { fieldLướiĐích: fieldNguồn }. `fieldNguồn` có thể là 1 field (string) hoặc
+     *  DANH SÁCH field (string[]) — khi là danh sách, lấy GIÁ TRỊ ĐẦU TIÊN khác rỗng
+     *  (COALESCE). Vd `mavt: ["masp","chitiet"]` → mã sản phẩm nếu có, ngược lại mã
+     *  chi tiết (đơn hàng có dòng masp rỗng nhưng chitiet luôn có mã). */
+    map: Record<string, string | string[]>;
     /** Field trên RECORD VỪA CHỌN dùng làm giá trị khớp `matchField` (thay vì
      *  giá trị valueField đã lưu). Dùng khi khoá liên kết chi tiết ≠ giá trị hiển
      *  thị/lưu — vd phiếu yêu cầu lưu sophieustr nhưng chi tiết link qua id (GUID):

@@ -1323,6 +1323,10 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
           if (editableFieldNames.has("duongdan")) editableFieldNames.add("tenfile");
           if (editableFieldNames.has("duongdan2")) editableFieldNames.add("tenfile2");
         }
+        // Field autoNumber (vd sopx/sopn) do HỆ THỐNG sinh — KHÔNG nằm trong `fields`
+        // khai báo của bước nhưng PHẢI vào payload, nếu không số phiếu bị lọc mất
+        // → record lưu với số phiếu RỖNG (danh sách không hiện số phiếu).
+        if (step.autoNumber?.field) editableFieldNames.add(step.autoNumber.field);
         // Khi KHÔNG có step nào khai báo fields tường minh (editableFieldNames rỗng),
         // bỏ filter — lưu tất cả field có giá trị. Tránh payload rỗng khi wizard
         // dùng fallback "hiện 7 field đầu" mà không liệt kê field.
@@ -1804,9 +1808,19 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
                     detailStep.detail?.rowDefaults,
                     pageState.get,
                   );
-                  for (const [tgt, srcF] of Object.entries(fd.map)) {
-                    const val = d[srcF];
-                    row[tgt] = val == null ? "" : String(val);
+                  for (const [tgt, srcSpec] of Object.entries(fd.map)) {
+                    // srcSpec = 1 field (string) hoặc danh sách field (string[]) →
+                    // lấy giá trị ĐẦU TIÊN khác rỗng (COALESCE, vd masp||chitiet).
+                    const srcList = Array.isArray(srcSpec) ? srcSpec : [srcSpec];
+                    let picked = "";
+                    for (const sf of srcList) {
+                      const v = d[sf];
+                      if (v != null && String(v) !== "") {
+                        picked = String(v);
+                        break;
+                      }
+                    }
+                    row[tgt] = picked;
                   }
                   return row;
                 });

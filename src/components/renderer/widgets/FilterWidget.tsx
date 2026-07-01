@@ -183,8 +183,13 @@ function FilterItem({ item }: { item: FItemCfg }) {
     if (seededRef.current) return;
     seededRef.current = true;
     if (!stateKey || pageState.get(stateKey) !== undefined) return;
-    // daterange: seed khoảng ngày mặc định (đầu→cuối tháng hiện tại) dạng cận ISO.
-    if (item.kind === "daterange" && item.defaultRange === "currentMonth") {
+    // daterange / date-from: seed khoảng ngày mặc định (đầu→cuối tháng hiện tại)
+    // dạng cận ISO vào MẢNG [from,to] ở stateKey. Chỉ item "from" (hoặc daterange
+    // gộp) seed để tránh 2 control date ghi đè nhau; item "to" KHÔNG seed.
+    if (
+      (item.kind === "daterange" || (item.kind === "date" && item.bound !== "to")) &&
+      item.defaultRange === "currentMonth"
+    ) {
       const now = new Date();
       const y = now.getFullYear();
       const m = now.getMonth();
@@ -321,6 +326,28 @@ function FilterItem({ item }: { item: FItemCfg }) {
     );
   }
 
+  if (item.kind === "date") {
+    // 1 ô ngày ghi vào MỘT đầu của mảng khoảng ngày (stateKey = [from,to]) — giữ
+    // nguyên state để loadFilters `between` của list dùng chung. bound: from|to.
+    const idx = item.bound === "to" ? 1 : 0;
+    const raw = pageState.get(stateKey);
+    const range = Array.isArray(raw) ? (raw as string[]) : ["", ""];
+    const day = (range[idx] ?? "").slice(0, 10);
+    const setBound = (v: string) => {
+      const next = [range[0] ?? "", range[1] ?? ""];
+      next[idx] = v ? (idx === 0 ? `${v}T00:00:00.000Z` : `${v}T23:59:59.999Z`) : "";
+      pageState.set(stateKey, next);
+    };
+    return withLabel(
+      <input
+        type="date"
+        value={day}
+        onChange={(e) => setBound(e.target.value)}
+        className="input shrink-0"
+      />,
+    );
+  }
+
   if (item.kind === "combobox") {
     if (item.multiSelect) {
       return withLabel(
@@ -396,7 +423,7 @@ function MultiItemFilter({ cfg, items }: { cfg: Record<string, unknown>; items: 
   if (items.length === 0) return null;
 
   return (
-    <div className="px-2 py-1.5 flex items-center gap-2 flex-wrap">
+    <div className="px-2 py-1.5 flex items-center gap-x-5 gap-y-2 flex-wrap">
       {items.map((item) => {
         // visibleWhen: kiểm tra ở đây để tránh vi phạm hook-at-top-level trong FilterItem
         const vw = item.visibleWhen;
