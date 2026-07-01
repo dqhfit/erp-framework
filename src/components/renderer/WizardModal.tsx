@@ -6,7 +6,15 @@
    ========================================================== */
 import { createApiDataSource } from "@erp-framework/client";
 import type { FilterOp } from "@erp-framework/core";
-import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  type CSSProperties,
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { createPortal } from "react-dom";
 import { I } from "@/components/Icons";
 import { fileDisplayName } from "@/components/renderer/FilePreviewModal";
@@ -29,6 +37,39 @@ import type {
 } from "@/types/page";
 
 const api = createApiDataSource("");
+
+function formatAutoNumberTemplate(format: string, now = new Date()) {
+  return format
+    .replace(/yyyy/g, String(now.getFullYear()))
+    .replace(/yy/g, String(now.getFullYear()).slice(-2))
+    .replace(/MM/g, String(now.getMonth() + 1).padStart(2, "0"))
+    .replace(/dd/g, String(now.getDate()).padStart(2, "0"));
+}
+
+async function generateAutoNumber(
+  entityId: string,
+  an: { field: string; format: string; pad?: number },
+) {
+  const tpl = formatAutoNumberTemplate(an.format);
+  const prefix = tpl.split("{seq}")[0] ?? tpl;
+  let maxSeq = 0;
+  try {
+    const res = await api.getRecords(entityId, {
+      filters: { [an.field]: { op: "contains", value: prefix } },
+      limit: 2000,
+    });
+    for (const row of res.rows) {
+      const sv = String((row.data as Record<string, unknown>)[an.field] ?? "");
+      if (!sv.startsWith(prefix)) continue;
+      const n = Number.parseInt(sv.slice(prefix.length), 10);
+      if (Number.isFinite(n) && n > maxSeq) maxSeq = n;
+    }
+  } catch {
+    // Keep the form usable if the lookup query fails; save-time validation can still catch conflicts.
+  }
+  const seq = String(maxSeq + 1).padStart(an.pad ?? 2, "0");
+  return tpl.replace("{seq}", seq);
+}
 
 /** Combobox lookup trong wizard + (tùy chọn) nút "+" tạo nhanh bản ghi mới vào
  *  entity nguồn. Tạo xong → nạp lại danh sách (onCreated) + chọn luôn (onPick). */
@@ -357,6 +398,11 @@ function buildRowData(
       continue;
     }
     if (v.trim() === "") continue;
+    if (f.type === "number" || f.type === "integer" || f.type === "currency") {
+      const n = Number(v);
+      if (Number.isFinite(n)) out[f.name] = n;
+      continue;
+    }
     if (f.type === "date" || f.type === "datetime") {
       out[f.name] = toIsoDate(v.trim());
       continue;
@@ -659,8 +705,12 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
       for (const [k, v] of Object.entries(step.defaults)) {
         if (v === "$now") {
           resolved[k] = new Date().toISOString();
+        } else if (v === "$today") {
+          resolved[k] = new Date().toISOString().slice(0, 10);
         } else if (v === "$currentUser") {
           resolved[k] = authUser?.name ?? authUser?.email ?? "";
+        } else if (v === "$currentUserDepartment") {
+          resolved[k] = (authUser as { department?: string } | null)?.department?.trim() ?? "";
         } else {
           resolved[k] =
             typeof v === "string"
@@ -698,8 +748,23 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
     },
     [formKey],
   );
+
+  useEffect(() => {
+    if (!wizardEntityId || editId || !step.autoNumber) return;
+    const an = step.autoNumber;
+    if ((forms[SINGLE_FORM_KEY]?.[an.field] ?? "").trim()) return;
+    let alive = true;
+    generateAutoNumber(wizardEntityId, an).then((generated) => {
+      if (alive) setField(an.field, generated);
+    });
+    return () => {
+      alive = false;
+    };
+    // Run once when opening a new wizard; including forms would regenerate after setting the field.
+  }, [wizardEntityId, editId, step.autoNumber, setField]);
   // Dòng nhập của các bước lưới chi tiết (theo step.id).
   const [detailRows, setDetailRows] = useState<Record<string, Record<string, string>[]>>({});
+  const [detailFileUploading, setDetailFileUploading] = useState<Record<string, boolean>>({});
   // Record nguồn cho field-lookup trong lưới chi tiết (theo entityId).
   const [detailLookupData, setDetailLookupData] = useState<
     Record<string, Record<string, unknown>[]>
@@ -1062,6 +1127,14 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
         : (detailEnt?.fields ?? []).filter((f) => f.type !== "formula" && f.type !== "collection")
       ).filter((f) => !detailHidden.has(f.name))
     : [];
+  const detailFileUpload =
+    detailCfg?.fileUpload ??
+    (detailCfg &&
+    current.id === "files" &&
+    (detailCfg.fields ?? []).includes("filename") &&
+    (detailCfg.fields ?? []).includes("path")
+      ? { nameField: "filename", pathField: "path", subfolder: "doc" }
+      : undefined);
   // Dòng chi tiết MỚI: nạp sẵn rowDefaults (vd is_active="true", donhot lấy theo quy trình).
   const emptyRow = (): Record<string, string> =>
     interpRowDefaults(detailCfg?.rowDefaults, pageState.get);
@@ -1355,6 +1428,11 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
             continue;
           }
           if (v === "") continue;
+          if (t === "number" || t === "integer" || t === "currency") {
+            const n = Number(v);
+            if (Number.isFinite(n)) payload[k] = n;
+            continue;
+          }
           payload[k] = t === "date" || t === "datetime" ? toIsoDate(v) : v;
         }
 
@@ -1642,6 +1720,52 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
       );
   };
 
+  const onPickDetailFile = (stepId: string, file: File | undefined) => {
+    const uploadCfg = detailFileUpload;
+    if (!file || !uploadCfg) return;
+    if (file.size > 25 * 1024 * 1024) {
+      toast.error("File không được vượt quá 25MB");
+      return;
+    }
+    const uploadKey = `${stepId}:${file.name}:${file.lastModified}`;
+    setDetailFileUploading((prev) => ({ ...prev, [uploadKey]: true }));
+    const fd = new FormData();
+    fd.append("file", file);
+    const sub = uploadCfg.subfolder ?? "doc";
+    fetch(`/upload/file?subfolder=${encodeURIComponent(sub)}`, {
+      method: "POST",
+      credentials: "include",
+      body: fd,
+    })
+      .then(async (res) => {
+        if (!res.ok) {
+          const body = (await res.json().catch(() => ({}))) as { error?: string };
+          throw new Error(body.error || "Lỗi tải file lên");
+        }
+        return res.json() as Promise<{ url: string; name: string }>;
+      })
+      .then((uploaded) => {
+        setDetailRows((prev) => ({
+          ...prev,
+          [stepId]: [
+            ...(prev[stepId] ?? []),
+            {
+              [uploadCfg.nameField]: uploaded.name || file.name,
+              [uploadCfg.pathField]: uploaded.url,
+            },
+          ],
+        }));
+      })
+      .catch((e: Error) => toast.error(e.message))
+      .finally(() =>
+        setDetailFileUploading((prev) => {
+          const next = { ...prev };
+          delete next[uploadKey];
+          return next;
+        }),
+      );
+  };
+
   const renderControl = (f: EntityField) => {
     const isFieldReadOnly = readOnly || fieldOv[f.name]?.readOnly === true;
     if (isFieldReadOnly) {
@@ -1696,11 +1820,13 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
           </div>
         );
       }
-      if (f.type === "select" && f.options?.length) {
+      if ((f.type === "select" || f.type === "radio") && f.options?.length) {
         const displayVal = String(form[f.name] ?? "");
         return (
           <div className="w-full min-h-[30px] flex items-center px-3 py-1 bg-panel-2/30 border border-border/40 rounded text-fg select-text text-sm min-w-0">
-            {displayVal || ""}
+            {(f as { optionLabels?: Record<string, string> }).optionLabels?.[displayVal] ??
+              displayVal ??
+              ""}
           </div>
         );
       }
@@ -1858,12 +1984,33 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
         options={f.options}
         placeholder={`Chọn ${f.label ?? "các mục"}…`}
       />
+    ) : f.type === "radio" && f.options?.length ? (
+      <div className="grid grid-cols-2 gap-3 border border-border rounded bg-panel px-3 py-1.5 min-h-[34px]">
+        {f.options.map((opt) => {
+          const labels = (f as { optionLabels?: Record<string, string> }).optionLabels ?? {};
+          return (
+            <label key={opt} className="flex items-center gap-2 text-sm cursor-pointer">
+              <input
+                type="radio"
+                className="accent-accent"
+                name={`${formKey}-${f.name}`}
+                checked={String(form[f.name] ?? "") === opt}
+                onChange={() => setField(f.name, opt)}
+              />
+              <span>{labels[opt] ?? opt}</span>
+            </label>
+          );
+        })}
+      </div>
     ) : f.type === "select" && f.options?.length ? (
       <SearchableSelect
         className="w-full"
         value={form[f.name] ?? ""}
         onChange={(v) => setField(f.name, v)}
-        options={f.options.map((o) => ({ value: o, label: o }))}
+        options={f.options.map((o) => ({
+          value: o,
+          label: (f as { optionLabels?: Record<string, string> }).optionLabels?.[o] ?? o,
+        }))}
         emptyOption="chọn"
       />
     ) : f.type === "boolean" ? (
@@ -2009,6 +2156,89 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
     );
   };
 
+  const renderPaymentRequestLayout = () => {
+    const byName = new Map(leftFields.map((f) => [f.name, f]));
+    const field = (name: string) => byName.get(name);
+    const labelTone = (name: string) => {
+      if (name === "sotien" || name === "hinhthuc_thanhtoan") return "text-danger";
+      if (["phigiaohang", "thue", "tienthue", "thanhtien"].includes(name)) return "text-blue-600";
+      return "text-fg";
+    };
+    const requiredMark = (f?: EntityField) =>
+      f && !readOnly && f.required ? <span className="text-danger ml-0.5">(*)</span> : null;
+    const fieldError = (f?: EntityField) =>
+      f && !readOnly && fieldErrors[f.name] ? (
+        <span className="text-[10px] font-medium text-danger mt-1 block">
+          {fieldErrors[f.name]}
+        </span>
+      ) : null;
+    const block = (name: string) => {
+      const f = field(name);
+      if (!f) return null;
+      return (
+        <div className="min-w-0">
+          <label className={cn("block text-sm mb-1", labelTone(name))}>
+            {f.label}
+            {requiredMark(f)}
+          </label>
+          {renderFieldInput(f)}
+          {fieldError(f)}
+        </div>
+      );
+    };
+    const inline = (name: string, hideLabel = false, labelWidth = 150) => {
+      const f = field(name);
+      if (!f) return null;
+      return (
+        <div
+          className="grid grid-cols-1 md:grid-cols-[var(--payment-label)_minmax(0,1fr)] items-center gap-2 min-w-0"
+          style={{ "--payment-label": `${labelWidth}px` } as CSSProperties}
+        >
+          {hideLabel ? (
+            <div className="hidden md:block" />
+          ) : (
+            <label className={cn("text-sm", labelTone(name))}>
+              {f.label}
+              {requiredMark(f)}
+            </label>
+          )}
+          <div className="min-w-0">
+            {renderFieldInput(f)}
+            {fieldError(f)}
+          </div>
+        </div>
+      );
+    };
+    const pair = (left: string, right: string) => (
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-3 gap-y-2">
+        {block(left)}
+        {block(right)}
+      </div>
+    );
+    const inlinePair = (left: string, right: string) => (
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-3 gap-y-2">
+        {inline(left, false, 132)}
+        {inline(right, false, 112)}
+      </div>
+    );
+
+    return (
+      <div className="space-y-2 max-w-[760px]">
+        {block("benthanhtoan")}
+        {pair("nguoican_thanhtoan", "ngaycan_thanhtoan")}
+        {inline("loaithanhtoan", true, 132)}
+        {inline("hinhthuc_thanhtoan", false, 132)}
+        {inlinePair("sotien", "loaitien")}
+        {inlinePair("phigiaohang", "thue")}
+        {inline("tienthue", false, 132)}
+        {inlinePair("thanhtien", "tygia")}
+        {inline("sotien_bangchu", false, 132)}
+        {inline("chungtu", false, 132)}
+        {block("noidung")}
+      </div>
+    );
+  };
+
   return (
     <Modal
       open
@@ -2146,113 +2376,217 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
               Đang tải dữ liệu...
             </div>
           ) : detailCfg ? (
-            <div className="space-y-2">
-              <div className="overflow-x-auto border border-border rounded-md max-h-[320px] overflow-y-auto">
-                <table className="text-sm w-full">
-                  <thead className="bg-panel-2 sticky top-0">
-                    <tr>
-                      {detailFields.map((f) => (
-                        <th
-                          key={f.id}
-                          className="px-2 py-1.5 text-left text-xs font-semibold text-muted whitespace-nowrap"
-                        >
-                          {f.label}
-                        </th>
-                      ))}
-                      <th className="w-8" />
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {rows.map((r, i) => (
-                      // biome-ignore lint/suspicious/noArrayIndexKey: dòng nhập tạm chưa có id ổn định
-                      <tr key={i} className="border-t border-border">
-                        {detailFields.map((f) => {
-                          const factors = detailCfg.computed?.[f.name];
-                          return (
-                            <td
-                              key={f.id}
-                              className={
-                                detailCfg.fieldLookups?.[f.name]
-                                  ? "px-1.5 py-1 min-w-[200px]"
-                                  : "px-1.5 py-1 min-w-[120px]"
-                              }
-                            >
-                              {factors ? (
-                                <div className="px-2 py-1 text-right tabular-nums text-muted">
-                                  {computeProduct(r, factors).toLocaleString("vi-VN")}
-                                </div>
-                              ) : (
-                                renderDetailCell(
-                                  f,
-                                  r[f.name] ?? "",
-                                  (v) => setRow(i, f.name, v),
-                                  (patch) => setRowFields(i, patch),
-                                )
-                              )}
-                            </td>
-                          );
-                        })}
-                        <td className="text-center">
-                          {!readOnly && (
-                            <button
-                              type="button"
-                              title="Xoá dòng"
-                              className="p-1 text-muted hover:text-danger"
-                              onClick={() => delRow(i)}
-                            >
-                              <I.Trash size={13} />
-                            </button>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                  {detailCfg.footerSums && detailCfg.footerSums.length > 0 && (
-                    <tfoot className="sticky bottom-0 bg-panel-2 border-t-2 border-border">
+            detailFileUpload ? (
+              <div className="space-y-3">
+                {!readOnly && (
+                  <label className="inline-flex items-center gap-2 px-3 py-2 rounded-md border border-border bg-panel hover:bg-hover cursor-pointer text-sm font-medium">
+                    <I.Upload size={15} />
+                    Chọn file
+                    <input
+                      type="file"
+                      className="sr-only"
+                      accept={detailFileUpload.accept}
+                      disabled={Object.keys(detailFileUploading).length > 0}
+                      onChange={(e) => {
+                        onPickDetailFile(current.id, e.target.files?.[0]);
+                        e.currentTarget.value = "";
+                      }}
+                    />
+                  </label>
+                )}
+                {Object.keys(detailFileUploading).length > 0 && (
+                  <div className="flex items-center gap-2 text-sm text-muted">
+                    <I.Loader size={14} className="animate-spin" />
+                    Đang tải file lên...
+                  </div>
+                )}
+                <div className="border border-border rounded-md overflow-hidden">
+                  <table className="text-sm w-full">
+                    <thead className="bg-panel-2">
                       <tr>
-                        {detailFields.map((f, idx) => {
-                          const isSum = detailCfg.footerSums?.includes(f.name);
-                          return (
-                            <td
-                              key={f.id}
-                              className={
-                                isSum
-                                  ? "px-2 py-1.5 text-right text-xs font-semibold tabular-nums"
-                                  : "px-2 py-1.5 text-xs font-semibold text-muted"
-                              }
-                            >
-                              {isSum
-                                ? sumField(rows, f.name, detailCfg.computed).toLocaleString("vi-VN")
-                                : idx === 0
-                                  ? "Tổng"
-                                  : ""}
-                            </td>
-                          );
-                        })}
-                        <td />
+                        <th className="px-3 py-2 text-left text-xs font-semibold text-muted">
+                          Tên tệp
+                        </th>
+                        <th className="w-20 px-2 py-2 text-center text-xs font-semibold text-muted">
+                          Tệp
+                        </th>
+                        {!readOnly && <th className="w-10" />}
                       </tr>
-                    </tfoot>
-                  )}
-                </table>
+                    </thead>
+                    <tbody>
+                      {(detailRows[current.id] ?? []).length === 0 ? (
+                        <tr>
+                          <td
+                            colSpan={readOnly ? 2 : 3}
+                            className="px-3 py-8 text-center text-sm text-muted"
+                          >
+                            Chưa chọn file
+                          </td>
+                        </tr>
+                      ) : (
+                        (detailRows[current.id] ?? []).map((row, idx) => {
+                          const nameField = detailFileUpload.nameField;
+                          const pathField = detailFileUpload.pathField;
+                          const fileName = row[nameField] || "Tệp đính kèm";
+                          const filePath = row[pathField] || "";
+                          return (
+                            <tr key={`${fileName}-${idx}`} className="border-t border-border">
+                              <td className="px-3 py-2 min-w-0">
+                                <span className="truncate block">{fileName}</span>
+                              </td>
+                              <td className="px-2 py-2 text-center">
+                                {filePath ? (
+                                  <a
+                                    href={filePath}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="inline-flex items-center justify-center p-1.5 rounded hover:bg-hover text-muted hover:text-accent"
+                                    title="Mở file"
+                                  >
+                                    <I.Download size={15} />
+                                  </a>
+                                ) : null}
+                              </td>
+                              {!readOnly && (
+                                <td className="px-1 py-2 text-center">
+                                  <button
+                                    type="button"
+                                    title="Xoá file"
+                                    className="p-1 text-muted hover:text-danger"
+                                    onClick={() =>
+                                      setDetailRows((prev) => ({
+                                        ...prev,
+                                        [current.id]: (prev[current.id] ?? []).filter(
+                                          (_r, i) => i !== idx,
+                                        ),
+                                      }))
+                                    }
+                                  >
+                                    <I.Trash size={14} />
+                                  </button>
+                                </td>
+                              )}
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </table>
+                </div>
               </div>
-              {!readOnly && (
-                <>
-                  <Button variant="ghost" onClick={addRow} icon={<I.Plus size={13} />}>
-                    Thêm dòng
-                  </Button>
-                  <p className="text-xs text-muted">
-                    Mỗi dòng tự gán {detailCfg.linkField} = {detailCfg.parentKeyField} ở bước thông
-                    tin đơn.
-                  </p>
-                </>
-              )}
-            </div>
+            ) : (
+              <div className="space-y-2">
+                <div className="overflow-x-auto border border-border rounded-md max-h-[320px] overflow-y-auto">
+                  <table className="text-sm w-full">
+                    <thead className="bg-panel-2 sticky top-0">
+                      <tr>
+                        {detailFields.map((f) => (
+                          <th
+                            key={f.id}
+                            className="px-2 py-1.5 text-left text-xs font-semibold text-muted whitespace-nowrap"
+                          >
+                            {f.label}
+                          </th>
+                        ))}
+                        <th className="w-8" />
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {rows.map((r, i) => (
+                        // biome-ignore lint/suspicious/noArrayIndexKey: dòng nhập tạm chưa có id ổn định
+                        <tr key={i} className="border-t border-border">
+                          {detailFields.map((f) => {
+                            const factors = detailCfg.computed?.[f.name];
+                            return (
+                              <td
+                                key={f.id}
+                                className={
+                                  detailCfg.fieldLookups?.[f.name]
+                                    ? "px-1.5 py-1 min-w-[200px]"
+                                    : "px-1.5 py-1 min-w-[120px]"
+                                }
+                              >
+                                {factors ? (
+                                  <div className="px-2 py-1 text-right tabular-nums text-muted">
+                                    {computeProduct(r, factors).toLocaleString("vi-VN")}
+                                  </div>
+                                ) : (
+                                  renderDetailCell(
+                                    f,
+                                    r[f.name] ?? "",
+                                    (v) => setRow(i, f.name, v),
+                                    (patch) => setRowFields(i, patch),
+                                  )
+                                )}
+                              </td>
+                            );
+                          })}
+                          <td className="text-center">
+                            {!readOnly && (
+                              <button
+                                type="button"
+                                title="Xoá dòng"
+                                className="p-1 text-muted hover:text-danger"
+                                onClick={() => delRow(i)}
+                              >
+                                <I.Trash size={13} />
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                    {detailCfg.footerSums && detailCfg.footerSums.length > 0 && (
+                      <tfoot className="sticky bottom-0 bg-panel-2 border-t-2 border-border">
+                        <tr>
+                          {detailFields.map((f, idx) => {
+                            const isSum = detailCfg.footerSums?.includes(f.name);
+                            return (
+                              <td
+                                key={f.id}
+                                className={
+                                  isSum
+                                    ? "px-2 py-1.5 text-right text-xs font-semibold tabular-nums"
+                                    : "px-2 py-1.5 text-xs font-semibold text-muted"
+                                }
+                              >
+                                {isSum
+                                  ? sumField(rows, f.name, detailCfg.computed).toLocaleString(
+                                      "vi-VN",
+                                    )
+                                  : idx === 0
+                                    ? "Tổng"
+                                    : ""}
+                              </td>
+                            );
+                          })}
+                          <td />
+                        </tr>
+                      </tfoot>
+                    )}
+                  </table>
+                </div>
+                {!readOnly && (
+                  <>
+                    <Button variant="ghost" onClick={addRow} icon={<I.Plus size={13} />}>
+                      Thêm dòng
+                    </Button>
+                    <p className="text-xs text-muted">
+                      Mỗi dòng tự gán {detailCfg.linkField} = {detailCfg.parentKeyField} ở bước
+                      thông tin đơn.
+                    </p>
+                  </>
+                )}
+              </div>
+            )
           ) : ent ? (
             visibleFields.length > 0 ? (
               <div className="flex flex-col sm:flex-row gap-4 items-start">
                 {/* Cột trái: các trường nhập (flat hoặc grouped theo sections) */}
                 <div className={cn("min-w-0 w-full", hasImagePanel ? "sm:flex-1" : "")}>
-                  {current.sections?.length ? (
+                  {current.layout === "payment-request" ? (
+                    renderPaymentRequestLayout()
+                  ) : current.sections?.length ? (
                     // Chế độ sections: render từng nhóm có header tiêu đề
                     <div className="space-y-3">
                       {current.sections.map((sec) => {

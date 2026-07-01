@@ -1,147 +1,1115 @@
 {
- "name": "dq_p01_phieu_de_nghi_thanh_toan",
- "label": "Phiếu đề nghị thanh toán",
- "content": [
-  {
-   "id": "w_list",
-   "kind": "list",
-   "x": 0,
-   "y": 0,
-   "w": 12,
-   "h": 10,
-   "config": {
-    "entity": "ae54f72c-0658-43eb-a50e-e974bc557468",
-    "title": "Phiếu đề nghị thanh toán",
-    "fields": [
-     "id",
-     "ngayphieu",
-     "sophieu",
-     "nguoidenghi",
-     "bophan",
-     "nguoitao",
-     "ngaytao",
-     "loaithanhtoan",
-     "noidung",
-     "dathanhtoan",
-     "sotien",
-     "thue",
-     "phigiaohang",
-     "thanhtien",
-     "loaitien",
-     "tygia"
-    ],
-    "selectionStateKey": "sel",
-    "pageSize": 25,
-    "editable": true,
-    "embeddedActions": [
-     {
-      "id": "act_add",
-      "label": "Thêm",
-      "icon": "Plus",
-      "variant": "primary",
-      "steps": [
-       {
-        "id": "s",
-        "kind": "open-popup",
-        "popupMode": "form",
+  "name": "dq_p01_phieu_de_nghi_thanh_toan",
+  "label": "Phiáº¿u Ä‘á» nghá»‹ thanh toÃ¡n",
+  "content": [
+    {
+      "id": "w_list",
+      "kind": "list",
+      "x": 0,
+      "y": 0,
+      "w": 12,
+      "h": 10,
+      "config": {
+        "dataSourceId": "f2d4c1a0-7c9e-4c0a-8a3f-1d2e9b7c6a51",
         "entity": "ae54f72c-0658-43eb-a50e-e974bc557468",
-        "title": "Thêm — Phiếu đề nghị thanh toán",
-        "saveOutputTo": "newRec"
-       }
-      ]
-     },
-     {
-      "id": "act_edit",
-      "label": "Sửa",
-      "icon": "Pencil",
-      "variant": "default",
-      "steps": [
-       {
-        "id": "s",
-        "kind": "open-popup",
-        "popupMode": "form",
-        "entity": "ae54f72c-0658-43eb-a50e-e974bc557468",
-        "title": "Sửa — Phiếu đề nghị thanh toán",
-        "recordIdBinding": {
-         "source": "state",
-         "key": "sel"
-        }
-       }
-      ]
-     },
-     {
-      "id": "act_delete",
-      "label": "Xóa",
-      "icon": "Trash2",
-      "variant": "danger",
-      "steps": [
-       {
-        "id": "s1",
-        "kind": "confirm",
-        "title": "Xóa",
-        "message": "Xác nhận xoá bản ghi đang chọn?",
-        "danger": true
-       },
-       {
-        "id": "s2",
-        "kind": "delete-record",
-        "recordIdBinding": {
-         "source": "state",
-         "key": "sel"
+        "title": "Phiáº¿u Ä‘á» nghá»‹ thanh toÃ¡n",
+        "fields": [
+          "ngayphieu",
+          "sophieu",
+          "nguoidenghi",
+          "bophan",
+          "ngaytao",
+          "congty_tencty",
+          "phieudenghi_thanhtoan_nhacc_tenncc",
+          "ngaycan_thanhtoan",
+          "loaithanhtoan",
+          "hinhthuc_thanhtoan",
+          "noidung",
+          "documentCount",
+          "dathanhtoan",
+          "sotien",
+          "thue",
+          "phigiaohang",
+          "thanhtien",
+          "loaitien",
+          "tygia",
+          "nguoiduyet",
+          "ngayduyet"
+        ],
+        "columnLabels": {
+          "ngayphieu": "NgÃ y phiáº¿u",
+          "sophieu": "Sá»‘ phiáº¿u",
+          "nguoidenghi": "NgÆ°á»i Ä‘á» nghá»‹",
+          "bophan": "Bá»™ pháº­n",
+          "ngaytao": "NgÃ y táº¡o",
+          "congty_tencty": "BÃªn thanh toÃ¡n",
+          "phieudenghi_thanhtoan_nhacc_tenncc": "NgÆ°á»i cáº§n thanh toÃ¡n",
+          "ngaycan_thanhtoan": "NgÃ y cáº§n thanh toÃ¡n",
+          "loaithanhtoan": "Loáº¡i thanh toÃ¡n",
+          "hinhthuc_thanhtoan": "HÃ¬nh thá»©c thanh toÃ¡n",
+          "noidung": "Ná»™i dung",
+          "documentCount": "Tá»‡p Ä‘Ã­nh kÃ¨m",
+          "dathanhtoan": "ÄÃ£ thanh toÃ¡n",
+          "sotien": "Sá»‘ tiá»n",
+          "thue": "VAT (%)",
+          "phigiaohang": "PhÃ­ giao hÃ ng",
+          "thanhtien": "ThÃ nh tiá»n",
+          "loaitien": "Loáº¡i tiá»n",
+          "tygia": "Tá»· giÃ¡",
+          "nguoiduyet": "NgÆ°á»i duyá»‡t",
+          "ngayduyet": "NgÃ y duyá»‡t"
         },
-        "invalidateEntities": [
-         "ae54f72c-0658-43eb-a50e-e974bc557468"
+        "valueLabels": {
+          "loaithanhtoan": {
+            "1": "Táº¡m á»©ng",
+            "2": "Thanh toÃ¡n"
+          },
+          "hinhthuc_thanhtoan": {
+            "true": "Tiá»n máº·t",
+            "false": "Chuyá»ƒn khoáº£n"
+          }
+        },
+        "approvalStatusFilter": {
+          "field": "__approval_status",
+          "activeField": "active",
+          "canceledField": "ngayhuyduyet",
+          "approvedByField": "nguoiduyet",
+          "approvedAtField": "ngayduyet"
+        },
+        "filters": {
+          "kind": "leaf",
+          "field": "__approval_status",
+          "stateKey": "payment_status",
+          "op": "eq"
+        },
+        "embeddedFilters": [
+          {
+            "label": "Xem theo",
+            "stateKey": "payment_status",
+            "options": "chua_duyet,da_duyet,huy",
+            "optionLabels": {
+              "chua_duyet": "ChÆ°a duyá»‡t",
+              "da_duyet": "ÄÃ£ duyá»‡t",
+              "huy": "Há»§y"
+            }
+          }
+        ],
+        "selectionStateKey": "sel",
+        "pageSize": 25,
+        "serverPaging": true,
+        "editable": false,
+        "defaultSort": {
+          "field": "ngayphieu",
+          "dir": "desc"
+        },
+        "embeddedActions": [
+          {
+            "id": "act_add",
+            "label": "ThÃªm",
+            "icon": "Plus",
+            "variant": "primary",
+            "steps": [
+              {
+                "id": "s",
+                "kind": "open-wizard",
+                "title": "Phiáº¿u Ä‘á» nghá»‹ thanh toÃ¡n",
+                "submitLabel": "LÆ°u",
+                "entity": "ae54f72c-0658-43eb-a50e-e974bc557468",
+                "invalidateDataSources": [
+                  "f2d4c1a0-7c9e-4c0a-8a3f-1d2e9b7c6a51"
+                ],
+                "defaults": {
+                  "ngayphieu": "$today",
+                  "nguoidenghi": "$currentUser",
+                  "bophan": "$currentUserDepartment",
+                  "loaitien": "VND",
+                  "loaithanhtoan": "2",
+                  "hinhthuc_thanhtoan": "true",
+                  "active": "true",
+                  "dathanhtoan": "false"
+                },
+                "autoNumber": {
+                  "field": "sophieu",
+                  "format": "yyMMdd{seq}",
+                  "pad": 2
+                },
+                "steps": [
+                  {
+                    "id": "info",
+                    "title": "Thông tin người yêu cầu",
+                    "fields": [
+                      "sophieu",
+                      "ngayphieu",
+                      "nguoidenghi",
+                      "bophan"
+                    ],
+                    "fieldOverrides": {
+                      "sophieu": {
+                        "label": "Số phiếu",
+                        "readOnly": true
+                      },
+                      "ngayphieu": {
+                        "label": "Ngày",
+                        "required": true
+                      },
+                      "nguoidenghi": {
+                        "label": "Người đề nghị",
+                        "required": true,
+                        "readOnly": true
+                      },
+                      "bophan": {
+                        "label": "Bộ phận",
+                        "readOnly": true
+                      }
+                    }
+                  },
+                  {
+                    "id": "payment",
+                    "title": "Thông tin thanh toán",
+                    "fields": [
+                      "benthanhtoan",
+                      "nguoican_thanhtoan",
+                      "ngaycan_thanhtoan",
+                      "loaithanhtoan",
+                      "hinhthuc_thanhtoan",
+                      "sotien",
+                      "loaitien",
+                      "phigiaohang",
+                      "thue",
+                      "tienthue",
+                      "thanhtien",
+                      "tygia",
+                      "sotien_bangchu",
+                      "chungtu",
+                      "noidung",
+                      "active",
+                      "dathanhtoan"
+                    ],
+                    "hiddenFields": [
+                      "active",
+                      "dathanhtoan"
+                    ],
+                    "fieldLookups": {
+                      "benthanhtoan": {
+                        "entity": "b476a120-27b5-4949-9e33-954a3ba26f31",
+                        "valueField": "macty",
+                        "labelFields": [
+                          "tencty"
+                        ],
+                        "columnHeaders": [
+                          "TÃªn cÃ´ng ty"
+                        ],
+                        "searchFields": [
+                          "tencty",
+                          "macty"
+                        ],
+                        "preloadLimit": 500
+                      },
+                      "nguoican_thanhtoan": {
+                        "entity": "37695b3a-747d-4d6f-b206-9dd312744003",
+                        "valueField": "mancc",
+                        "labelFields": [
+                          "mancc",
+                          "tenncc",
+                          "diachi",
+                          "dienthoai",
+                          "email"
+                        ],
+                        "columnHeaders": [
+                          "MÃ£ nhÃ  cung cáº¥p",
+                          "TÃªn nhÃ  cung cáº¥p",
+                          "Äá»‹a chá»‰",
+                          "Äiá»‡n thoáº¡i",
+                          "Email"
+                        ],
+                        "searchFields": [
+                          "mancc",
+                          "tenncc",
+                          "diachi",
+                          "dienthoai",
+                          "email"
+                        ],
+                        "allowCreate": true,
+                        "createFields": [
+                          "mancc",
+                          "tenncc",
+                          "diachi",
+                          "email",
+                          "dienthoai",
+                          "website",
+                          "stk",
+                          "tentk",
+                          "nganhang"
+                        ],
+                        "preloadLimit": 5000
+                      },
+                      "chungtu": {
+                        "entity": "7739eee9-fb60-45b6-9f79-8567c7e21e12",
+                        "valueField": "maddh",
+                        "labelFields": [
+                          "maddh",
+                          "tenddh",
+                          "tenncc"
+                        ],
+                        "columnHeaders": [
+                          "ÄÆ¡n hÃ ng",
+                          "TÃªn Ä‘áº·t hÃ ng",
+                          "NhÃ  cung cáº¥p"
+                        ],
+                        "searchFields": [
+                          "maddh",
+                          "tenddh",
+                          "tenncc"
+                        ],
+                        "preloadLimit": 2000
+                      }
+                    },
+                    "fieldOverrides": {
+                      "benthanhtoan": {
+                        "label": "Bên thanh toán",
+                        "required": true,
+                        "colSpan": 4
+                      },
+                      "nguoican_thanhtoan": {
+                        "label": "Người cần thanh toán",
+                        "required": true,
+                        "colSpan": 2
+                      },
+                      "ngaycan_thanhtoan": {
+                        "label": "Ngày cần thanh toán",
+                        "required": true,
+                        "colSpan": 2
+                      },
+                      "loaithanhtoan": {
+                        "label": "Loại thanh toán",
+                        "type": "radio",
+                        "options": [
+                          "1",
+                          "2"
+                        ],
+                        "optionLabels": {
+                          "1": "Tạm ứng",
+                          "2": "Thanh toán"
+                        },
+                        "colSpan": 4
+                      },
+                      "hinhthuc_thanhtoan": {
+                        "label": "Hình thức thanh toán",
+                        "type": "radio",
+                        "options": [
+                          "false",
+                          "true"
+                        ],
+                        "optionLabels": {
+                          "false": "Chuyển khoản",
+                          "true": "Tiền mặt"
+                        },
+                        "colSpan": 4
+                      },
+                      "sotien": {
+                        "label": "Số tiền",
+                        "required": true,
+                        "colSpan": 2
+                      },
+                      "loaitien": {
+                        "label": "Loại tiền",
+                        "colSpan": 2
+                      },
+                      "phigiaohang": {
+                        "label": "Phí giao hàng",
+                        "colSpan": 2
+                      },
+                      "thue": {
+                        "label": "Thuế (%)",
+                        "colSpan": 2
+                      },
+                      "tienthue": {
+                        "label": "Tiền thuế",
+                        "colSpan": 4
+                      },
+                      "thanhtien": {
+                        "label": "Thành tiền",
+                        "colSpan": 2
+                      },
+                      "tygia": {
+                        "label": "Tỷ giá",
+                        "colSpan": 2
+                      },
+                      "sotien_bangchu": {
+                        "label": "Viết bằng chữ",
+                        "colSpan": 4
+                      },
+                      "chungtu": {
+                        "label": "Đơn hàng",
+                        "colSpan": 4
+                      },
+                      "noidung": {
+                        "label": "Nội dung thanh toán",
+                        "type": "longtext",
+                        "colSpan": 4
+                      }
+                    },
+                    "cols": 4,
+                    "layout": "payment-request"
+                  },
+                  {
+                    "id": "files",
+                    "title": "Tệp đính kèm",
+                    "detail": {
+                      "entity": "99b5e511-fccc-4bae-840f-785e85a721cc",
+                      "linkField": "id_sophieu",
+                      "parentKeyField": "id",
+                      "fields": [
+                        "filename",
+                        "path"
+                      ],
+                      "fileUpload": {
+                        "nameField": "filename",
+                        "pathField": "path",
+                        "subfolder": "doc"
+                      }
+                    },
+                    "fieldOverrides": {
+                      "filename": {
+                        "label": "Tên tệp"
+                      },
+                      "path": {
+                        "label": "Đường dẫn"
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "act_approve",
+            "label": "Duyá»‡t Ä‘á» xuáº¥t",
+            "icon": "CheckCircle",
+            "variant": "default",
+            "steps": [
+              {
+                "id": "c",
+                "kind": "confirm",
+                "title": "Duyá»‡t Ä‘á» xuáº¥t",
+                "message": "Duyá»‡t Ä‘á» xuáº¥t Ä‘ang chá»n?"
+              },
+              {
+                "id": "u",
+                "kind": "update-fields",
+                "recordIdBinding": {
+                  "source": "state",
+                  "key": "sel"
+                },
+                "fields": {
+                  "nguoiduyet": "$currentUser",
+                  "ngayduyet": "$now",
+                  "active": {
+                    "source": "const",
+                    "value": true
+                  }
+                },
+                "invalidateEntities": [
+                  "ae54f72c-0658-43eb-a50e-e974bc557468"
+                ],
+                "invalidateDataSources": [
+                  "f2d4c1a0-7c9e-4c0a-8a3f-1d2e9b7c6a51"
+                ]
+              }
+            ]
+          },
+          {
+            "id": "act_cancel",
+            "label": "Há»§y Ä‘á» xuáº¥t",
+            "icon": "XCircle",
+            "variant": "danger",
+            "steps": [
+              {
+                "id": "c",
+                "kind": "confirm",
+                "title": "Há»§y Ä‘á» xuáº¥t",
+                "message": "Há»§y Ä‘á» xuáº¥t Ä‘ang chá»n?",
+                "danger": true
+              },
+              {
+                "id": "u",
+                "kind": "update-fields",
+                "recordIdBinding": {
+                  "source": "state",
+                  "key": "sel"
+                },
+                "fields": {
+                  "ngayhuyduyet": "$now",
+                  "active": {
+                    "source": "const",
+                    "value": false
+                  }
+                },
+                "invalidateEntities": [
+                  "ae54f72c-0658-43eb-a50e-e974bc557468"
+                ],
+                "invalidateDataSources": [
+                  "f2d4c1a0-7c9e-4c0a-8a3f-1d2e9b7c6a51"
+                ]
+              }
+            ]
+          },
+          {
+            "id": "act_reload",
+            "label": "Náº¡p láº¡i",
+            "icon": "RefreshCw",
+            "variant": "default",
+            "steps": [
+              {
+                "id": "r",
+                "kind": "refresh",
+                "entities": [
+                  "ae54f72c-0658-43eb-a50e-e974bc557468"
+                ]
+              }
+            ]
+          },
+          {
+            "id": "act_print",
+            "label": "In",
+            "icon": "Printer",
+            "variant": "default",
+            "steps": [
+              {
+                "id": "p",
+                "kind": "print-records",
+                "entity": "ae54f72c-0658-43eb-a50e-e974bc557468",
+                "title": "Phiáº¿u Ä‘á» nghá»‹ thanh toÃ¡n"
+              }
+            ]
+          },
+          {
+            "id": "act_export",
+            "label": "Xuáº¥t",
+            "icon": "Download",
+            "variant": "default",
+            "steps": [
+              {
+                "id": "e",
+                "kind": "export-records",
+                "entity": "ae54f72c-0658-43eb-a50e-e974bc557468",
+                "format": "xlsx",
+                "title": "Phiáº¿u Ä‘á» nghá»‹ thanh toÃ¡n"
+              }
+            ]
+          },
+          {
+            "id": "act_files",
+            "label": "Táº£i tá»‡p Ä‘Ã­nh kÃ¨m",
+            "icon": "Download",
+            "variant": "default",
+            "steps": [
+              {
+                "id": "s",
+                "kind": "set-state",
+                "key": "__download_files",
+                "value": true
+              }
+            ]
+          },
+          {
+            "id": "act_close",
+            "label": "ÄÃ³ng",
+            "icon": "XCircle",
+            "variant": "default",
+            "steps": [
+              {
+                "id": "s",
+                "kind": "navigate",
+                "href": "/"
+              }
+            ]
+          }
+        ],
+        "rowActionsBuiltin": false,
+        "rowActionsStyle": "inline",
+        "rowActions": [
+          {
+            "id": "act_view_row",
+            "label": "Xem",
+            "icon": "Eye",
+            "variant": "default",
+            "steps": [
+              {
+                "id": "s",
+                "kind": "open-wizard",
+                "title": "Xem - Phiếu đề nghị thanh toán",
+                "submitLabel": "LÆ°u",
+                "entity": "ae54f72c-0658-43eb-a50e-e974bc557468",
+                "invalidateDataSources": [
+                  "f2d4c1a0-7c9e-4c0a-8a3f-1d2e9b7c6a51"
+                ],
+                "steps": [
+                  {
+                    "id": "info",
+                    "title": "Thông tin người yêu cầu",
+                    "fields": [
+                      "sophieu",
+                      "ngayphieu",
+                      "nguoidenghi",
+                      "bophan"
+                    ],
+                    "fieldOverrides": {
+                      "sophieu": {
+                        "label": "Số phiếu",
+                        "readOnly": true
+                      },
+                      "ngayphieu": {
+                        "label": "Ngày",
+                        "required": true
+                      },
+                      "nguoidenghi": {
+                        "label": "Người đề nghị",
+                        "required": true,
+                        "readOnly": true
+                      },
+                      "bophan": {
+                        "label": "Bộ phận",
+                        "readOnly": true
+                      }
+                    }
+                  },
+                  {
+                    "id": "payment",
+                    "title": "Thông tin thanh toán",
+                    "fields": [
+                      "benthanhtoan",
+                      "nguoican_thanhtoan",
+                      "ngaycan_thanhtoan",
+                      "loaithanhtoan",
+                      "hinhthuc_thanhtoan",
+                      "sotien",
+                      "loaitien",
+                      "phigiaohang",
+                      "thue",
+                      "tienthue",
+                      "thanhtien",
+                      "tygia",
+                      "sotien_bangchu",
+                      "chungtu",
+                      "noidung",
+                      "active",
+                      "dathanhtoan"
+                    ],
+                    "hiddenFields": [
+                      "active",
+                      "dathanhtoan"
+                    ],
+                    "fieldLookups": {
+                      "benthanhtoan": {
+                        "entity": "b476a120-27b5-4949-9e33-954a3ba26f31",
+                        "valueField": "macty",
+                        "labelFields": [
+                          "tencty"
+                        ],
+                        "columnHeaders": [
+                          "TÃªn cÃ´ng ty"
+                        ],
+                        "searchFields": [
+                          "tencty",
+                          "macty"
+                        ],
+                        "preloadLimit": 500
+                      },
+                      "nguoican_thanhtoan": {
+                        "entity": "37695b3a-747d-4d6f-b206-9dd312744003",
+                        "valueField": "mancc",
+                        "labelFields": [
+                          "mancc",
+                          "tenncc",
+                          "diachi",
+                          "dienthoai",
+                          "email"
+                        ],
+                        "columnHeaders": [
+                          "MÃ£ nhÃ  cung cáº¥p",
+                          "TÃªn nhÃ  cung cáº¥p",
+                          "Äá»‹a chá»‰",
+                          "Äiá»‡n thoáº¡i",
+                          "Email"
+                        ],
+                        "searchFields": [
+                          "mancc",
+                          "tenncc",
+                          "diachi",
+                          "dienthoai",
+                          "email"
+                        ],
+                        "allowCreate": true,
+                        "createFields": [
+                          "mancc",
+                          "tenncc",
+                          "diachi",
+                          "email",
+                          "dienthoai",
+                          "website",
+                          "stk",
+                          "tentk",
+                          "nganhang"
+                        ],
+                        "preloadLimit": 5000
+                      },
+                      "chungtu": {
+                        "entity": "7739eee9-fb60-45b6-9f79-8567c7e21e12",
+                        "valueField": "maddh",
+                        "labelFields": [
+                          "maddh",
+                          "tenddh",
+                          "tenncc"
+                        ],
+                        "columnHeaders": [
+                          "ÄÆ¡n hÃ ng",
+                          "TÃªn Ä‘áº·t hÃ ng",
+                          "NhÃ  cung cáº¥p"
+                        ],
+                        "searchFields": [
+                          "maddh",
+                          "tenddh",
+                          "tenncc"
+                        ],
+                        "preloadLimit": 2000
+                      }
+                    },
+                    "fieldOverrides": {
+                      "benthanhtoan": {
+                        "label": "Bên thanh toán",
+                        "required": true,
+                        "colSpan": 4
+                      },
+                      "nguoican_thanhtoan": {
+                        "label": "Người cần thanh toán",
+                        "required": true,
+                        "colSpan": 2
+                      },
+                      "ngaycan_thanhtoan": {
+                        "label": "Ngày cần thanh toán",
+                        "required": true,
+                        "colSpan": 2
+                      },
+                      "loaithanhtoan": {
+                        "label": "Loại thanh toán",
+                        "type": "radio",
+                        "options": [
+                          "1",
+                          "2"
+                        ],
+                        "optionLabels": {
+                          "1": "Tạm ứng",
+                          "2": "Thanh toán"
+                        },
+                        "colSpan": 4
+                      },
+                      "hinhthuc_thanhtoan": {
+                        "label": "Hình thức thanh toán",
+                        "type": "radio",
+                        "options": [
+                          "false",
+                          "true"
+                        ],
+                        "optionLabels": {
+                          "false": "Chuyển khoản",
+                          "true": "Tiền mặt"
+                        },
+                        "colSpan": 4
+                      },
+                      "sotien": {
+                        "label": "Số tiền",
+                        "required": true,
+                        "colSpan": 2
+                      },
+                      "loaitien": {
+                        "label": "Loại tiền",
+                        "colSpan": 2
+                      },
+                      "phigiaohang": {
+                        "label": "Phí giao hàng",
+                        "colSpan": 2
+                      },
+                      "thue": {
+                        "label": "Thuế (%)",
+                        "colSpan": 2
+                      },
+                      "tienthue": {
+                        "label": "Tiền thuế",
+                        "colSpan": 4
+                      },
+                      "thanhtien": {
+                        "label": "Thành tiền",
+                        "colSpan": 2
+                      },
+                      "tygia": {
+                        "label": "Tỷ giá",
+                        "colSpan": 2
+                      },
+                      "sotien_bangchu": {
+                        "label": "Viết bằng chữ",
+                        "colSpan": 4
+                      },
+                      "chungtu": {
+                        "label": "Đơn hàng",
+                        "colSpan": 4
+                      },
+                      "noidung": {
+                        "label": "Nội dung thanh toán",
+                        "type": "longtext",
+                        "colSpan": 4
+                      }
+                    },
+                    "cols": 4,
+                    "layout": "payment-request"
+                  },
+                  {
+                    "id": "files",
+                    "title": "Tệp đính kèm",
+                    "detail": {
+                      "entity": "99b5e511-fccc-4bae-840f-785e85a721cc",
+                      "linkField": "id_sophieu",
+                      "parentKeyField": "id",
+                      "fields": [
+                        "filename",
+                        "path"
+                      ],
+                      "fileUpload": {
+                        "nameField": "filename",
+                        "pathField": "path",
+                        "subfolder": "doc"
+                      }
+                    },
+                    "fieldOverrides": {
+                      "filename": {
+                        "label": "Tên tệp"
+                      },
+                      "path": {
+                        "label": "Đường dẫn"
+                      }
+                    }
+                  }
+                ],
+                "readOnly": true,
+                "recordIdBinding": {
+                  "source": "const",
+                  "value": "$rowId"
+                }
+              }
+            ],
+            "iconOnly": true
+          },
+          {
+            "id": "act_edit",
+            "label": "Sửa",
+            "icon": "Edit",
+            "variant": "default",
+            "steps": [
+              {
+                "id": "s",
+                "kind": "open-wizard",
+                "title": "Sửa - Phiếu đề nghị thanh toán",
+                "submitLabel": "LÆ°u",
+                "entity": "ae54f72c-0658-43eb-a50e-e974bc557468",
+                "invalidateDataSources": [
+                  "f2d4c1a0-7c9e-4c0a-8a3f-1d2e9b7c6a51"
+                ],
+                "steps": [
+                  {
+                    "id": "info",
+                    "title": "Thông tin người yêu cầu",
+                    "fields": [
+                      "sophieu",
+                      "ngayphieu",
+                      "nguoidenghi",
+                      "bophan"
+                    ],
+                    "fieldOverrides": {
+                      "sophieu": {
+                        "label": "Số phiếu",
+                        "readOnly": true
+                      },
+                      "ngayphieu": {
+                        "label": "Ngày",
+                        "required": true
+                      },
+                      "nguoidenghi": {
+                        "label": "Người đề nghị",
+                        "required": true,
+                        "readOnly": true
+                      },
+                      "bophan": {
+                        "label": "Bộ phận",
+                        "readOnly": true
+                      }
+                    }
+                  },
+                  {
+                    "id": "payment",
+                    "title": "Thông tin thanh toán",
+                    "fields": [
+                      "benthanhtoan",
+                      "nguoican_thanhtoan",
+                      "ngaycan_thanhtoan",
+                      "loaithanhtoan",
+                      "hinhthuc_thanhtoan",
+                      "sotien",
+                      "loaitien",
+                      "phigiaohang",
+                      "thue",
+                      "tienthue",
+                      "thanhtien",
+                      "tygia",
+                      "sotien_bangchu",
+                      "chungtu",
+                      "noidung",
+                      "active",
+                      "dathanhtoan"
+                    ],
+                    "hiddenFields": [
+                      "active",
+                      "dathanhtoan"
+                    ],
+                    "fieldLookups": {
+                      "benthanhtoan": {
+                        "entity": "b476a120-27b5-4949-9e33-954a3ba26f31",
+                        "valueField": "macty",
+                        "labelFields": [
+                          "tencty"
+                        ],
+                        "columnHeaders": [
+                          "TÃªn cÃ´ng ty"
+                        ],
+                        "searchFields": [
+                          "tencty",
+                          "macty"
+                        ],
+                        "preloadLimit": 500
+                      },
+                      "nguoican_thanhtoan": {
+                        "entity": "37695b3a-747d-4d6f-b206-9dd312744003",
+                        "valueField": "mancc",
+                        "labelFields": [
+                          "mancc",
+                          "tenncc",
+                          "diachi",
+                          "dienthoai",
+                          "email"
+                        ],
+                        "columnHeaders": [
+                          "MÃ£ nhÃ  cung cáº¥p",
+                          "TÃªn nhÃ  cung cáº¥p",
+                          "Äá»‹a chá»‰",
+                          "Äiá»‡n thoáº¡i",
+                          "Email"
+                        ],
+                        "searchFields": [
+                          "mancc",
+                          "tenncc",
+                          "diachi",
+                          "dienthoai",
+                          "email"
+                        ],
+                        "allowCreate": true,
+                        "createFields": [
+                          "mancc",
+                          "tenncc",
+                          "diachi",
+                          "email",
+                          "dienthoai",
+                          "website",
+                          "stk",
+                          "tentk",
+                          "nganhang"
+                        ],
+                        "preloadLimit": 5000
+                      },
+                      "chungtu": {
+                        "entity": "7739eee9-fb60-45b6-9f79-8567c7e21e12",
+                        "valueField": "maddh",
+                        "labelFields": [
+                          "maddh",
+                          "tenddh",
+                          "tenncc"
+                        ],
+                        "columnHeaders": [
+                          "ÄÆ¡n hÃ ng",
+                          "TÃªn Ä‘áº·t hÃ ng",
+                          "NhÃ  cung cáº¥p"
+                        ],
+                        "searchFields": [
+                          "maddh",
+                          "tenddh",
+                          "tenncc"
+                        ],
+                        "preloadLimit": 2000
+                      }
+                    },
+                    "fieldOverrides": {
+                      "benthanhtoan": {
+                        "label": "Bên thanh toán",
+                        "required": true,
+                        "colSpan": 4
+                      },
+                      "nguoican_thanhtoan": {
+                        "label": "Người cần thanh toán",
+                        "required": true,
+                        "colSpan": 2
+                      },
+                      "ngaycan_thanhtoan": {
+                        "label": "Ngày cần thanh toán",
+                        "required": true,
+                        "colSpan": 2
+                      },
+                      "loaithanhtoan": {
+                        "label": "Loại thanh toán",
+                        "type": "radio",
+                        "options": [
+                          "1",
+                          "2"
+                        ],
+                        "optionLabels": {
+                          "1": "Tạm ứng",
+                          "2": "Thanh toán"
+                        },
+                        "colSpan": 4
+                      },
+                      "hinhthuc_thanhtoan": {
+                        "label": "Hình thức thanh toán",
+                        "type": "radio",
+                        "options": [
+                          "false",
+                          "true"
+                        ],
+                        "optionLabels": {
+                          "false": "Chuyển khoản",
+                          "true": "Tiền mặt"
+                        },
+                        "colSpan": 4
+                      },
+                      "sotien": {
+                        "label": "Số tiền",
+                        "required": true,
+                        "colSpan": 2
+                      },
+                      "loaitien": {
+                        "label": "Loại tiền",
+                        "colSpan": 2
+                      },
+                      "phigiaohang": {
+                        "label": "Phí giao hàng",
+                        "colSpan": 2
+                      },
+                      "thue": {
+                        "label": "Thuế (%)",
+                        "colSpan": 2
+                      },
+                      "tienthue": {
+                        "label": "Tiền thuế",
+                        "colSpan": 4
+                      },
+                      "thanhtien": {
+                        "label": "Thành tiền",
+                        "colSpan": 2
+                      },
+                      "tygia": {
+                        "label": "Tỷ giá",
+                        "colSpan": 2
+                      },
+                      "sotien_bangchu": {
+                        "label": "Viết bằng chữ",
+                        "colSpan": 4
+                      },
+                      "chungtu": {
+                        "label": "Đơn hàng",
+                        "colSpan": 4
+                      },
+                      "noidung": {
+                        "label": "Nội dung thanh toán",
+                        "type": "longtext",
+                        "colSpan": 4
+                      }
+                    },
+                    "cols": 4,
+                    "layout": "payment-request"
+                  },
+                  {
+                    "id": "files",
+                    "title": "Tệp đính kèm",
+                    "detail": {
+                      "entity": "99b5e511-fccc-4bae-840f-785e85a721cc",
+                      "linkField": "id_sophieu",
+                      "parentKeyField": "id",
+                      "fields": [
+                        "filename",
+                        "path"
+                      ],
+                      "fileUpload": {
+                        "nameField": "filename",
+                        "pathField": "path",
+                        "subfolder": "doc"
+                      }
+                    },
+                    "fieldOverrides": {
+                      "filename": {
+                        "label": "Tên tệp"
+                      },
+                      "path": {
+                        "label": "Đường dẫn"
+                      }
+                    }
+                  }
+                ],
+                "recordIdBinding": {
+                  "source": "const",
+                  "value": "$rowId"
+                }
+              }
+            ],
+            "iconOnly": true
+          },
+          {
+            "id": "act_delete",
+            "label": "Xoá",
+            "icon": "Trash2",
+            "variant": "danger",
+            "steps": [
+              {
+                "id": "c",
+                "kind": "confirm",
+                "title": "XÃ³a",
+                "message": "XÃ¡c nháº­n xoÃ¡ phiáº¿u Ä‘ang chá»n?",
+                "danger": true
+              },
+              {
+                "id": "d",
+                "kind": "delete-record",
+                "recordIdBinding": {
+                  "source": "state",
+                  "key": "sel"
+                },
+                "invalidateEntities": [
+                  "ae54f72c-0658-43eb-a50e-e974bc557468"
+                ],
+                "invalidateDataSources": [
+                  "f2d4c1a0-7c9e-4c0a-8a3f-1d2e9b7c6a51"
+                ]
+              },
+              {
+                "id": "r",
+                "kind": "refresh",
+                "entities": [
+                  "ae54f72c-0658-43eb-a50e-e974bc557468"
+                ]
+              }
+            ],
+            "iconOnly": true
+          }
         ]
-       }
-      ]
-     },
-     {
-      "id": "act_approve",
-      "label": "Duyệt đề xuất",
-      "icon": "Check",
-      "variant": "default",
-      "steps": [
-       {
-        "id": "s",
-        "kind": "confirm",
-        "title": "Duyệt đề xuất",
-        "message": "Duyệt đề xuất?"
-       }
-      ]
-     },
-     {
-      "id": "act_export",
-      "label": "Hủy đề xuất",
-      "icon": "Download",
-      "variant": "default",
-      "steps": [
-       {
-        "id": "s",
-        "kind": "set-state",
-        "key": "__export",
-        "value": true
-       }
-      ]
-     },
-     {
-      "id": "act_print",
-      "label": "In",
-      "icon": "Printer",
-      "variant": "default",
-      "steps": [
-       {
-        "id": "s",
-        "kind": "set-state",
-        "key": "__print",
-        "value": true
-       }
-      ]
-     }
-    ]
-   }
-  }
- ],
- "_menuCodes": [
-  "I1091"
- ]
+      }
+    }
+  ],
+  "_menuCodes": [
+    "I1091"
+  ]
 }

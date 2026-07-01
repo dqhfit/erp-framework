@@ -1,0 +1,189 @@
+{
+  "name": "ds_phieu_sua_chua_thiet_bi",
+  "label": "Phiếu sửa chữa thiết bị (joined)",
+  "icon": "Database",
+  "config": {
+    "baseEntityId": "08e3a29d-283a-4f2c-a1d9-ce7602eaaca9",
+    "relations": [
+      {
+        "id": "r_chitiet",
+        "alias": "chitiet",
+        "fromRelationId": null,
+        "fromField": "id",
+        "toField": "phieuyeucau_id",
+        "targetEntityId": "7b377555-b25d-4b08-8011-6bdeff51c3d5",
+        "joinKind": "inner"
+      },
+      {
+        "id": "r_thietbi",
+        "alias": "thietbi",
+        "fromRelationId": "r_chitiet",
+        "fromField": "mact",
+        "toField": "mact",
+        "targetEntityId": "f84172aa-4d39-4f50-82e7-a9b2311272ff",
+        "joinKind": "left"
+      },
+      {
+        "id": "r_maymoc",
+        "alias": "maymoc",
+        "fromRelationId": "r_chitiet",
+        "fromField": "idmaymoc",
+        "toField": "id",
+        "targetEntityId": "abc3f25e-fe10-43e3-b8bb-0880622369ba",
+        "joinKind": "left"
+      },
+      {
+        "id": "r_user",
+        "alias": "user",
+        "fromRelationId": null,
+        "fromField": "nguoitao",
+        "toField": "username",
+        "targetEntityId": "0c3ee073-3207-4fb2-a675-b4f12df535bb",
+        "joinKind": "left"
+      }
+    ],
+    "fields": [
+      {
+        "key": "id",
+        "sourceRelationId": "base",
+        "sourceField": "id",
+        "label": "id",
+        "type": "text"
+      },
+      {
+        "key": "sophieu",
+        "sourceRelationId": "base",
+        "sourceField": "sophieu",
+        "label": "Số phiếu",
+        "type": "number"
+      },
+      {
+        "key": "nguoidenghi",
+        "sourceRelationId": "r_user",
+        "sourceField": "fullname",
+        "label": "Người đề nghị",
+        "type": "text",
+        "writable": false
+      },
+      {
+        "key": "nguoitao",
+        "sourceRelationId": "base",
+        "sourceField": "nguoitao",
+        "label": "Người đề nghị (mã)",
+        "type": "text"
+      },
+      {
+        "key": "tenmay",
+        "sourceRelationId": "r_maymoc",
+        "sourceField": "tenmay",
+        "label": "Tên máy",
+        "type": "text",
+        "writable": false
+      },
+      {
+        "key": "mamay",
+        "sourceRelationId": "r_maymoc",
+        "sourceField": "mamay",
+        "label": "Mã máy",
+        "type": "text",
+        "writable": false
+      },
+      {
+        "key": "thietbi",
+        "sourceRelationId": "r_thietbi",
+        "sourceField": "tenct",
+        "label": "Thiết bị",
+        "type": "text",
+        "writable": false
+      },
+      {
+        "key": "mact",
+        "sourceRelationId": "r_chitiet",
+        "sourceField": "mact",
+        "label": "Mã chi tiết",
+        "type": "text"
+      },
+      {
+        "key": "quycach",
+        "sourceRelationId": "r_thietbi",
+        "sourceField": "quycach",
+        "label": "Quy cách",
+        "type": "text",
+        "writable": false
+      },
+      {
+        "key": "mausac",
+        "sourceRelationId": "r_thietbi",
+        "sourceField": "mausac",
+        "label": "Màu sắc",
+        "type": "text",
+        "writable": false
+      },
+      {
+        "key": "dacdiem",
+        "sourceRelationId": "r_thietbi",
+        "sourceField": "dacdiem",
+        "label": "Đặc điểm",
+        "type": "text",
+        "writable": false
+      },
+      {
+        "key": "tinhtrang",
+        "sourceRelationId": "r_chitiet",
+        "sourceField": "ghichu",
+        "label": "Tình trạng",
+        "type": "text"
+      },
+      {
+        "key": "lydo",
+        "sourceRelationId": "base",
+        "sourceField": "mucdich",
+        "label": "Lý do",
+        "type": "longtext"
+      },
+      {
+        "key": "ngaydexuat",
+        "sourceRelationId": "base",
+        "sourceField": "ngaytao",
+        "label": "Ngày đề xuất",
+        "type": "datetime"
+      },
+      {
+        "key": "quanly",
+        "sourceRelationId": "base",
+        "sourceField": "nguoiduyet",
+        "label": "Quản lý",
+        "type": "text"
+      },
+      {
+        "key": "quanly_ngayduyet",
+        "sourceRelationId": "base",
+        "sourceField": "ngayduyet",
+        "label": "Quản lý ngày duyệt",
+        "type": "datetime"
+      },
+      {
+        "key": "bangiamdoc",
+        "sourceRelationId": "base",
+        "sourceField": "nguoiduyet2",
+        "label": "Ban giám đốc",
+        "type": "text"
+      },
+      {
+        "key": "bangiamdoc_ngayduyet",
+        "sourceRelationId": "base",
+        "sourceField": "ngayduyet2",
+        "label": "Ban giám đốc ngày duyệt",
+        "type": "datetime"
+      },
+      {
+        "key": "suachua",
+        "sourceRelationId": "base",
+        "sourceField": "suachua",
+        "label": "Sửa chữa",
+        "type": "boolean"
+      }
+    ],
+    "defaultLimit": 500
+  }
+}
