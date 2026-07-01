@@ -749,6 +749,7 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
     [formKey],
   );
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: chạy 1 lần khi mở wizard mới; thêm forms sẽ regenerate sau khi set field
   useEffect(() => {
     if (!wizardEntityId || editId || !step.autoNumber) return;
     const an = step.autoNumber;
@@ -2430,6 +2431,7 @@ export function WizardModal({ step, pageState, recordId, onDone, onCancel, rende
                           const fileName = row[nameField] || "Tệp đính kèm";
                           const filePath = row[pathField] || "";
                           return (
+                            // biome-ignore lint/suspicious/noArrayIndexKey: dòng file đính kèm tạm chưa có id ổn định
                             <tr key={`${fileName}-${idx}`} className="border-t border-border">
                               <td className="px-3 py-2 min-w-0">
                                 <span className="truncate block">{fileName}</span>
