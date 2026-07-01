@@ -61,6 +61,9 @@ export interface ActionContext {
   exportRecords?: (entityId: string, format: "xlsx" | "csv", title?: string) => Promise<void>;
   /** In danh sách record của entity (mở cửa sổ in). */
   printRecords?: (entityId: string, title?: string) => Promise<void>;
+  /** Hiển thị/ẩn dialog "đang xử lý" bao quanh các step chạy lâu (vd
+   *  invoke-module-proc: ghi kho / xuất kho). Optional — thiếu thì bỏ qua. */
+  progress?: { start: (message?: string) => void; stop: () => void };
 }
 
 /** Lỗi có phải do thiếu quyền / chưa đăng nhập không. */
@@ -438,32 +441,38 @@ export async function runActionSteps(
           if (v !== undefined) args[k] = v;
         }
       }
+      // Dialog "đang xử lý" bao quanh CHỈ lời gọi proc (phần chạy lâu) — dừng
+      // NGAY khi proc xong/lỗi, trước mọi toast/alert để overlay không che dialog.
+      ctx.progress?.start(step.busyMessage || "Đang xử lý…");
+      let r: { output: unknown };
       try {
-        const r = await ctx.invokeModule(step.procName, args);
-        procedureRuns++;
-        if (step.saveOutputTo) rs.set(step.saveOutputTo, r.output);
-        // Proc trả message → hiện toast thành công có nội dung cụ thể (vd số
-        // sản phẩm/dòng đã áp dụng). ActionWidget bỏ toast chung khi có step này.
-        const out = r.output as unknown;
-        const first = Array.isArray(out) ? out[0] : out;
-        const msg =
-          first && typeof first === "object" && "message" in first
-            ? String((first as { message: unknown }).message)
-            : null;
-        ctx.toast.success(msg || "Thực hiện thành công");
-        if (step.invalidateEntities?.length) {
-          const stamp = Date.now();
-          for (const eid of step.invalidateEntities) rs.set(`__refresh:${eid}`, stamp);
-        }
-        if (step.invalidateDataSources?.length) {
-          const stamp = Date.now();
-          for (const dsId of step.invalidateDataSources) rs.set(`__refresh:ds:${dsId}`, stamp);
-        }
+        r = await ctx.invokeModule(step.procName, args);
       } catch (e) {
+        ctx.progress?.stop();
         await ctx.dialog.alert(friendlyActionError(e, `chạy ${step.procName}`), {
           title: "Thao tác thất bại",
         });
         throw e;
+      }
+      ctx.progress?.stop();
+      procedureRuns++;
+      if (step.saveOutputTo) rs.set(step.saveOutputTo, r.output);
+      // Proc trả message → hiện toast thành công có nội dung cụ thể (vd số
+      // sản phẩm/dòng đã áp dụng). ActionWidget bỏ toast chung khi có step này.
+      const out = r.output as unknown;
+      const first = Array.isArray(out) ? out[0] : out;
+      const msg =
+        first && typeof first === "object" && "message" in first
+          ? String((first as { message: unknown }).message)
+          : null;
+      ctx.toast.success(msg || "Thực hiện thành công");
+      if (step.invalidateEntities?.length) {
+        const stamp = Date.now();
+        for (const eid of step.invalidateEntities) rs.set(`__refresh:${eid}`, stamp);
+      }
+      if (step.invalidateDataSources?.length) {
+        const stamp = Date.now();
+        for (const dsId of step.invalidateDataSources) rs.set(`__refresh:ds:${dsId}`, stamp);
       }
       continue;
     }

@@ -6,6 +6,7 @@
 import { createApiDataSource, createProceduresClient } from "@erp-framework/client";
 import { useNavigate } from "@tanstack/react-router";
 import { useCallback, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { I } from "@/components/Icons";
 import { exportCsvContentAsXlsx } from "@/components/renderer/consumer-utils";
 import { PopupPickerModal } from "@/components/renderer/PopupPickerModal";
@@ -148,6 +149,8 @@ export function ActionWidget({
   const role = user?.role;
   const navigate = useNavigate();
   const [busy, setBusy] = useState(false);
+  // Nội dung dialog "đang xử lý" (null = ẩn). Bật quanh step chạy lâu (proc).
+  const [processing, setProcessing] = useState<string | null>(null);
   const [popupStep, setPopupStep] = useState<ActionStepOpenPopup | null>(null);
   const [popupRecordId, setPopupRecordId] = useState<unknown>(undefined);
   // listFilters đã resolve (field → giá trị) cho popup list lọc server-side.
@@ -278,6 +281,10 @@ export function ActionWidget({
           const r = await recordsApi.exportRecords(entityId, "csv");
           printCsvTable(r.content, title || "Danh sách");
         },
+        progress: {
+          start: (message?: string) => setProcessing(message ?? "Đang xử lý…"),
+          stop: () => setProcessing(null),
+        },
       };
       const res = await runActionSteps(config.steps ?? [], ctx);
       // invoke-module-proc tự hiện toast.success có nội dung (run-action.ts) →
@@ -291,8 +298,28 @@ export function ActionWidget({
       // toast.error đã hiển thị trong run-action.ts; nuốt để không crash widget.
     } finally {
       setBusy(false);
+      setProcessing(null);
     }
   };
+
+  // Overlay "đang xử lý" — hiện quanh step chạy lâu (proc ghi kho / xuất kho).
+  // Render qua portal ra <body> để phủ toàn màn hình, không bị card cắt.
+  const processingOverlay =
+    processing != null
+      ? createPortal(
+          <div
+            className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/40 backdrop-blur-[1px]"
+            aria-busy="true"
+          >
+            <div className="flex flex-col items-center gap-3 rounded-lg border border-border bg-panel px-8 py-6 shadow-xl">
+              <I.Loader size={28} className="animate-spin text-accent" />
+              <span className="text-sm font-medium text-text">{processing}</span>
+              <span className="text-xs text-muted">Vui lòng đợi, không đóng cửa sổ.</span>
+            </div>
+          </div>,
+          document.body,
+        )
+      : null;
 
   const variant = config.variant ?? "default";
   const IconComp = config.icon ? I[config.icon] : null;
@@ -323,6 +350,7 @@ export function ActionWidget({
           {icon}
           <span>{config.label || "Action"}</span>
         </button>
+        {processingOverlay}
         {popupStep && (
           <PopupPickerModal
             step={popupStep}
@@ -376,6 +404,7 @@ export function ActionWidget({
       ) : (
         <div className="h-full w-full flex items-center justify-center p-2">{btn}</div>
       )}
+      {processingOverlay}
       {popupStep && (
         <PopupPickerModal
           step={popupStep}
