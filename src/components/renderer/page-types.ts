@@ -210,8 +210,12 @@ export type SplitGridCell = SplitPanelCfg & {
 
 export type FItemCfg = {
   id: string;
-  kind: "combobox" | "tagbox" | "search" | "daterange";
+  kind: "combobox" | "tagbox" | "search" | "daterange" | "date";
   label?: string;
+  /** (kind "date") Ghi vào MỘT đầu của mảng khoảng ngày lưu ở `stateKey`
+   *  ([from,to]) — cho phép tách "Từ ngày"/"Đến ngày" thành 2 control riêng mà
+   *  vẫn dùng chung state + loadFilters `between`. "from"=index 0, "to"=index 1. */
+  bound?: "from" | "to";
   /** Hiện nhãn (label) BÊN NGOÀI control (bên trái) thay vì chỉ làm placeholder/
    *  empty-option bên trong. Mặc định false (giữ hành vi cũ). */
   showLabel?: boolean;
