@@ -307,6 +307,10 @@ function RenderSubWidget({
           loadFilters={cfg.loadFilters as LoadFilters | undefined}
           loadGate={cfg.loadGate as string | undefined}
           selectable={cfg.selectable === true}
+          rowActions={cfg.rowActions as ActionConfig[] | undefined}
+          rowActionsBuiltin={cfg.rowActionsBuiltin === true}
+          rowActionsHidden={cfg.rowActionsHidden as string[] | undefined}
+          rowActionsStyle={cfg.rowActionsStyle as "inline" | "popover" | undefined}
         />,
         embeddedActions,
         pageState,

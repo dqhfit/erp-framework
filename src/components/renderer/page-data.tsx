@@ -522,6 +522,9 @@ export function useServerPagedRecords(opts: {
   const [err, setErr] = useState("");
   const [refreshTag, setRefreshTag] = useState(0);
   const [summary, setSummary] = useState<Record<string, number>>({});
+  const externalRefreshTag = usePageStateKey(
+    dataSourceId ? `__refresh:ds:${dataSourceId}` : entityId ? `__refresh:${entityId}` : "",
+  ) as number | undefined;
 
   // Field meta của DataSource (1 lần, dùng cache) — entity lấy thẳng từ useEntity.
   useEffect(() => {
@@ -613,7 +616,7 @@ export function useServerPagedRecords(opts: {
     return () => {
       alive = false;
     };
-  }, [entityId, dataSourceId, enabled, querySig, baseFiltersKey, refreshTag]);
+  }, [entityId, dataSourceId, enabled, querySig, baseFiltersKey, refreshTag, externalRefreshTag]);
 
   // Aggregates (footer summary toàn bảng) — CHỈ entity-backed. Bám lọc/q (KHÔNG
   // theo trang/sort) để khỏi refetch mỗi lần lật trang.
@@ -650,7 +653,16 @@ export function useServerPagedRecords(opts: {
     return () => {
       alive = false;
     };
-  }, [entityId, dataSourceId, enabled, aggKey, aggFilterSig, baseFiltersKey, refreshTag]);
+  }, [
+    entityId,
+    dataSourceId,
+    enabled,
+    aggKey,
+    aggFilterSig,
+    baseFiltersKey,
+    refreshTag,
+    externalRefreshTag,
+  ]);
 
   return {
     rows,

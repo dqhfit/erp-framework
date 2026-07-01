@@ -192,17 +192,31 @@ function translateDsConfig(cfg, fromById, toByName) {
 }
 
 // ── Dịch UUID trong page content ─────────────────────────────────────────
+function isUuid(value) {
+  return typeof value === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
+}
+
+function translatePageConfig(value, translateEntity, translateDs, key = "") {
+  if (Array.isArray(value)) return value.map((v) => translatePageConfig(v, translateEntity, translateDs));
+  if (!value || typeof value !== "object") {
+    if (!isUuid(value)) return value;
+    return key === "dataSourceId" ? translateDs(value) : translateEntity(value);
+  }
+  return Object.fromEntries(
+    Object.entries(value).map(([k, v]) => [
+      k,
+      translatePageConfig(v, translateEntity, translateDs, k),
+    ]),
+  );
+}
+
 function translatePageContent(content, translateEntity, translateDs) {
   const translateComp = (comp) => {
     const cfg = comp.config;
     if (!cfg) return comp;
     return {
       ...comp,
-      config: {
-        ...cfg,
-        ...(cfg.entity ? { entity: translateEntity(cfg.entity) } : {}),
-        ...(cfg.dataSourceId ? { dataSourceId: translateDs(cfg.dataSourceId) } : {}),
-      },
+      config: translatePageConfig(cfg, translateEntity, translateDs),
     };
   };
   if (Array.isArray(content)) return content.map(translateComp);

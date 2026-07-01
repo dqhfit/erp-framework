@@ -123,6 +123,8 @@ export interface ActionStepDeleteRecord {
   recordIdBinding: BindingValue;
   /** Invalidate records của entity sau khi xoá → list re-fetch. */
   invalidateEntities?: string[];
+  /** Refresh các list join `dataSourceId` sau khi xoá. */
+  invalidateDataSources?: string[];
 }
 /** Tạo bản ghi mới (records.create). Thường ghép sau 1 step open-popup form
  *  (saveOutputTo) — popup nhập liệu rồi create-record ghi vào entity. Nút
@@ -138,6 +140,8 @@ export interface ActionStepCreateRecord {
   saveOutputTo?: string;
   /** Invalidate records của entity sau khi tạo → list re-fetch. */
   invalidateEntities?: string[];
+  /** Refresh các list join `dataSourceId` sau khi tạo. */
+  invalidateDataSources?: string[];
 }
 /** Cập nhật bản ghi đang chọn (records.update theo recordId). Thường ghép
  *  sau 1 step open-popup form (saveOutputTo) — popup nạp sẵn record để sửa,
@@ -151,6 +155,8 @@ export interface ActionStepUpdateRecord {
   dataBinding: BindingValue;
   /** Invalidate records của entity sau khi sửa → list re-fetch. */
   invalidateEntities?: string[];
+  /** Refresh các list join `dataSourceId` sau khi sửa. */
+  invalidateDataSources?: string[];
 }
 export interface ActionStepUpdateFields {
   id: string;
@@ -243,6 +249,8 @@ export interface ActionStepOpenPopup {
   persist?: boolean;
   /** Sau khi lưu thành công → đặt cờ __refresh cho các entity này (list reload). */
   invalidateEntities?: string[];
+  /** Sau khi lưu thành công → refresh các list join `dataSourceId`. */
+  invalidateDataSources?: string[];
   /** Key page state để lưu kết quả (object đã chọn / nhập) */
   saveOutputTo: string;
   /** Ghi đè type/label của field trong popup (vd url→file, text→image). */
@@ -315,8 +323,10 @@ export interface FieldOverride {
   label?: string;
   /** Lựa chọn cho select/multiselect. */
   options?: string[];
+  optionLabels?: Record<string, string>;
   /** Bắt buộc nhập. */
   required?: boolean;
+  readOnly?: boolean;
   /** Số cột mà field này chiếm dụng (1 | 2 | 3 | 4). */
   colSpan?: number;
 }
@@ -392,6 +402,13 @@ export interface WizardStepDetail {
    *  rowDefaults, hoặc field tự fill từ lookup mà không cần hiện). Phải nằm trong
    *  `fields` để được lưu; chỉ bị ẩn khỏi lưới. */
   hiddenFields?: string[];
+  /** Render chi tiết dạng danh sách file: chọn file -> upload -> lưu filename/path. */
+  fileUpload?: {
+    nameField: string;
+    pathField: string;
+    subfolder?: string;
+    accept?: string;
+  };
 }
 
 /** Ảnh chỉ đọc lấy từ entity liên quan, không tham gia payload lưu entity chính. */
@@ -409,6 +426,7 @@ export interface WizardStepDef {
   id: string;
   title: string;
   description?: string;
+  layout?: string;
   /** Số cột hiển thị của form trong bước này. */
   cols?: 1 | 2 | 4;
   /** Entity để tạo bản ghi trong bước này (không bắt buộc). */

@@ -298,6 +298,10 @@ export async function runActionSteps(
         const stamp = Date.now();
         for (const eid of step.invalidateEntities) rs.set(`__refresh:${eid}`, stamp);
       }
+      if (step.invalidateDataSources?.length) {
+        const stamp = Date.now();
+        for (const dsId of step.invalidateDataSources) rs.set(`__refresh:ds:${dsId}`, stamp);
+      }
       continue;
     }
     if (step.kind === "open-create-form") {
@@ -373,6 +377,10 @@ export async function runActionSteps(
           const stamp = Date.now();
           for (const eid of step.invalidateEntities) rs.set(`__refresh:${eid}`, stamp);
         }
+        if (step.invalidateDataSources?.length) {
+          const stamp = Date.now();
+          for (const dsId of step.invalidateDataSources) rs.set(`__refresh:ds:${dsId}`, stamp);
+        }
       } catch (e) {
         await ctx.dialog.alert(friendlyActionError(e, "xoá bản ghi"), { title: "Không xoá được" });
         throw e;
@@ -397,6 +405,10 @@ export async function runActionSteps(
         if (step.invalidateEntities?.length) {
           const stamp = Date.now();
           for (const eid of step.invalidateEntities) rs.set(`__refresh:${eid}`, stamp);
+        }
+        if (step.invalidateDataSources?.length) {
+          const stamp = Date.now();
+          for (const dsId of step.invalidateDataSources) rs.set(`__refresh:ds:${dsId}`, stamp);
         }
       } catch (e) {
         await ctx.dialog.alert(friendlyActionError(e, "thêm bản ghi"), {
@@ -427,6 +439,10 @@ export async function runActionSteps(
         if (step.invalidateEntities?.length) {
           const stamp = Date.now();
           for (const eid of step.invalidateEntities) rs.set(`__refresh:${eid}`, stamp);
+        }
+        if (step.invalidateDataSources?.length) {
+          const stamp = Date.now();
+          for (const dsId of step.invalidateDataSources) rs.set(`__refresh:ds:${dsId}`, stamp);
         }
       } catch (e) {
         await ctx.dialog.alert(friendlyActionError(e, "lưu thay đổi"), { title: "Không lưu được" });

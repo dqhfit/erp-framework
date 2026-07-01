@@ -4,7 +4,7 @@
    + persist draft (idb). Tách từ ConsumerPage.tsx (Phase A6) — chỉ di chuyển code,
    KHÔNG đổi hành vi. Chỉ ServerPagedListWidget + ListWidget export. */
 import { useBlocker } from "@tanstack/react-router";
-import type { ColumnDef } from "@tanstack/react-table";
+import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { I } from "@/components/Icons";
 import { ActionWidget } from "@/components/renderer/ActionWidget";
@@ -1223,6 +1223,10 @@ export function ServerPagedListWidget({
   batchEdit,
   columnGroups,
   selectable,
+  rowActions,
+  rowActionsBuiltin,
+  rowActionsHidden,
+  rowActionsStyle,
 }: {
   entityId?: string;
   dataSourceId?: string;
@@ -1241,6 +1245,10 @@ export function ServerPagedListWidget({
   columnGroups?: ColumnGroupNode[];
   /** Bật chọn dòng (checkbox). */
   selectable?: boolean;
+  rowActions?: ActionConfig[];
+  rowActionsBuiltin?: boolean;
+  rowActionsHidden?: string[];
+  rowActionsStyle?: "inline" | "popover";
 }) {
   const t = useT();
   const ent = useEntity(entityId);
@@ -1301,6 +1309,151 @@ export function ServerPagedListWidget({
     fields && fields.length > 0
       ? (fields.map((n) => allFields.find((f) => f.name === n)).filter(Boolean) as EntityField[])
       : allFields.filter((f) => f.defaultVisible !== false);
+  const pageStateRef = useRef(pageState);
+  pageStateRef.current = pageState;
+  const visibleFieldsRef = useRef<EntityField[]>([]);
+  visibleFieldsRef.current = visibleFields;
+  const columnLabelsRef = useRef(columnLabels);
+  columnLabelsRef.current = columnLabels;
+  const titleRef = useRef(title);
+  titleRef.current = title;
+  const effectiveRowActions = useMemo<ActionConfig[]>(() => {
+    const base = rowActions ?? [];
+    if (!rowActionsBuiltin || !entityId) return base;
+    const builtin = [
+      {
+        id: "__ra_view",
+        label: "Xem",
+        icon: "Eye",
+        iconOnly: true,
+        variant: "default",
+        steps: [
+          {
+            id: "v",
+            kind: "open-popup",
+            title: "Xem chi tiết",
+            entity: entityId,
+            fields,
+            popupMode: "detail",
+            saveOutputTo: "_viewed",
+          },
+        ],
+      },
+      {
+        id: "__ra_edit",
+        label: "Sửa",
+        icon: "Edit",
+        iconOnly: true,
+        variant: "default",
+        steps: [
+          {
+            id: "e",
+            kind: "open-popup",
+            title: "Sửa",
+            entity: entityId,
+            fields,
+            popupMode: "form",
+            persist: true,
+            invalidateEntities: [entityId],
+            ...(dataSourceId ? { invalidateDataSources: [dataSourceId] } : {}),
+            saveOutputTo: "_edited",
+          },
+        ],
+      },
+      {
+        id: "__ra_del",
+        label: "Xoá",
+        icon: "Trash",
+        iconOnly: true,
+        variant: "danger",
+        steps: [
+          {
+            id: "c",
+            kind: "confirm",
+            title: "Xác nhận xoá",
+            danger: true,
+            message: "Xoá dòng này?",
+          },
+          {
+            id: "d",
+            kind: "delete-record",
+            invalidateEntities: [entityId],
+            ...(dataSourceId ? { invalidateDataSources: [dataSourceId] } : {}),
+          },
+        ],
+      },
+    ] as unknown as ActionConfig[];
+    const baseLabels = new Set(base.map((a) => a.label));
+    const hasViewVariant = [...baseLabels].some((l) => l.startsWith("Xem"));
+    return [
+      ...base,
+      ...builtin.filter((b) => {
+        if (baseLabels.has(b.label)) return false;
+        if (b.label === "Xoá" && baseLabels.has("Xóa")) return false;
+        if (b.label === "Xóa" && baseLabels.has("Xoá")) return false;
+        if (b.label === "Xem" && hasViewVariant) return false;
+        return true;
+      }),
+    ];
+  }, [rowActions, rowActionsBuiltin, entityId, fields, dataSourceId]);
+  const rowActsInline = rowActionsStyle !== "popover";
+  const rowActionCol = useMemo<ColumnDef<Record<string, unknown>>[]>(
+    () =>
+      effectiveRowActions.length > 0
+        ? [
+            {
+              id: "__rowacts__",
+              header: () => (
+                <span title="Hành động">
+                  <I.MoreHorizontal size={13} className="text-muted/70" />
+                </span>
+              ),
+              size: rowActsInline ? Math.min(48 + effectiveRowActions.length * 44, 240) : 28,
+              minSize: 24,
+              meta: { compact: true, label: "Hành động" },
+              enableSorting: false,
+              cell: ({ row }) => {
+                const bound = effectiveRowActions.map((a) => bindRowIdToAction(a, row.original));
+                const visibleBound = bound.filter((a) =>
+                  actionVisibleByState(a as ActionBarItem, pageStateRef.current),
+                );
+                if (rowActsInline) {
+                  return (
+                    <div
+                      data-col-content=""
+                      className="flex items-center gap-1 w-fit"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {visibleBound.map((a) => (
+                        <ActionWidget
+                          key={a.label}
+                          config={a as ActionBarItem}
+                          pageState={pageStateRef.current}
+                          inline
+                        />
+                      ))}
+                    </div>
+                  );
+                }
+                return (
+                  <RowActionsCell
+                    actions={visibleBound}
+                    pageState={pageStateRef.current}
+                    row={row.original}
+                    cols={visibleFieldsRef.current.map((f) => ({
+                      key: f.name,
+                      label: columnLabelsRef.current?.[f.name] ?? f.label ?? f.name,
+                    }))}
+                    title={titleRef.current}
+                    hidden={rowActionsHidden}
+                  />
+                );
+              },
+            },
+          ]
+        : [],
+    [effectiveRowActions, rowActsInline, rowActionsHidden],
+  );
 
   // Map summary (field→số) → controller.summary (colId→{type,value}) cho footer.
   const serverSummary = useMemo(() => {
@@ -1395,15 +1548,16 @@ export function ServerPagedListWidget({
   };
 
   const columns = useMemo<ColumnDef<Record<string, unknown>>[]>(
-    () =>
-      visibleFields.map((f) => ({
+    () => [
+      ...rowActionCol,
+      ...visibleFields.map<ColumnDef<Record<string, unknown>>>((f) => ({
         id: f.name,
         accessorKey: f.name,
         header: columnLabels?.[f.name] ?? f.label,
         enableGrouping: false,
         meta: { techName: f.name },
         cell: editable
-          ? (ctx) => (
+          ? (ctx: CellContext<Record<string, unknown>, unknown>) => (
               <EditableCell
                 value={ctx.getValue()}
                 isImage={f.type === "image"}
@@ -1426,7 +1580,7 @@ export function ServerPagedListWidget({
                 }
               />
             )
-          : (ctx) => {
+          : (ctx: CellContext<Record<string, unknown>, unknown>) => {
               const v = ctx.getValue();
               const s = v == null ? "" : String(v);
               if (
@@ -1471,7 +1625,8 @@ export function ServerPagedListWidget({
               return <span className="block truncate">{disp}</span>;
             },
       })),
-    [visibleFields, columnLabels, editable, rbacRole, myGroupIds],
+    ],
+    [rowActionCol, visibleFields, columnLabels, editable, rbacRole, myGroupIds],
   );
 
   // Data hiển thị = rows trang hiện tại + overlay pending (ô đã sửa, theo id).

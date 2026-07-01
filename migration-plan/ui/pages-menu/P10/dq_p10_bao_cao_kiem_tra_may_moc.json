@@ -1,127 +1,387 @@
 {
- "name": "dq_p10_bao_cao_kiem_tra_may_moc",
- "label": "Báo cáo công việc",
- "content": [
-  {
-   "id": "w_list",
-   "kind": "list",
-   "x": 0,
-   "y": 0,
-   "w": 12,
-   "h": 10,
-   "config": {
-    "entity": "f84172aa-4d39-4f50-82e7-a9b2311272ff",
-    "title": "Báo cáo công việc",
-    "fields": [
-     "id",
-     "ngay",
-     "tenxuong",
-     "tenmay",
-     "nguoikiem",
-     "tinhtrangmay",
-     "tenct",
-     "phuongan",
-     "nguoiphutrach",
-     "ngaydukienxong"
-    ],
-    "selectionStateKey": "sel",
-    "pageSize": 25,
-    "editable": true,
-    "embeddedActions": [
-     {
-      "id": "act_add",
-      "label": "Thêm",
-      "icon": "Plus",
-      "variant": "primary",
-      "steps": [
-       {
-        "id": "s",
-        "kind": "open-popup",
-        "popupMode": "form",
-        "entity": "f84172aa-4d39-4f50-82e7-a9b2311272ff",
-        "title": "Thêm — Báo cáo công việc",
-        "saveOutputTo": "newRec"
-       }
-      ]
-     },
-     {
-      "id": "act_edit",
-      "label": "Sửa",
-      "icon": "Pencil",
-      "variant": "default",
-      "steps": [
-       {
-        "id": "s",
-        "kind": "open-popup",
-        "popupMode": "form",
-        "entity": "f84172aa-4d39-4f50-82e7-a9b2311272ff",
-        "title": "Sửa — Báo cáo công việc",
-        "recordIdBinding": {
-         "source": "state",
-         "key": "sel"
-        }
-       }
-      ]
-     },
-     {
-      "id": "act_delete",
-      "label": "Xóa",
-      "icon": "Trash2",
-      "variant": "danger",
-      "steps": [
-       {
-        "id": "s1",
-        "kind": "confirm",
-        "title": "Xóa",
-        "message": "Xác nhận xoá bản ghi đang chọn?",
-        "danger": true
-       },
-       {
-        "id": "s2",
-        "kind": "delete-record",
-        "recordIdBinding": {
-         "source": "state",
-         "key": "sel"
+  "name": "dq_p10_bao_cao_kiem_tra_may_moc",
+  "label": "Báo cáo công việc",
+  "content": [
+    {
+      "id": "w_list",
+      "kind": "list",
+      "x": 0,
+      "y": 0,
+      "w": 12,
+      "h": 10,
+      "config": {
+        "dataSourceId": "c43283a1-8015-4c82-81f5-90a102241a6c",
+        "title": "Báo cáo công việc",
+        "fields": [
+          "sophieu",
+          "nguoitao",
+          "tenmay",
+          "thietbi",
+          "tinhtrang",
+          "lydo",
+          "ngaydexuat",
+          "quanly",
+          "bangiamdoc"
+        ],
+        "columnLabels": {
+          "sophieu": "Số phiếu",
+          "nguoitao": "Người đề nghị",
+          "tenmay": "Tên máy",
+          "thietbi": "Thiết bị",
+          "tinhtrang": "Tình trạng",
+          "lydo": "Lý do",
+          "ngaydexuat": "Ngày đề xuất",
+          "quanly": "Quản lý",
+          "bangiamdoc": "Ban giám đốc"
         },
-        "invalidateEntities": [
-         "f84172aa-4d39-4f50-82e7-a9b2311272ff"
+        "loadFilters": {
+          "suachua": {
+            "op": "=",
+            "value": true
+          }
+        },
+        "defaultSort": {
+          "field": "ngaydexuat",
+          "dir": "desc"
+        },
+        "selectionStateKey": "sel",
+        "pageSize": 25,
+        "serverPaging": true,
+        "editable": false,
+        "embeddedActions": [
+          {
+            "id": "act_create_repair_ticket",
+            "label": "Tạo phiếu",
+            "icon": "Plus",
+            "variant": "primary",
+            "steps": [
+              {
+                "id": "wiz_create_repair_ticket",
+                "kind": "open-wizard",
+                "title": "Tạo phiếu",
+                "submitLabel": "Tạo phiếu",
+                "entity": "08e3a29d-283a-4f2c-a1d9-ce7602eaaca9",
+                "invalidateDataSources": [
+                  "c43283a1-8015-4c82-81f5-90a102241a6c"
+                ],
+                "defaults": {
+                  "sophieu": "",
+                  "nguoitao": "$currentUser",
+                  "suachua": "true",
+                  "active": "true"
+                },
+                "autoNumber": {
+                  "field": "sophieu",
+                  "format": "yyyyMMdd{seq}",
+                  "pad": 2
+                },
+                "steps": [
+                  {
+                    "id": "head",
+                    "title": "Thông tin phiếu",
+                    "fields": [
+                      "sophieu",
+                      "nguoitao",
+                      "mucdich",
+                      "suachua",
+                      "active"
+                    ],
+                    "hiddenFields": [
+                      "sophieu",
+                      "suachua",
+                      "active"
+                    ],
+                    "fieldOverrides": {
+                      "sophieu": {
+                        "label": "Số phiếu"
+                      },
+                      "nguoitao": {
+                        "label": "Người đề nghị",
+                        "required": true
+                      },
+                      "mucdich": {
+                        "label": "Lý do",
+                        "type": "longtext",
+                        "required": true
+                      }
+                    }
+                  },
+                  {
+                    "id": "detail",
+                    "title": "Thiết bị sửa chữa",
+                    "detail": {
+                      "entity": "7b377555-b25d-4b08-8011-6bdeff51c3d5",
+                      "linkField": "phieuyeucau_id",
+                      "parentKeyField": "id",
+                      "fields": [
+                        "idmaymoc",
+                        "mact",
+                        "ghichu"
+                      ],
+                      "inherit": {
+                        "phieuyeucau_idsophieu": "sophieu"
+                      },
+                      "rowDefaults": {
+                        "ghichu": "Không thể sử dụng",
+                        "active": "true",
+                        "soluong": "1"
+                      },
+                      "fieldLookups": {
+                        "idmaymoc": {
+                          "entity": "abc3f25e-fe10-43e3-b8bb-0880622369ba",
+                          "valueField": "id",
+                          "labelFields": [
+                            "mamay",
+                            "tenmay"
+                          ],
+                          "searchFields": [
+                            "mamay",
+                            "tenmay"
+                          ],
+                          "preloadLimit": 2000
+                        },
+                        "mact": {
+                          "entity": "f84172aa-4d39-4f50-82e7-a9b2311272ff",
+                          "valueField": "mact",
+                          "labelFields": [
+                            "mact",
+                            "tenct",
+                            "quycach",
+                            "mausac",
+                            "dacdiem"
+                          ],
+                          "columnHeaders": [
+                            "Mã chi tiết",
+                            "Tên chi tiết",
+                            "Quy cách",
+                            "Màu sắc",
+                            "Đặc điểm"
+                          ],
+                          "searchFields": [
+                            "mact",
+                            "tenct",
+                            "quycach",
+                            "mausac",
+                            "dacdiem"
+                          ],
+                          "preloadLimit": 5000
+                        },
+                        "ghichu": {
+                          "entity": "9f36e50f-0190-4838-b5e0-9399da70aeee",
+                          "valueField": "ten",
+                          "labelFields": [
+                            "ten"
+                          ],
+                          "searchFields": [
+                            "ten"
+                          ],
+                          "allowCreate": true,
+                          "createFields": [
+                            "ten"
+                          ],
+                          "preloadLimit": 500
+                        }
+                      }
+                    },
+                    "fieldOverrides": {
+                      "idmaymoc": {
+                        "label": "Tên máy",
+                        "required": true
+                      },
+                      "mact": {
+                        "label": "Thiết bị",
+                        "required": true
+                      },
+                      "ghichu": {
+                        "label": "Tình trạng",
+                        "required": true
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "act_edit",
+            "label": "Sửa",
+            "icon": "Pencil",
+            "variant": "default",
+            "hint": "Chọn một dòng rồi sửa phiếu",
+            "steps": [
+              {
+                "id": "wiz_edit_repair_ticket",
+                "kind": "open-wizard",
+                "title": "Sửa phiếu",
+                "submitLabel": "Lưu",
+                "entity": "08e3a29d-283a-4f2c-a1d9-ce7602eaaca9",
+                "recordIdBinding": {
+                  "source": "state",
+                  "key": "sel"
+                },
+                "invalidateDataSources": [
+                  "c43283a1-8015-4c82-81f5-90a102241a6c"
+                ],
+                "steps": [
+                  {
+                    "id": "head",
+                    "title": "Thông tin phiếu",
+                    "fields": [
+                      "sophieu",
+                      "nguoitao",
+                      "mucdich",
+                      "suachua",
+                      "active"
+                    ],
+                    "hiddenFields": [
+                      "suachua",
+                      "active"
+                    ],
+                    "fieldOverrides": {
+                      "sophieu": {
+                        "label": "Số phiếu",
+                        "readOnly": true
+                      },
+                      "nguoitao": {
+                        "label": "Người đề nghị",
+                        "required": true
+                      },
+                      "mucdich": {
+                        "label": "Lý do",
+                        "type": "longtext",
+                        "required": true
+                      }
+                    }
+                  },
+                  {
+                    "id": "detail",
+                    "title": "Thiết bị sửa chữa",
+                    "detail": {
+                      "entity": "7b377555-b25d-4b08-8011-6bdeff51c3d5",
+                      "linkField": "phieuyeucau_id",
+                      "parentKeyField": "id",
+                      "fields": [
+                        "idmaymoc",
+                        "mact",
+                        "ghichu"
+                      ],
+                      "inherit": {
+                        "phieuyeucau_idsophieu": "sophieu"
+                      },
+                      "rowDefaults": {
+                        "ghichu": "Không thể sử dụng",
+                        "active": "true",
+                        "soluong": "1"
+                      },
+                      "fieldLookups": {
+                        "idmaymoc": {
+                          "entity": "abc3f25e-fe10-43e3-b8bb-0880622369ba",
+                          "valueField": "id",
+                          "labelFields": [
+                            "mamay",
+                            "tenmay"
+                          ],
+                          "searchFields": [
+                            "mamay",
+                            "tenmay"
+                          ],
+                          "preloadLimit": 2000
+                        },
+                        "mact": {
+                          "entity": "f84172aa-4d39-4f50-82e7-a9b2311272ff",
+                          "valueField": "mact",
+                          "labelFields": [
+                            "mact",
+                            "tenct",
+                            "quycach",
+                            "mausac",
+                            "dacdiem"
+                          ],
+                          "columnHeaders": [
+                            "Mã chi tiết",
+                            "Tên chi tiết",
+                            "Quy cách",
+                            "Màu sắc",
+                            "Đặc điểm"
+                          ],
+                          "searchFields": [
+                            "mact",
+                            "tenct",
+                            "quycach",
+                            "mausac",
+                            "dacdiem"
+                          ],
+                          "preloadLimit": 5000
+                        },
+                        "ghichu": {
+                          "entity": "9f36e50f-0190-4838-b5e0-9399da70aeee",
+                          "valueField": "ten",
+                          "labelFields": [
+                            "ten"
+                          ],
+                          "searchFields": [
+                            "ten"
+                          ],
+                          "allowCreate": true,
+                          "createFields": [
+                            "ten"
+                          ],
+                          "preloadLimit": 500
+                        }
+                      }
+                    },
+                    "fieldOverrides": {
+                      "idmaymoc": {
+                        "label": "Tên máy",
+                        "required": true
+                      },
+                      "mact": {
+                        "label": "Thiết bị",
+                        "required": true
+                      },
+                      "ghichu": {
+                        "label": "Tình trạng",
+                        "required": true
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "act_print",
+            "label": "In",
+            "icon": "Printer",
+            "variant": "default",
+            "steps": [
+              {
+                "id": "s",
+                "kind": "set-state",
+                "key": "__print",
+                "value": true
+              }
+            ]
+          },
+          {
+            "id": "act_export",
+            "label": "Xuất",
+            "icon": "Download",
+            "variant": "default",
+            "steps": [
+              {
+                "id": "s",
+                "kind": "set-state",
+                "key": "__export",
+                "value": true
+              }
+            ]
+          }
         ]
-       }
-      ]
-     },
-     {
-      "id": "act_print",
-      "label": "In",
-      "icon": "Printer",
-      "variant": "default",
-      "steps": [
-       {
-        "id": "s",
-        "kind": "set-state",
-        "key": "__print",
-        "value": true
-       }
-      ]
-     },
-     {
-      "id": "act_export",
-      "label": "Xuất",
-      "icon": "Download",
-      "variant": "default",
-      "steps": [
-       {
-        "id": "s",
-        "kind": "set-state",
-        "key": "__export",
-        "value": true
-       }
-      ]
-     }
-    ]
-   }
-  }
- ],
- "_menuCodes": [
-  "I1209"
- ]
+      }
+    }
+  ],
+  "_menuCodes": [
+    "I1209"
+  ]
 }
